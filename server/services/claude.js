@@ -1,8 +1,7 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const Anthropic = require('@anthropic-ai/sdk');
 const db = require('../db');
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 function getCachedInsight(type, ticker, month) {
   const row = db.prepare(`
@@ -27,11 +26,13 @@ function saveInsight(type, content, ticker, month) {
 }
 
 async function callAI(systemPrompt, userPrompt) {
-  const result = await model.generateContent({
-    contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-    systemInstruction: { parts: [{ text: systemPrompt }] },
+  const result = await anthropic.messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 4096,
+    system: systemPrompt,
+    messages: [{ role: 'user', content: userPrompt }],
   });
-  return result.response.text();
+  return result.content[0].text;
 }
 
 async function categorizeTransactions(transactions) {
@@ -67,7 +68,7 @@ async function generateBudgetSummary(month, spendingData) {
   const cached = getCachedInsight('budget', null, month);
   if (cached) return cached;
 
-  const systemPrompt = 'You are a personal finance assistant. Write clear, plain-English summaries of spending data. Be specific about numbers. Never give tax advice. Always be encouraging and non-judgmental. Keep responses to 3-4 sentences.';
+  const systemPrompt = 'Summarize spending in 2 sentences max. Use plain English, real dollar amounts. No disclaimers.';
   const userPrompt = `Here is the spending data for ${month}: ${JSON.stringify(spendingData)}. Write a plain-English summary of this month's finances.`;
 
   const content = await callAI(systemPrompt, userPrompt);
@@ -79,7 +80,7 @@ async function generatePortfolioAnalysis(positions) {
   const cached = getCachedInsight('portfolio', null, null);
   if (cached) return cached;
 
-  const systemPrompt = 'You are a friendly financial educator who explains things in simple, everyday language that anyone can understand — no jargon. Write 2 to 5 sentences. Cover: (1) what sectors/industries the portfolio is invested in and roughly what percentage each sector makes up, (2) any risks like being too concentrated in one area, and (3) potential upsides or strengths of the portfolio mix. End with: "This is for informational purposes only and is not financial advice."';
+  const systemPrompt = 'Give a 2-3 sentence plain English overview of this portfolio. State what sectors they are in with percentages, and one key risk. No disclaimers, no jargon.';
   const userPrompt = `Here is a portfolio with the following holdings. Each entry has a ticker, number of shares, current dollar value, the sector it belongs to, and its weight (percentage of the total portfolio):\n\n${JSON.stringify(positions, null, 2)}\n\nGive a simple, plain-English overview of this portfolio.`;
 
   const content = await callAI(systemPrompt, userPrompt);
@@ -91,7 +92,7 @@ async function generateMarketDigest(ticker, companyName, price, changePercent) {
   const cached = getCachedInsight('market_digest', ticker, null);
   if (cached) return cached;
 
-  const systemPrompt = 'You are a financial data summarizer. Write exactly one sentence summarizing a stock\'s recent context. Be factual and neutral. Never recommend buying or selling. No disclaimers needed for single-sentence digests.';
+  const systemPrompt = 'Write one short sentence about this stock. Just the facts, no fluff.';
   const userPrompt = `Write one sentence about ${ticker} (${companyName}). Current price: $${price}, day change: ${changePercent}%.`;
 
   const content = await callAI(systemPrompt, userPrompt);
@@ -103,7 +104,7 @@ async function generateCompanyExplainer(ticker, companyName, sector, description
   const cached = getCachedInsight('market_explain', ticker, null);
   if (cached) return cached;
 
-  const systemPrompt = 'You are a financial educator. Explain companies in plain English that anyone can understand. Focus on what the company does and how it makes money. Keep responses to 3 sentences maximum. End with: "This is for informational purposes only."';
+  const systemPrompt = 'Explain what this company does and how it makes money in 1-2 sentences. Plain English, no disclaimers.';
   const userPrompt = `Explain what ${ticker} (${companyName}) does and how it generates revenue. Sector: ${sector}. Description: ${description}.`;
 
   const content = await callAI(systemPrompt, userPrompt);
@@ -158,35 +159,24 @@ async function generateSpendingAnalysis(transactions, budgetGoals = {}) {
 
   const hasBudgetGoals = Object.keys(budgetGoals).length > 0;
 
-  const systemPrompt = `You are a brutally honest personal finance analyst. You do NOT sugarcoat anything. You tell people exactly where they are failing with their money — no hand-holding, no "great job" unless they genuinely earned it. Think of yourself as the tough-love financial advisor who says what nobody else will.
+  const systemPrompt = `You are a straight-talking money analyst. Be honest and simple. No disclaimers. No fluff. Use real numbers.
 
-Your job is to analyze spending data${hasBudgetGoals ? ' and cross-reference it against the user\'s own budget goals they set for themselves' : ''}, then call out every problem you see.
+Keep it short with these sections:
 
-Structure your response with these exact section headers using markdown:
-
-## The Hard Truth
-A 2-3 sentence brutally honest summary. If they're overspending, say it plainly. If their savings rate is bad, don't dance around it. If they set budget goals and blew past them, call that out immediately.
+## Summary
+2 sentences. How much they spent, how much they made, savings rate.
 ${hasBudgetGoals ? `
-## Budget Goal Report Card
-Go through EVERY budget goal they set and grade them. For each category where they set a limit, state: the limit they set, what they actually spent, and whether they passed or failed. If they went over, tell them exactly how much over and what percentage over. If they have no budget goals set for a category where they spent heavily, call that out too — they're spending blindly.
+## Budget Check
+List each budget goal: what they set, what they spent, over or under. One line each.
 ` : ''}
-## Where Your Money Is Actually Going
-Break down each spending category with exact dollar amounts and percentages. Highlight any category that seems disproportionately high. If someone is spending 40% of their income on dining out, say "that's a problem" — don't call it "an area for potential optimization."
+## Spending Breakdown
+Each category with dollar amount and percent. Flag anything too high.
 
-## Your Worst Habits
-Identify the top merchants and recurring charges. Point out patterns that indicate wasteful spending — frequent food delivery, subscription stacking, impulse purchases. Be specific about dollar amounts.
+## Top Spending
+Top 5 places they spend money with amounts.
 
-## What You Need To Hear
-4-5 bullet points of hard truths. Examples:
-- If savings rate is under 20%, tell them they're not building wealth
-- If they blew their budget in a category, tell them their budget is meaningless if they don't follow it
-- If they have high discretionary spending, tell them exactly what they're sacrificing long-term
-- If they have no budget goals set, tell them they're flying blind
-
-## What To Do Right Now
-4-5 specific, concrete actions — not vague advice. Give exact dollar amounts to cut. Name the specific merchants or categories to reduce. If they consistently fail a budget goal, tell them to either fix their spending or set a realistic goal instead of lying to themselves.
-
-Be direct, be specific, use their actual numbers. No filler, no pleasantries. But be constructive — the goal is to help them improve, not just roast them. End with: "This analysis is for informational purposes only and is not financial advice."`;
+## 3 Things To Fix
+3 specific actions with dollar amounts. Keep each to one sentence.`;
 
   const userPrompt = `Analyze this spending data and don't hold back:\n${JSON.stringify(data, null, 2)}`;
 
