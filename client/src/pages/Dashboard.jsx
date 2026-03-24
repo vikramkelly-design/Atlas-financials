@@ -15,6 +15,7 @@ export default function Dashboard() {
   const [watchlist, setWatchlist] = useState([])
   const [currentGoal, setCurrentGoal] = useState(null)
   const [insights, setInsights] = useState([])
+  const [healthScore, setHealthScore] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -46,6 +47,16 @@ export default function Dashboard() {
       } catch {
         setCurrentGoal(null)
       }
+
+      // Fetch health score and insights
+      try {
+        const [hsRes, insRes] = await Promise.all([
+          get('/api/insights/health-score'),
+          get('/api/insights/dashboard'),
+        ])
+        if (hsRes.data) setHealthScore(hsRes.data)
+        if (insRes.data) setInsights(insRes.data)
+      } catch {}
 
       // Get current month transactions
       const now = new Date()
@@ -115,9 +126,51 @@ export default function Dashboard() {
   if (loading) return <LoadingSpinner height={200} />
   if (error) return <ErrorBanner message={error} onRetry={fetchAll} />
 
+  const gradeColor = (grade) => {
+    if (grade === 'A' || grade === 'B+') return '#2A5C3A'
+    if (grade === 'B' || grade === 'C+') return '#8B6A2A'
+    return '#8B3A2A'
+  }
+
   return (
     <div>
       <h1 style={{ fontSize: '1.75rem', marginBottom: '1.5rem' }}>Dashboard</h1>
+
+      {/* Financial Health Score */}
+      {healthScore && (
+        <div className="card" style={{ marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+            <h3 style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', fontFamily: 'var(--font-body)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Financial Health Score</h3>
+            <span style={{ fontSize: '1.1rem', fontWeight: 700, color: gradeColor(healthScore.grade), padding: '0.15rem 0.5rem', border: `1px solid ${gradeColor(healthScore.grade)}`, borderRadius: 2 }}>
+              {healthScore.grade}
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem', marginBottom: '0.5rem' }}>
+            <span className="mono" style={{ fontSize: '2.5rem', fontWeight: 700, color: '#1B2A4A' }}>{healthScore.score}</span>
+            <span className="text-faint" style={{ fontSize: '1rem' }}>/ 100</span>
+          </div>
+          <div className="progress-bar" style={{ marginBottom: '1rem', height: 8 }}>
+            <div className="progress-bar-fill" style={{
+              width: `${healthScore.score}%`,
+              background: healthScore.score >= 70 ? '#2A5C3A' : healthScore.score >= 50 ? '#C9A84C' : '#8B3A2A',
+            }} />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+            {healthScore.categories?.map(cat => (
+              <div key={cat.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.35rem 0', borderBottom: '1px solid var(--color-border)' }}>
+                <div>
+                  <span style={{ fontSize: '0.8rem', color: '#6B1A1A' }}>{cat.name}</span>
+                  {cat.summary && <span className="text-faint" style={{ fontSize: '0.72rem', marginLeft: '0.5rem' }}>{cat.summary}</span>}
+                </div>
+                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: gradeColor(cat.grade), minWidth: 28, textAlign: 'right' }}>{cat.grade}</span>
+              </div>
+            ))}
+          </div>
+          {healthScore.aiSummary && (
+            <p className="text-muted" style={{ fontSize: '0.8rem', marginTop: '0.75rem', lineHeight: 1.5 }}>{healthScore.aiSummary}</p>
+          )}
+        </div>
+      )}
 
       {/* Net Worth Card */}
       <div className="card" style={{ marginBottom: '1rem' }}>

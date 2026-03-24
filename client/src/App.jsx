@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
 import Dashboard from './pages/Dashboard'
@@ -8,6 +8,8 @@ import Markets from './pages/Markets'
 import Analytics from './pages/Analytics'
 import Atlas from './pages/Atlas'
 import Login from './pages/Login'
+import Onboarding from './pages/Onboarding'
+import { api } from './hooks/useApi'
 
 export default function App() {
   const [user, setUser] = useState(() => {
@@ -18,9 +20,29 @@ export default function App() {
     }
     return null
   })
+  const [onboarded, setOnboarded] = useState(null) // null = loading, true/false
+
+  useEffect(() => {
+    if (!user) { setOnboarded(null); return }
+    api.get('/api/insights/onboarding-status')
+      .then(res => setOnboarded(res.data.data.completed))
+      .catch(() => setOnboarded(true)) // if check fails, skip onboarding
+  }, [user])
 
   if (!user) {
-    return <Login onAuth={setUser} />
+    return <Login onAuth={(u) => { setUser(u); setOnboarded(null) }} />
+  }
+
+  // Still checking onboarding status
+  if (onboarded === null) {
+    return <div style={{ minHeight: '100vh', background: '#FFFCF5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <p style={{ color: '#B89090', fontSize: '0.85rem' }}>Loading...</p>
+    </div>
+  }
+
+  // Show onboarding quiz for new users
+  if (!onboarded) {
+    return <Onboarding onComplete={() => setOnboarded(true)} />
   }
 
   return (

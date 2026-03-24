@@ -140,6 +140,36 @@ db.exec(`
     content TEXT NOT NULL,
     created_at TEXT DEFAULT (datetime('now'))
   );
+
+  CREATE TABLE IF NOT EXISTS onboarding_answers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    monthly_income REAL,
+    monthly_spending REAL,
+    monthly_savings REAL,
+    has_emergency_fund TEXT,
+    invests TEXT,
+    num_investments TEXT,
+    concentrated TEXT,
+    total_debt REAL,
+    total_assets REAL,
+    has_goal TEXT,
+    goal_on_track TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS health_scores (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    score INTEGER,
+    spending_score INTEGER,
+    savings_score INTEGER,
+    portfolio_score INTEGER,
+    debt_score INTEGER,
+    goals_score INTEGER,
+    ai_summary TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
 `);
 
 // Add user_id columns to existing tables if they don't exist yet

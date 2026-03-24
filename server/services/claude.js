@@ -232,11 +232,24 @@ This analysis is for informational purposes only and is not financial advice.`;
   }
 }
 
+async function generateHealthSummary(scoreData) {
+  const cached = getCachedInsight('health_score', null, null);
+  if (cached) return cached;
+
+  const systemPrompt = 'Give a 1-sentence plain English summary of this financial health score. Be honest and specific. No disclaimers.';
+  const userPrompt = `Score: ${scoreData.score}/100. Spending: ${scoreData.spendingGrade}, Savings: ${scoreData.savingsGrade}, Portfolio: ${scoreData.portfolioGrade}, Debt: ${scoreData.debtGrade}, Goals: ${scoreData.goalsGrade}.`;
+
+  const content = await callAI(systemPrompt, userPrompt);
+  saveInsight('health_score', content, null, null);
+  return content;
+}
+
 module.exports = {
   categorizeTransactions,
   generateBudgetSummary,
   generatePortfolioAnalysis,
   generateMarketDigest,
   generateCompanyExplainer,
-  generateSpendingAnalysis
+  generateSpendingAnalysis,
+  generateHealthSummary
 };
