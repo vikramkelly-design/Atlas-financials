@@ -245,6 +245,7 @@ async function generateHealthSummary(scoreData) {
 }
 
 module.exports = {
+  callAI,
   categorizeTransactions,
   generateBudgetSummary,
   generatePortfolioAnalysis,

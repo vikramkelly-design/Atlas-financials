@@ -7,6 +7,7 @@ import Portfolio from './pages/Portfolio'
 import Markets from './pages/Markets'
 import Analytics from './pages/Analytics'
 import Atlas from './pages/Atlas'
+import DebtPlanner from './pages/DebtPlanner'
 import Login from './pages/Login'
 import Onboarding from './pages/Onboarding'
 import { api } from './hooks/useApi'
@@ -51,6 +52,7 @@ export default function App() {
         <Route element={<Layout />}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/budget" element={<Budget />} />
+          <Route path="/debt" element={<DebtPlanner />} />
           <Route path="/portfolio" element={<Portfolio />} />
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/markets" element={<Markets />} />

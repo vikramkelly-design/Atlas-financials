@@ -37,6 +37,7 @@ app.use('/api/ratings', auth, require('./routes/ratings'));
 app.use('/api/markets', auth, require('./routes/markets'));
 app.use('/api/atlas', auth, require('./routes/atlas'));
 app.use('/api/insights', auth, require('./routes/insights'));
+app.use('/api/debt', auth, require('./routes/debt'));
 
 // Health check
 app.get('/api/health', (req, res) => {
