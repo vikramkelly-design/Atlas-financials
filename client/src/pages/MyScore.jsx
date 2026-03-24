@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import useApi from '../hooks/useApi'
+import useApi, { api } from '../hooks/useApi'
 import LoadingSpinner from '../components/LoadingSpinner'
 import ErrorBanner from '../components/ErrorBanner'
 
@@ -9,6 +9,8 @@ export default function MyScore() {
   const [loading, setLoading] = useState(true)
   const [recalculating, setRecalculating] = useState(false)
   const [error, setError] = useState(null)
+  const [shareUrl, setShareUrl] = useState(null)
+  const [sharing, setSharing] = useState(false)
 
   const fetchScore = async (force = false) => {
     if (force) setRecalculating(true)
@@ -56,14 +58,33 @@ export default function MyScore() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <h1 style={{ fontSize: '1.75rem' }}>My Score</h1>
-        <button
-          className="btn btn-ghost"
-          onClick={() => fetchScore(true)}
-          disabled={recalculating}
-          style={{ fontSize: '0.8rem' }}
-        >
-          {recalculating ? 'Recalculating...' : 'Recalculate'}
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button
+            className="btn btn-ghost"
+            onClick={async () => {
+              setSharing(true)
+              try {
+                const res = await api.post('/api/insights/share-score')
+                const url = `${window.location.origin}/share/score/${res.data.data.token}`
+                setShareUrl(url)
+                navigator.clipboard.writeText(url).catch(() => {})
+              } catch {}
+              setSharing(false)
+            }}
+            disabled={sharing}
+            style={{ fontSize: '0.8rem' }}
+          >
+            {shareUrl ? 'Link Copied!' : sharing ? 'Generating...' : 'Share My Score'}
+          </button>
+          <button
+            className="btn btn-ghost"
+            onClick={() => fetchScore(true)}
+            disabled={recalculating}
+            style={{ fontSize: '0.8rem' }}
+          >
+            {recalculating ? 'Recalculating...' : 'Recalculate'}
+          </button>
+        </div>
       </div>
 
       {/* Big Score */}

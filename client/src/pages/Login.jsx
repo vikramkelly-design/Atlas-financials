@@ -108,6 +108,11 @@ export default function Login({ onAuth }) {
           }}>
             {loading ? 'Please wait...' : mode === 'login' ? 'Log In' : 'Create Account'}
           </button>
+          {mode === 'login' && (
+            <p style={{ textAlign: 'center', marginTop: '1rem' }}>
+              <a href="/forgot-password" style={{ color: '#C9A84C', fontSize: '0.75rem' }}>Forgot password?</a>
+            </p>
+          )}
         </form>
       </div>
     </div>

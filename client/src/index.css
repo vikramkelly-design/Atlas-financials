@@ -260,6 +260,50 @@ tbody tr {
   .grid-3, .grid-2 {
     grid-template-columns: 1fr;
   }
+
+  /* Mobile sidebar */
+  .sidebar {
+    transform: translateX(-100%);
+  }
+  .sidebar.sidebar-open {
+    transform: translateX(0);
+  }
+  .sidebar-backdrop {
+    display: block !important;
+  }
+
+  /* Main content full width */
+  .main-content {
+    margin-left: 0 !important;
+    padding: 1rem !important;
+  }
+
+  /* Hamburger visible */
+  .hamburger-btn {
+    display: block !important;
+  }
+
+  /* Hide nav subtitle on mobile */
+  .nav-subtitle {
+    display: none;
+  }
+
+  /* Tables scroll horizontally */
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  /* Reduce card padding */
+  .card {
+    padding: 1rem;
+  }
+
+  /* Stack inline flex layouts */
+  .mobile-stack {
+    flex-direction: column !important;
+  }
 }
 
 /* Badge */

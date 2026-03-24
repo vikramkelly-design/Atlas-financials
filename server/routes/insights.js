@@ -316,6 +316,29 @@ router.get('/health-score', async (req, res) => {
   }
 });
 
+// ── Share Score ──────────────────────────────────────────
+
+router.post('/share-score', (req, res) => {
+  try {
+    const latest = db.prepare(
+      'SELECT * FROM health_scores WHERE user_id = ? ORDER BY created_at DESC LIMIT 1'
+    ).get(req.userId);
+    if (!latest) return res.status(404).json({ success: false, error: 'No score found' });
+
+    if (latest.share_token) {
+      return res.json({ success: true, data: { token: latest.share_token } });
+    }
+
+    const crypto = require('crypto');
+    const token = crypto.randomBytes(12).toString('hex');
+    db.prepare('UPDATE health_scores SET share_token = ? WHERE id = ?').run(token, latest.id);
+
+    res.json({ success: true, data: { token } });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // ── Dashboard Insights ───────────────────────────────────
 
 router.get('/dashboard', (req, res) => {

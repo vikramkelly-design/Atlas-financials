@@ -16,6 +16,9 @@ export default function Dashboard() {
   const [currentGoal, setCurrentGoal] = useState(null)
   const [insights, setInsights] = useState([])
   const [healthScore, setHealthScore] = useState(null)
+  const [pulse, setPulse] = useState(null)
+  const [challenges, setChallenges] = useState([])
+  const [myChallenges, setMyChallenges] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -48,14 +51,20 @@ export default function Dashboard() {
         setCurrentGoal(null)
       }
 
-      // Fetch health score and insights
+      // Fetch health score, insights, pulse, and challenges
       try {
-        const [hsRes, insRes] = await Promise.all([
+        const [hsRes, insRes, pulseRes, chalRes, myChalRes] = await Promise.all([
           get('/api/insights/health-score'),
           get('/api/insights/dashboard'),
+          get('/api/pulse/latest').catch(() => ({ data: null })),
+          get('/api/challenges').catch(() => ({ data: [] })),
+          get('/api/challenges/mine').catch(() => ({ data: [] })),
         ])
         if (hsRes.data) setHealthScore(hsRes.data)
         if (insRes.data) setInsights(insRes.data)
+        if (pulseRes.data) setPulse(pulseRes.data)
+        if (chalRes.data) setChallenges(chalRes.data)
+        if (myChalRes.data) setMyChallenges(myChalRes.data)
       } catch {}
 
       // Get current month transactions
@@ -135,6 +144,39 @@ export default function Dashboard() {
   return (
     <div>
       <h1 style={{ fontSize: '1.75rem', marginBottom: '1.5rem' }}>Dashboard</h1>
+
+      {/* Weekly Pulse */}
+      {pulse && (
+        <div className="card" style={{ marginBottom: '1rem', background: '#1B2A4A', color: '#C9A84C', border: '1px solid rgba(201, 168, 76, 0.2)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+            <h3 style={{ color: '#C9A84C', fontSize: '0.8rem', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}>This Week's Pulse</h3>
+            <span style={{ fontSize: '0.65rem', color: 'rgba(201, 168, 76, 0.5)' }}>Week of {pulse.week_start}</span>
+          </div>
+          <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+            {pulse.score_change !== 0 && (
+              <div>
+                <span style={{ fontSize: '0.65rem', color: 'rgba(201, 168, 76, 0.6)', textTransform: 'uppercase' }}>Score</span>
+                <div style={{ fontSize: '1.25rem', fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>
+                  <span style={{ color: pulse.score_change > 0 ? '#4ADE80' : '#F87171' }}>
+                    {pulse.score_change > 0 ? '+' : ''}{pulse.score_change}
+                  </span>
+                </div>
+              </div>
+            )}
+            <div>
+              <span style={{ fontSize: '0.65rem', color: 'rgba(201, 168, 76, 0.6)', textTransform: 'uppercase' }}>Spent</span>
+              <div style={{ fontSize: '1.25rem', fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>
+                {formatCurrency(pulse.spending_total || 0)}
+              </div>
+            </div>
+          </div>
+          {pulse.ai_tip && (
+            <p style={{ fontSize: '0.82rem', color: 'rgba(201, 168, 76, 0.8)', lineHeight: 1.5, borderTop: '1px solid rgba(201, 168, 76, 0.15)', paddingTop: '0.65rem' }}>
+              {pulse.ai_tip}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Financial Health Score */}
       {healthScore && (
@@ -338,6 +380,65 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Challenges */}
+      {challenges.length > 0 && (
+        <div className="card" style={{ marginBottom: '1.5rem' }}>
+          <h2 style={{ fontSize: '1.25rem', marginBottom: '1rem' }}>Monthly Challenges</h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {challenges.map(c => {
+              const myChallenge = myChallenges.find(mc => mc.id === c.id)
+              const isJoined = c.joined || !!myChallenge
+              const progress = myChallenge?.progress || c.progress || 0
+              const status = myChallenge?.user_status || c.status
+              return (
+                <div key={c.id} style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '0.75rem', background: '#FFFCF5', border: '1px solid #E8DDD0', borderRadius: 2,
+                }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                      <span style={{ fontSize: '0.9rem', fontWeight: 500, color: '#6B1A1A' }}>{c.name}</span>
+                      {status === 'completed' && <span className="badge badge-success">Done</span>}
+                    </div>
+                    <p style={{ fontSize: '0.75rem', color: '#B89090', marginBottom: isJoined ? '0.35rem' : 0 }}>{c.description}</p>
+                    {isJoined && (
+                      <div className="progress-bar" style={{ maxWidth: 200, height: 6 }}>
+                        <div className="progress-bar-fill" style={{
+                          width: `${progress}%`,
+                          background: status === 'completed' ? '#2A5C3A' : '#1B2A4A',
+                        }} />
+                      </div>
+                    )}
+                  </div>
+                  {!isJoined && (
+                    <button
+                      className="btn btn-ghost"
+                      style={{ fontSize: '0.7rem', padding: '0.3rem 0.75rem' }}
+                      onClick={async () => {
+                        try {
+                          await api.post(`/api/challenges/join/${c.id}`)
+                          const [chalRes, myChalRes] = await Promise.all([
+                            get('/api/challenges'),
+                            get('/api/challenges/mine'),
+                          ])
+                          if (chalRes.data) setChallenges(chalRes.data)
+                          if (myChalRes.data) setMyChallenges(myChalRes.data)
+                        } catch {}
+                      }}
+                    >
+                      Join
+                    </button>
+                  )}
+                  {isJoined && status !== 'completed' && (
+                    <span className="mono text-faint" style={{ fontSize: '0.75rem', marginLeft: '0.5rem' }}>{progress}%</span>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Recent Insights */}
       <div className="card">

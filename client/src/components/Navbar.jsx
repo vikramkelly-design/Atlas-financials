@@ -1,4 +1,4 @@
-export default function Navbar() {
+export default function Navbar({ onMenuToggle }) {
   const user = JSON.parse(localStorage.getItem('ledger_user') || '{}')
 
   const handleLogout = () => {
@@ -23,6 +23,21 @@ export default function Navbar() {
       borderBottom: '1px solid rgba(201, 168, 76, 0.15)',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        {/* Hamburger — visible on mobile only */}
+        {onMenuToggle && (
+          <button
+            className="hamburger-btn"
+            onClick={onMenuToggle}
+            style={{
+              display: 'none', background: 'none', border: 'none',
+              color: '#C9A84C', fontSize: '1.25rem', cursor: 'pointer', padding: '0.25rem',
+            }}
+          >
+            <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+        )}
         <span style={{
           fontFamily: "'Allura', cursive",
           fontSize: 28,
@@ -31,7 +46,7 @@ export default function Navbar() {
         }}>
           Atlas
         </span>
-        <span style={{
+        <span className="nav-subtitle" style={{
           fontSize: '0.55rem',
           color: 'rgba(201, 168, 76, 0.4)',
           textTransform: 'uppercase',
@@ -43,7 +58,7 @@ export default function Navbar() {
         </span>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-        <span style={{ color: 'rgba(201, 168, 76, 0.6)', fontSize: '0.75rem', fontFamily: "'DM Mono', monospace" }}>
+        <span className="nav-username" style={{ color: 'rgba(201, 168, 76, 0.6)', fontSize: '0.75rem', fontFamily: "'DM Mono', monospace" }}>
           {user.name || user.email || 'Guest'}
         </span>
         <button onClick={handleLogout} style={{

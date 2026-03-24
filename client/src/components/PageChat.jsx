@@ -51,7 +51,7 @@ export default function PageChat({ context }) {
         <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#C9A84C' }} />
         <span style={{ color: '#C9A84C', fontFamily: "'Allura', cursive", fontSize: '1.2rem' }}>Atlas</span>
         <span style={{ color: 'rgba(201, 168, 76, 0.5)', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-          {context} AI
+          Personal Coach
         </span>
       </div>
 

@@ -11,72 +11,88 @@ const navItems = [
   { path: '/score', label: 'My Score', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' },
 ]
 
-export default function Sidebar() {
+export default function Sidebar({ open, onClose }) {
   return (
-    <aside style={{
-      background: '#1B2A4A',
-      width: 200,
-      position: 'fixed',
-      top: 48,
-      left: 0,
-      bottom: 0,
-      display: 'flex',
-      flexDirection: 'column',
-      borderRight: '1px solid rgba(201, 168, 76, 0.15)',
-      zIndex: 99,
-    }}>
-      <nav style={{ flex: 1, paddingTop: '0.5rem' }}>
-        {navItems.map(item => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            end={item.path === '/'}
-            className={({ isActive }) => isActive ? 'sidebar-active' : ''}
-            style={({ isActive }) => ({
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.65rem',
-              padding: '0.55rem 1rem',
-              margin: '0.1rem 0.5rem',
-              color: isActive ? '#C9A84C' : 'rgba(201, 168, 76, 0.6)',
-              background: isActive ? '#243555' : 'transparent',
-              borderLeft: isActive ? '2px solid #C9A84C' : '2px solid transparent',
-              fontSize: '0.78rem',
-              fontWeight: isActive ? 500 : 400,
-              letterSpacing: '0.03em',
-              textTransform: 'uppercase',
-              transition: 'all 0.1s ease',
-              textDecoration: 'none',
-              borderRadius: 0,
-            })}
-            onMouseEnter={e => {
-              if (!e.currentTarget.classList.contains('sidebar-active'))
-                e.currentTarget.style.background = '#1F3057'
-            }}
-            onMouseLeave={e => {
-              if (!e.currentTarget.classList.contains('sidebar-active'))
-                e.currentTarget.style.background = 'transparent'
-            }}
-          >
-            <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-              <path d={item.icon} />
-            </svg>
-            {item.label}
-          </NavLink>
-        ))}
-      </nav>
-      <div style={{
-        padding: '0.75rem 1rem',
-        color: 'rgba(201, 168, 76, 0.4)',
-        fontSize: '0.6rem',
-        lineHeight: 1.4,
-        borderTop: '1px solid rgba(201, 168, 76, 0.15)',
-        textTransform: 'uppercase',
-        letterSpacing: '0.05em',
+    <>
+      {/* Mobile backdrop */}
+      {open && (
+        <div
+          className="sidebar-backdrop"
+          onClick={onClose}
+          style={{
+            display: 'none', position: 'fixed', inset: 0,
+            background: 'rgba(0,0,0,0.5)', zIndex: 98,
+          }}
+        />
+      )}
+
+      <aside className={`sidebar ${open ? 'sidebar-open' : ''}`} style={{
+        background: '#1B2A4A',
+        width: 200,
+        position: 'fixed',
+        top: 48,
+        left: 0,
+        bottom: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        borderRight: '1px solid rgba(201, 168, 76, 0.15)',
+        zIndex: 99,
+        transition: 'transform 0.2s ease',
       }}>
-        For informational purposes only.
-        <br />Not financial advice.
-      </div>
-    </aside>
+        <nav style={{ flex: 1, paddingTop: '0.5rem' }}>
+          {navItems.map(item => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              end={item.path === '/'}
+              onClick={onClose}
+              className={({ isActive }) => isActive ? 'sidebar-active' : ''}
+              style={({ isActive }) => ({
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.65rem',
+                padding: '0.55rem 1rem',
+                margin: '0.1rem 0.5rem',
+                color: isActive ? '#C9A84C' : 'rgba(201, 168, 76, 0.6)',
+                background: isActive ? '#243555' : 'transparent',
+                borderLeft: isActive ? '2px solid #C9A84C' : '2px solid transparent',
+                fontSize: '0.78rem',
+                fontWeight: isActive ? 500 : 400,
+                letterSpacing: '0.03em',
+                textTransform: 'uppercase',
+                transition: 'all 0.1s ease',
+                textDecoration: 'none',
+                borderRadius: 0,
+              })}
+              onMouseEnter={e => {
+                if (!e.currentTarget.classList.contains('sidebar-active'))
+                  e.currentTarget.style.background = '#1F3057'
+              }}
+              onMouseLeave={e => {
+                if (!e.currentTarget.classList.contains('sidebar-active'))
+                  e.currentTarget.style.background = 'transparent'
+              }}
+            >
+              <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                <path d={item.icon} />
+              </svg>
+              {item.label}
+            </NavLink>
+          ))}
+        </nav>
+        <div style={{
+          padding: '0.75rem 1rem',
+          color: 'rgba(201, 168, 76, 0.4)',
+          fontSize: '0.6rem',
+          lineHeight: 1.4,
+          borderTop: '1px solid rgba(201, 168, 76, 0.15)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.05em',
+        }}>
+          For informational purposes only.
+          <br />Not financial advice.
+        </div>
+      </aside>
+    </>
   )
 }

@@ -21,6 +21,7 @@ require('./db');
 
 // Public routes
 app.use('/api/auth', require('./routes/auth'));
+app.use('/api/share', require('./routes/share'));
 
 // Protected routes — require auth
 app.use('/api/chat', auth, require('./routes/chat'));
@@ -38,6 +39,8 @@ app.use('/api/markets', auth, require('./routes/markets'));
 app.use('/api/atlas', auth, require('./routes/atlas'));
 app.use('/api/insights', auth, require('./routes/insights'));
 app.use('/api/debt', auth, require('./routes/debt'));
+app.use('/api/pulse', auth, require('./routes/pulse'));
+app.use('/api/challenges', auth, require('./routes/challenges'));
 
 // Health check
 app.get('/api/health', (req, res) => {

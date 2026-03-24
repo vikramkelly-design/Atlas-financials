@@ -9,7 +9,9 @@ import Analytics from './pages/Analytics'
 import Atlas from './pages/Atlas'
 import DebtPlanner from './pages/DebtPlanner'
 import MyScore from './pages/MyScore'
-import Login from './pages/Login'
+import Landing from './pages/Landing'
+import ShareCard from './pages/ShareCard'
+import ForgotPassword from './pages/ForgotPassword'
 import Onboarding from './pages/Onboarding'
 import { api } from './hooks/useApi'
 
@@ -31,8 +33,17 @@ export default function App() {
       .catch(() => setOnboarded(true)) // if check fails, skip onboarding
   }, [user])
 
+  // Public routes accessible without login
   if (!user) {
-    return <Login onAuth={(u) => { setUser(u); setOnboarded(null) }} />
+    return (
+      <BrowserRouter>
+        <Routes>
+          <Route path="/share/score/:token" element={<ShareCard />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="*" element={<Landing onAuth={(u) => { setUser(u); setOnboarded(null) }} />} />
+        </Routes>
+      </BrowserRouter>
+    )
   }
 
   // Still checking onboarding status
@@ -50,6 +61,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/share/score/:token" element={<ShareCard />} />
         <Route element={<Layout />}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/budget" element={<Budget />} />

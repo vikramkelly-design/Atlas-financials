@@ -1,5 +1,6 @@
 const express = require('express');
 const Anthropic = require('@anthropic-ai/sdk');
+const { buildUserContext } = require('../services/userContext');
 
 const router = express.Router();
 
@@ -55,9 +56,19 @@ router.post('/', async (req, res) => {
     const { message, history, context } = req.body;
     if (!message) return res.status(400).json({ success: false, error: 'Message is required' });
 
-    const systemPrompt = context && CONTEXT_PROMPTS[context]
+    // Build personalized context from user's real financial data
+    let userFinancialContext = '';
+    try {
+      userFinancialContext = buildUserContext(req.userId);
+    } catch {}
+
+    let systemPrompt = context && CONTEXT_PROMPTS[context]
       ? CONTEXT_PROMPTS[context]
       : SYSTEM_PROMPT;
+
+    if (userFinancialContext && userFinancialContext !== 'This user has not added any financial data yet.') {
+      systemPrompt += `\n\nHere is this user's actual financial data — reference it when giving advice:\n${userFinancialContext}`;
+    }
 
     // Build conversation history for context
     const messages = [];

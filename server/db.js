@@ -178,7 +178,47 @@ db.exec(`
     debt_score INTEGER,
     goals_score INTEGER,
     ai_summary TEXT,
+    share_token TEXT,
     created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS weekly_pulses (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    week_start TEXT NOT NULL,
+    score_change INTEGER,
+    spending_total REAL,
+    portfolio_change_pct REAL,
+    ai_tip TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS password_resets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    token TEXT NOT NULL UNIQUE,
+    expires_at TEXT NOT NULL,
+    used INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS challenges (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    description TEXT,
+    type TEXT CHECK(type IN ('spending','saving','debt')),
+    target_value REAL NOT NULL,
+    month TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS user_challenges (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    challenge_id INTEGER NOT NULL,
+    status TEXT DEFAULT 'active' CHECK(status IN ('active','completed','failed')),
+    progress REAL DEFAULT 0,
+    joined_at TEXT DEFAULT (datetime('now')),
+    completed_at TEXT
   );
 `);
 
@@ -201,5 +241,16 @@ try { db.exec('CREATE UNIQUE INDEX IF NOT EXISTS watchlist_user_ticker ON watchl
 
 // Drop old unique on budget_goals category (now per-user)
 try { db.exec('CREATE UNIQUE INDEX IF NOT EXISTS budget_goals_user_cat ON budget_goals(user_id, category)'); } catch {}
+
+// Add share_token column to health_scores if not exists
+const migrate2 = [
+  'ALTER TABLE health_scores ADD COLUMN share_token TEXT',
+  'ALTER TABLE users ADD COLUMN email_verified INTEGER DEFAULT 1',
+  'ALTER TABLE users ADD COLUMN verification_code TEXT',
+  'ALTER TABLE users ADD COLUMN verification_expires TEXT',
+];
+for (const sql of migrate2) {
+  try { db.exec(sql); } catch {}
+}
 
 module.exports = db;
