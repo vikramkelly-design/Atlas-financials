@@ -8,6 +8,7 @@ import Markets from './pages/Markets'
 import Analytics from './pages/Analytics'
 import Atlas from './pages/Atlas'
 import DebtPlanner from './pages/DebtPlanner'
+import MyScore from './pages/MyScore'
 import Login from './pages/Login'
 import Onboarding from './pages/Onboarding'
 import { api } from './hooks/useApi'
@@ -57,6 +58,7 @@ export default function App() {
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/markets" element={<Markets />} />
           <Route path="/atlas" element={<Atlas />} />
+          <Route path="/score" element={<MyScore />} />
         </Route>
         <Route path="/login" element={<Navigate to="/" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />

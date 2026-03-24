@@ -1,11 +1,15 @@
 import { useState } from 'react'
 import { api } from '../hooks/useApi'
 
+const BUDGET_CATEGORIES = ['Food & Dining', 'Transport', 'Shopping', 'Subscriptions', 'Health', 'Entertainment', 'Other']
+
 const STEPS = [
   { title: 'Income & Spending', subtitle: 'How much comes in and goes out each month' },
+  { title: 'Budget Goals', subtitle: 'Set a monthly limit for each category' },
   { title: 'Savings', subtitle: 'What you\'re putting away' },
   { title: 'Investments', subtitle: 'Are you growing your money' },
   { title: 'Debt', subtitle: 'What you owe vs what you own' },
+  { title: 'Your Debts', subtitle: 'List each debt so we can build your payoff plan' },
   { title: 'Goals', subtitle: 'Where you\'re headed' },
 ]
 
@@ -26,19 +30,34 @@ export default function Onboarding({ onComplete }) {
     has_goal: '',
     goal_on_track: '',
   })
+  const [budgetGoals, setBudgetGoals] = useState(
+    Object.fromEntries(BUDGET_CATEGORIES.map(c => [c, '']))
+  )
+  const [debtList, setDebtList] = useState([])
+  const [debtForm, setDebtForm] = useState({ name: '', balance: '', interest_rate: '', min_payment: '' })
 
   const set = (key, val) => setAnswers(a => ({ ...a, [key]: val }))
 
+  const addDebt = () => {
+    if (!debtForm.name || !debtForm.balance || debtForm.interest_rate === '' || !debtForm.min_payment) return
+    setDebtList(d => [...d, { ...debtForm }])
+    setDebtForm({ name: '', balance: '', interest_rate: '', min_payment: '' })
+  }
+
+  const removeDebt = (i) => setDebtList(d => d.filter((_, idx) => idx !== i))
+
   const canNext = () => {
     if (step === 0) return answers.monthly_income && answers.monthly_spending
-    if (step === 1) return answers.monthly_savings && answers.has_emergency_fund
-    if (step === 2) {
+    if (step === 1) return true // budget goals are optional
+    if (step === 2) return answers.monthly_savings && answers.has_emergency_fund
+    if (step === 3) {
       if (!answers.invests) return false
       if (answers.invests === 'Yes') return answers.num_investments && answers.concentrated
       return true
     }
-    if (step === 3) return answers.total_debt !== '' && answers.total_assets !== ''
-    if (step === 4) {
+    if (step === 4) return answers.total_debt !== '' && answers.total_assets !== ''
+    if (step === 5) return true // debt details optional (skip if no debt)
+    if (step === 6) {
       if (!answers.has_goal) return false
       if (answers.has_goal === 'Yes') return !!answers.goal_on_track
       return true
@@ -46,9 +65,37 @@ export default function Onboarding({ onComplete }) {
     return true
   }
 
+  // Skip debt details step if no debt
+  const handleNext = () => {
+    if (step === 4 && (parseFloat(answers.total_debt) || 0) <= 0) {
+      setStep(6) // skip debt details, go to goals
+    } else {
+      setStep(s => s + 1)
+    }
+  }
+
+  const handleBack = () => {
+    if (step === 6 && (parseFloat(answers.total_debt) || 0) <= 0) {
+      setStep(4) // skip back over debt details
+    } else {
+      setStep(s => s - 1)
+    }
+  }
+
   const submit = async () => {
     setLoading(true)
     try {
+      const goals = BUDGET_CATEGORIES
+        .filter(cat => budgetGoals[cat] && parseFloat(budgetGoals[cat]) > 0)
+        .map(cat => ({ category: cat, monthly_limit: parseFloat(budgetGoals[cat]) }))
+
+      const debts = debtList.map(d => ({
+        name: d.name,
+        balance: parseFloat(d.balance),
+        interest_rate: parseFloat(d.interest_rate),
+        min_payment: parseFloat(d.min_payment),
+      }))
+
       const res = await api.post('/api/insights/onboarding', {
         monthly_income: parseFloat(answers.monthly_income) || 0,
         monthly_spending: parseFloat(answers.monthly_spending) || 0,
@@ -61,6 +108,8 @@ export default function Onboarding({ onComplete }) {
         total_assets: parseFloat(answers.total_assets) || 0,
         has_goal: answers.has_goal,
         goal_on_track: answers.has_goal === 'Yes' ? answers.goal_on_track : null,
+        budget_goals: goals,
+        debts,
       })
       setResult(res.data.data)
     } catch (err) {
@@ -93,6 +142,8 @@ export default function Onboarding({ onComplete }) {
     if (grade === 'B' || grade === 'C+') return '#8B6A2A'
     return '#8B3A2A'
   }
+
+  const lastStep = STEPS.length - 1
 
   // Show results
   if (result) {
@@ -149,7 +200,7 @@ export default function Onboarding({ onComplete }) {
 
   return (
     <div style={{ minHeight: '100vh', background: '#FFFCF5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ width: '100%', maxWidth: 440, padding: '2rem' }}>
+      <div style={{ width: '100%', maxWidth: 480, padding: '2rem' }}>
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <h1 style={{ fontFamily: "'Allura', cursive", fontSize: 48, color: '#C9A84C', fontWeight: 400, marginBottom: '0.5rem' }}>Atlas</h1>
@@ -167,7 +218,7 @@ export default function Onboarding({ onComplete }) {
         <h2 style={{ fontSize: '1.1rem', color: '#6B1A1A', marginBottom: '0.25rem' }}>{STEPS[step].title}</h2>
         <p style={{ fontSize: '0.8rem', color: '#B89090', marginBottom: '1.5rem' }}>{STEPS[step].subtitle}</p>
 
-        {/* Step 1: Income & Spending */}
+        {/* Step 0: Income & Spending */}
         {step === 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div>
@@ -189,8 +240,30 @@ export default function Onboarding({ onComplete }) {
           </div>
         )}
 
-        {/* Step 2: Savings */}
+        {/* Step 1: Budget Goals */}
         {step === 1 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {answers.monthly_spending && (
+              <p style={{ fontSize: '0.8rem', color: '#8B6A2A', background: '#FFF3E0', padding: '0.5rem 0.75rem', borderRadius: 2 }}>
+                You said you spend ~${parseFloat(answers.monthly_spending).toLocaleString()}/mo. Set limits below to keep yourself on track.
+              </p>
+            )}
+            {BUDGET_CATEGORIES.map(cat => (
+              <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ fontSize: '0.8rem', color: '#6B1A1A', width: 130, flexShrink: 0 }}>{cat}</span>
+                <div style={{ position: 'relative', flex: 1 }}>
+                  <span style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: '#B89090', fontSize: '0.85rem' }}>$</span>
+                  <input type="number" value={budgetGoals[cat]}
+                    onChange={e => setBudgetGoals(g => ({ ...g, [cat]: e.target.value }))}
+                    placeholder="0" style={{ ...inputStyle, paddingLeft: '1.3rem', padding: '0.45rem 0.5rem 0.45rem 1.3rem' }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Step 2: Savings */}
+        {step === 2 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div>
               <label style={{ display: 'block', color: '#8B3A3A', fontSize: '0.75rem', marginBottom: 4 }}>Monthly savings</label>
@@ -212,7 +285,7 @@ export default function Onboarding({ onComplete }) {
         )}
 
         {/* Step 3: Investments */}
-        {step === 2 && (
+        {step === 3 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div>
               <label style={{ display: 'block', color: '#8B3A3A', fontSize: '0.75rem', marginBottom: 4 }}>Do you invest?</label>
@@ -246,7 +319,7 @@ export default function Onboarding({ onComplete }) {
         )}
 
         {/* Step 4: Debt */}
-        {step === 3 && (
+        {step === 4 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div>
               <label style={{ display: 'block', color: '#8B3A3A', fontSize: '0.75rem', marginBottom: 4 }}>Total debt (student loans, credit cards, mortgage, etc.)</label>
@@ -267,8 +340,57 @@ export default function Onboarding({ onComplete }) {
           </div>
         )}
 
-        {/* Step 5: Goals */}
-        {step === 4 && (
+        {/* Step 5: Debt Details */}
+        {step === 5 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+              <div style={{ flex: '1 1 120px' }}>
+                <label style={{ display: 'block', color: '#8B3A3A', fontSize: '0.7rem', marginBottom: 3 }}>Name</label>
+                <input style={inputStyle} placeholder="e.g. Visa" value={debtForm.name} onChange={e => setDebtForm(f => ({ ...f, name: e.target.value }))} />
+              </div>
+              <div style={{ flex: '0 1 90px' }}>
+                <label style={{ display: 'block', color: '#8B3A3A', fontSize: '0.7rem', marginBottom: 3 }}>Balance</label>
+                <input style={inputStyle} type="number" placeholder="$0" value={debtForm.balance} onChange={e => setDebtForm(f => ({ ...f, balance: e.target.value }))} />
+              </div>
+              <div style={{ flex: '0 1 70px' }}>
+                <label style={{ display: 'block', color: '#8B3A3A', fontSize: '0.7rem', marginBottom: 3 }}>APR %</label>
+                <input style={inputStyle} type="number" step="0.1" placeholder="0" value={debtForm.interest_rate} onChange={e => setDebtForm(f => ({ ...f, interest_rate: e.target.value }))} />
+              </div>
+              <div style={{ flex: '0 1 90px' }}>
+                <label style={{ display: 'block', color: '#8B3A3A', fontSize: '0.7rem', marginBottom: 3 }}>Min/mo</label>
+                <input style={inputStyle} type="number" placeholder="$0" value={debtForm.min_payment} onChange={e => setDebtForm(f => ({ ...f, min_payment: e.target.value }))} />
+              </div>
+              <button type="button" onClick={addDebt} style={{
+                padding: '0.65rem 0.75rem', borderRadius: 2, border: 'none',
+                background: '#1B2A4A', color: '#C9A84C', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', height: 38,
+              }}>Add</button>
+            </div>
+
+            {debtList.length > 0 && (
+              <div style={{ border: '1px solid #E8DDD0', borderRadius: 2 }}>
+                {debtList.map((d, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.65rem', borderBottom: i < debtList.length - 1 ? '1px solid #E8DDD0' : 'none' }}>
+                    <div>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>{d.name}</span>
+                      <span style={{ fontSize: '0.75rem', color: '#B89090', marginLeft: '0.5rem' }}>{d.interest_rate}% APR</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span style={{ fontSize: '0.8rem', color: '#8B3A2A' }}>${parseFloat(d.balance).toLocaleString()}</span>
+                      <button type="button" onClick={() => removeDebt(i)} style={{ background: 'none', border: 'none', color: '#B89090', cursor: 'pointer', fontSize: '1rem' }}>×</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {debtList.length === 0 && (
+              <p style={{ fontSize: '0.8rem', color: '#B89090' }}>Add each debt above — credit cards, student loans, car loans, etc. This will auto-populate your Debt Planner.</p>
+            )}
+          </div>
+        )}
+
+        {/* Step 6: Goals */}
+        {step === 6 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div>
               <label style={{ display: 'block', color: '#8B3A3A', fontSize: '0.75rem', marginBottom: 4 }}>Do you have a financial goal you're working toward?</label>
@@ -294,7 +416,7 @@ export default function Onboarding({ onComplete }) {
         {/* Navigation */}
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2rem', gap: '0.5rem' }}>
           {step > 0 ? (
-            <button onClick={() => setStep(s => s - 1)} style={{
+            <button onClick={handleBack} style={{
               padding: '0.6rem 1.5rem', borderRadius: 2, border: '1px solid #E8DDD0',
               background: '#FFF8F0', color: '#8B3A3A', fontSize: '0.8rem', cursor: 'pointer',
             }}>
@@ -302,8 +424,8 @@ export default function Onboarding({ onComplete }) {
             </button>
           ) : <div />}
 
-          {step < 4 ? (
-            <button onClick={() => setStep(s => s + 1)} disabled={!canNext()} style={{
+          {step < lastStep ? (
+            <button onClick={handleNext} disabled={!canNext()} style={{
               padding: '0.6rem 1.5rem', borderRadius: 2, border: 'none',
               background: canNext() ? '#1B2A4A' : '#E8DDD0',
               color: canNext() ? '#C9A84C' : '#B89090',

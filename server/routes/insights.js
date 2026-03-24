@@ -89,7 +89,8 @@ router.post('/onboarding', async (req, res) => {
     const {
       monthly_income, monthly_spending, monthly_savings,
       has_emergency_fund, invests, num_investments, concentrated,
-      total_debt, total_assets, has_goal, goal_on_track
+      total_debt, total_assets, has_goal, goal_on_track,
+      budget_goals, debts
     } = req.body;
 
     // Save answers
@@ -101,6 +102,31 @@ router.post('/onboarding', async (req, res) => {
     `).run(req.userId, monthly_income || 0, monthly_spending || 0, monthly_savings || 0,
       has_emergency_fund || 'No', invests || 'No', num_investments || null, concentrated || null,
       total_debt || 0, total_assets || 0, has_goal || 'No', goal_on_track || null);
+
+    // Save budget goals
+    if (budget_goals && Array.isArray(budget_goals)) {
+      const upsertGoal = db.prepare(`
+        INSERT INTO budget_goals (user_id, category, monthly_limit) VALUES (?, ?, ?)
+        ON CONFLICT(user_id, category) DO UPDATE SET monthly_limit = excluded.monthly_limit
+      `);
+      for (const g of budget_goals) {
+        if (g.category && g.monthly_limit > 0) {
+          upsertGoal.run(req.userId, g.category, g.monthly_limit);
+        }
+      }
+    }
+
+    // Save individual debts
+    if (debts && Array.isArray(debts)) {
+      const insertDebt = db.prepare(
+        'INSERT INTO debts (user_id, name, balance, interest_rate, min_payment) VALUES (?, ?, ?, ?, ?)'
+      );
+      for (const d of debts) {
+        if (d.name && d.balance > 0) {
+          insertDebt.run(req.userId, d.name, d.balance, d.interest_rate || 0, d.min_payment || 0);
+        }
+      }
+    }
 
     // Calculate scores
     const spending = calcSpendingScore(monthly_income, monthly_spending);
@@ -154,25 +180,29 @@ router.post('/onboarding', async (req, res) => {
 
 router.get('/health-score', async (req, res) => {
   try {
-    // Check for existing score (recalculate if older than 24h)
-    const existing = db.prepare(
-      'SELECT * FROM health_scores WHERE user_id = ? ORDER BY created_at DESC LIMIT 1'
-    ).get(req.userId);
+    const force = req.query.force === 'true';
 
-    if (existing) {
-      const hoursSince = (Date.now() - new Date(existing.created_at + 'Z').getTime()) / (1000 * 60 * 60);
-      if (hoursSince < 24) {
-        const categories = [
-          { name: 'Spending', score: existing.spending_score, maxScore: 20, grade: scoreGrade(existing.spending_score) },
-          { name: 'Savings', score: existing.savings_score, maxScore: 20, grade: scoreGrade(existing.savings_score) },
-          { name: 'Portfolio', score: existing.portfolio_score, maxScore: 20, grade: scoreGrade(existing.portfolio_score) },
-          { name: 'Debt', score: existing.debt_score, maxScore: 20, grade: scoreGrade(existing.debt_score) },
-          { name: 'Goals', score: existing.goals_score, maxScore: 20, grade: scoreGrade(existing.goals_score) },
-        ];
-        return res.json({
-          success: true,
-          data: { score: existing.score, grade: overallGrade(existing.score), categories, aiSummary: existing.ai_summary }
-        });
+    // Check for existing score (recalculate if older than 24h or force)
+    if (!force) {
+      const existing = db.prepare(
+        'SELECT * FROM health_scores WHERE user_id = ? ORDER BY created_at DESC LIMIT 1'
+      ).get(req.userId);
+
+      if (existing) {
+        const hoursSince = (Date.now() - new Date(existing.created_at + 'Z').getTime()) / (1000 * 60 * 60);
+        if (hoursSince < 24) {
+          const categories = [
+            { name: 'Spending', score: existing.spending_score, maxScore: 20, grade: scoreGrade(existing.spending_score), summary: '' },
+            { name: 'Savings', score: existing.savings_score, maxScore: 20, grade: scoreGrade(existing.savings_score), summary: '' },
+            { name: 'Portfolio', score: existing.portfolio_score, maxScore: 20, grade: scoreGrade(existing.portfolio_score), summary: '' },
+            { name: 'Debt', score: existing.debt_score, maxScore: 20, grade: scoreGrade(existing.debt_score), summary: '' },
+            { name: 'Goals', score: existing.goals_score, maxScore: 20, grade: scoreGrade(existing.goals_score), summary: '' },
+          ];
+          return res.json({
+            success: true,
+            data: { score: existing.score, grade: overallGrade(existing.score), categories, aiSummary: existing.ai_summary }
+          });
+        }
       }
     }
 
@@ -188,10 +218,13 @@ router.get('/health-score', async (req, res) => {
     `).all(req.userId);
     const nwAssets = db.prepare('SELECT COALESCE(SUM(value), 0) as total FROM net_worth_assets WHERE user_id = ?').get(req.userId);
     const nwLiabilities = db.prepare('SELECT COALESCE(SUM(value), 0) as total FROM net_worth_liabilities WHERE user_id = ?').get(req.userId);
+    const debtTotal = db.prepare('SELECT COALESCE(SUM(balance), 0) as total FROM debts WHERE user_id = ?').get(req.userId);
     const goals = db.prepare('SELECT * FROM atlas_goals WHERE user_id = ? AND status = ?').all(req.userId, 'active');
     const budgetGoals = db.prepare('SELECT * FROM budget_goals WHERE user_id = ?').all(req.userId);
 
-    const hasRealData = txns.length > 0 || positions.length > 0;
+    // Use the higher of net_worth_liabilities or debts table
+    const totalDebtAmount = Math.max(nwLiabilities.total, debtTotal.total);
+    const hasRealData = txns.length > 0 || positions.length > 0 || debtTotal.total > 0;
 
     let spending, savings, portfolio, debt, goalsScore;
 
@@ -215,7 +248,7 @@ router.get('/health-score', async (req, res) => {
       if (maxPosition < 0.4) portScore += 5;
       portfolio = { score: Math.min(portScore, 20), summary: posCount > 0 ? `${posCount} holdings` : 'No investments' };
 
-      debt = calcDebtScore(nwLiabilities.total, nwAssets.total);
+      debt = calcDebtScore(totalDebtAmount, nwAssets.total);
 
       // Goals score from real goals
       if (goals.length === 0) {

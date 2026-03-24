@@ -132,10 +132,20 @@ export default function DebtPlanner() {
                 <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>{d.name}</span>
                 <span className="text-faint" style={{ fontSize: '0.75rem', marginLeft: '0.5rem' }}>{d.interest_rate}% APR</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <span className="mono" style={{ fontSize: '0.85rem', color: 'var(--color-danger)' }}>{formatCurrency(d.balance)}</span>
                 <span className="text-faint" style={{ fontSize: '0.75rem' }}>{formatCurrency(d.min_payment)}/mo</span>
-                <button onClick={() => deleteDebt(d.id)} style={{ background: 'none', border: 'none', color: 'var(--color-text-faint)', cursor: 'pointer', fontSize: '1rem' }}>×</button>
+                <button onClick={() => deleteDebt(d.id)} style={{
+                  background: 'none', border: '1px solid var(--color-success)', color: 'var(--color-success)',
+                  cursor: 'pointer', fontSize: '0.7rem', padding: '0.25rem 0.5rem', borderRadius: 2,
+                  fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em',
+                  transition: 'all 0.1s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--color-success)'; e.currentTarget.style.color = '#fff' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--color-success)' }}
+                >
+                  Paid Off
+                </button>
               </div>
             </div>
           ))}
