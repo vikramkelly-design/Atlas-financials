@@ -1,4 +1,4 @@
-export default function Navbar({ onMenuToggle }) {
+export default function Navbar({ onMenuToggle, subtitle }) {
   const user = JSON.parse(localStorage.getItem('atlas_user') || '{}')
 
   const handleLogout = () => {
@@ -47,16 +47,18 @@ export default function Navbar({ onMenuToggle }) {
         }}>
           Atlas
         </span>
-        <span className="nav-subtitle" style={{
-          fontSize: 'var(--text-xs)',
-          color: 'var(--color-accent-40)',
-          textTransform: 'uppercase',
-          letterSpacing: '0.1em',
-          borderLeft: '1px solid var(--color-accent-20)',
-          paddingLeft: '0.75rem',
-        }}>
-          Finance Terminal
-        </span>
+        {subtitle && (
+          <span className="nav-subtitle" style={{
+            fontSize: 'var(--text-xs)',
+            color: 'var(--color-accent-40)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            borderLeft: '1px solid var(--color-accent-20)',
+            paddingLeft: '0.75rem',
+          }}>
+            {subtitle}
+          </span>
+        )}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
         <span className="nav-username" style={{ color: 'var(--color-accent-60)', fontSize: 'var(--text-sm)', fontFamily: "var(--font-mono)" }}>

@@ -193,7 +193,10 @@ export default function Portfolio() {
     <div>
       {/* Tabs */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <h1 style={{ fontSize: 'var(--text-3xl)' }}>Portfolio</h1>
+        <div>
+          <h1 style={{ fontSize: 'var(--text-3xl)', marginBottom: '0.15rem' }}>Portfolio</h1>
+          <p className="label-caps">{positions.length} holding{positions.length !== 1 ? 's' : ''}</p>
+        </div>
       </div>
       <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '1.5rem', borderBottom: '2px solid var(--color-border)' }}>
         {[

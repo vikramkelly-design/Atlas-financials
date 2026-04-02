@@ -20,9 +20,9 @@ function fmtLarge(n) {
 
 function verdictBadge(v) {
   if (!v || v === 'N/A') return <span className="badge badge-neutral">N/A</span>
-  if (v === 'UNDERVALUED') return <span className="badge badge-success">{v}</span>
-  if (v === 'FAIRLY VALUED') return <span className="badge badge-gold">{v}</span>
-  return <span className="badge badge-danger">{v}</span>
+  if (v === 'UNDERVALUED') return <span className="badge badge-success-strong">{v}</span>
+  if (v === 'FAIRLY VALUED') return <span className="badge badge-gold-strong">{v}</span>
+  return <span className="badge badge-danger-strong">{v}</span>
 }
 
 function ratingBadge(r) {
@@ -38,9 +38,9 @@ function ratingBadge(r) {
 const COLUMNS = [
   { key: 'ticker', label: 'Ticker', tip: 'The stock\'s ticker symbol used to identify the company on the exchange (e.g. AAPL = Apple).' },
   { key: 'currentPrice', label: 'Price', tip: 'The latest market price per share, fetched in real-time from Yahoo Finance.' },
+  { key: 'verdict', label: 'Verdict', tip: 'UNDERVALUED: price is below the Buy Below price. FAIRLY VALUED: within 10% of Buy Below. OVERVALUED: more than 10% above. Based on Owner Earnings + DCF intrinsic value models.' },
   { key: 'buyBelowPrice', label: 'Buy Below', tip: 'The intrinsic value with a 30% Margin of Safety applied. If the stock trades below this price, it may be undervalued. This is calculated by averaging the Owner Earnings and DCF models, then multiplying by 0.70 for a safety buffer.' },
   { key: 'upside', label: 'Upside %', tip: 'How far the current price is from the Buy Below price. Positive means the stock is still below the buy target (potential value). Negative means it\'s trading above the buy target.' },
-  { key: 'verdict', label: 'Verdict', tip: 'UNDERVALUED: price is below the Buy Below price. FAIRLY VALUED: within 10% of Buy Below. OVERVALUED: more than 10% above. Based on Owner Earnings + DCF intrinsic value models.' },
   { key: 'peRatio', label: 'P/E', tip: 'Price-to-Earnings Ratio = share price divided by earnings per share (trailing 12 months). A P/E of 20 means you pay $20 for every $1 of profit. Lower can mean cheaper, but compare within the same industry. The historical market average is about 15x.' },
   { key: 'forwardPE', label: 'Fwd P/E', tip: 'Forward P/E uses next year\'s estimated earnings instead of last year\'s. If this is lower than the trailing P/E, analysts expect earnings to grow. Useful for comparing current price to near-term earning power.' },
   { key: 'pegRatio', label: 'PEG', tip: 'PEG = P/E divided by annual earnings growth rate. A PEG of 1.0 means you\'re paying fair value for the growth. Below 1.0 may be undervalued. Above 2.0 is often considered expensive. It normalizes P/E for growth.' },
@@ -99,7 +99,10 @@ export default function Markets() {
 
   return (
     <div>
-      <h1 style={{ fontSize: 'var(--text-3xl)', marginBottom: '1rem' }}>Markets</h1>
+      <div style={{ marginBottom: '1rem' }}>
+        <h1 style={{ fontSize: 'var(--text-3xl)', marginBottom: '0.15rem' }}>Markets</h1>
+        <p className="label-caps">Stock Screener & Analysis</p>
+      </div>
 
       {/* Tab bar */}
       <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '1.5rem', borderBottom: '2px solid var(--color-border)' }}>
@@ -493,21 +496,37 @@ function ScreenerTab() {
   const fair = stocks.filter(s => s.verdict === 'FAIRLY VALUED').length
   const over = stocks.filter(s => s.verdict === 'OVERVALUED').length
 
+  // Persist undervalued count for sidebar badge
+  useEffect(() => {
+    if (stocks.length > 0) localStorage.setItem('atlas_undervalued_count', String(undervalued))
+  }, [undervalued, stocks.length])
+
   return (
     <div>
-      <p className="text-muted" style={{ fontSize: 'var(--text-base)', marginBottom: '1rem' }}>
-        Screen & compare stocks by intrinsic value, fundamentals, and analyst ratings.
-      </p>
-
-      {/* Summary badges */}
+      {/* Summary badges — clickable to filter */}
       {stocks.length > 0 && !loading && (
-        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-          <span className="badge badge-success">{undervalued} Undervalued</span>
-          <span className="badge badge-gold">{fair} Fairly Valued</span>
-          <span className="badge badge-danger">{over} Overvalued</span>
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <button
+            onClick={() => setFilterVerdict(filterVerdict === 'UNDERVALUED' ? '' : 'UNDERVALUED')}
+            className={`badge badge-success-strong${filterVerdict === 'UNDERVALUED' ? ' badge-active' : ''}`}
+            style={{ cursor: 'pointer', background: filterVerdict === 'UNDERVALUED' ? undefined : undefined }}
+          >{undervalued} Undervalued</button>
+          <button
+            onClick={() => setFilterVerdict(filterVerdict === 'FAIRLY VALUED' ? '' : 'FAIRLY VALUED')}
+            className={`badge badge-gold-strong${filterVerdict === 'FAIRLY VALUED' ? ' badge-active' : ''}`}
+            style={{ cursor: 'pointer' }}
+          >{fair} Fairly Valued</button>
+          <button
+            onClick={() => setFilterVerdict(filterVerdict === 'OVERVALUED' ? '' : 'OVERVALUED')}
+            className={`badge badge-danger-strong${filterVerdict === 'OVERVALUED' ? ' badge-active' : ''}`}
+            style={{ cursor: 'pointer' }}
+          >{over} Overvalued</button>
           {lastFetched && <span className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>Updated {lastFetched.toLocaleTimeString()}</span>}
         </div>
       )}
+      <p className="text-faint" style={{ fontSize: 'var(--text-xs)', marginBottom: '1rem' }}>
+        Buy Below is the price at which a stock is undervalued by our DCF model with a 30% margin of safety.
+      </p>
 
       {/* Ticker management */}
       <div className="card" style={{ marginBottom: '1rem', padding: '1rem' }}>
@@ -536,7 +555,11 @@ function ScreenerTab() {
           />
           <button className="btn btn-primary" onClick={addTicker} style={{ fontSize: 'var(--text-sm)' }}>+ Add</button>
           <button className="btn btn-ghost" onClick={() => fetchScreener(tickers, discountRate)} disabled={loading} style={{ fontSize: 'var(--text-sm)' }}>
-            {loading ? 'Loading...' : 'Refresh All'}
+            {loading ? (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}>
+                <path d="M21 12a9 9 0 11-6.219-8.56" />
+              </svg>
+            ) : 'Refresh All'}
           </button>
           <button className="btn btn-ghost" onClick={() => { setTickers(DEFAULT_TICKERS); fetchScreener(DEFAULT_TICKERS, discountRate) }} style={{ fontSize: 'var(--text-sm)' }}>
             Reset Defaults
@@ -640,9 +663,19 @@ function ScreenerTab() {
         </table>
       </div>
 
-      <p className="text-faint" style={{ fontSize: 'var(--text-sm)', marginTop: '0.75rem' }}>
-        Showing {filteredSorted.length} of {stocks.length} stocks · Data cached for 15 minutes · Not financial advice
-      </p>
+      {loading && (
+        <p className="text-muted" style={{ fontSize: 'var(--text-sm)', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}>
+            <path d="M21 12a9 9 0 11-6.219-8.56" />
+          </svg>
+          Fetching data for {tickers.length} stocks...
+        </p>
+      )}
+      {!loading && (
+        <p className="text-faint" style={{ fontSize: 'var(--text-sm)', marginTop: '0.75rem' }}>
+          Showing {filteredSorted.length} of {stocks.length} stocks · Data cached for 15 minutes · Not financial advice
+        </p>
+      )}
     </div>
   )
 }

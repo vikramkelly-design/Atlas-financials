@@ -10,8 +10,8 @@ const PAGE_TITLES = {
   '/portfolio': 'Portfolio',
   '/analytics': 'Analytics',
   '/markets': 'Markets',
-  '/atlas': 'Atlas',
-  '/badges': 'Badges',
+  '/atlas': 'Ask Atlas',
+  '/badges': 'Progress',
   '/score': 'My Score',
   '/settings': 'Settings',
 }
@@ -22,13 +22,13 @@ export default function Layout() {
 
   useEffect(() => {
     const title = PAGE_TITLES[location.pathname] || 'Atlas'
-    document.title = `${title} | Atlas Finance Terminal`
+    document.title = `${title} | Atlas`
   }, [location.pathname])
 
   return (
     <div>
       <a href="#main-content" className="skip-link">Skip to content</a>
-      <Navbar onMenuToggle={() => setSidebarOpen(o => !o)} />
+      <Navbar subtitle={PAGE_TITLES[location.pathname]} onMenuToggle={() => setSidebarOpen(o => !o)} />
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <main id="main-content" className="main-content" style={{ minHeight: 'calc(100vh - 48px)' }}>
         <Outlet />

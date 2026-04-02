@@ -64,6 +64,72 @@ function dateStr(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+function BudgetCategoryCard({ cat, spent, limit, goalValue, onGoalChange, color }) {
+  const [editing, setEditing] = useState(false)
+  const pct = limit > 0 ? Math.min(100, (spent / limit) * 100) : 0
+  const over = limit > 0 && spent > limit
+  const barColor = pct > 85 ? 'var(--color-danger)' : pct > 60 ? 'var(--color-accent)' : 'var(--color-success)'
+
+  return (
+    <div className="budget-category-card">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
+          <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600 }}>{cat}</span>
+        </div>
+        <button
+          onClick={() => setEditing(e => !e)}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-faint)', padding: '0.15rem' }}
+          aria-label={`Edit ${cat} budget`}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+            <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+          </svg>
+        </button>
+      </div>
+
+      {editing && (
+        <input
+          className="input"
+          type="number"
+          step="1"
+          placeholder="Monthly limit"
+          value={goalValue}
+          onChange={e => onGoalChange(e.target.value)}
+          style={{ fontSize: 'var(--text-sm)', padding: '0.3rem 0.5rem', marginBottom: '0.35rem', width: '100%' }}
+          autoFocus
+        />
+      )}
+
+      {limit > 0 ? (
+        <>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.2rem' }}>
+            <span className="mono" style={{ fontSize: 'var(--text-sm)', color: over ? 'var(--color-danger)' : 'var(--color-text-muted)' }}>
+              {formatCurrency(spent)} / {formatCurrency(limit)}
+            </span>
+            <span className="mono" style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: over ? 'var(--color-danger)' : 'var(--color-text)' }}>
+              {pct.toFixed(0)}%
+            </span>
+          </div>
+          <div className="progress-bar" style={{ height: 6 }}>
+            <div className="progress-bar-fill" style={{ width: `${pct}%`, background: barColor }} />
+          </div>
+          {pct > 85 && (
+            <p className="text-faint" style={{ fontSize: 'var(--text-xs)', marginTop: '0.35rem', fontStyle: 'italic' }}>
+              {over ? `Over budget by ${formatCurrency(spent - limit)}` : 'Nearing your limit'}
+            </p>
+          )}
+        </>
+      ) : (
+        <p className="text-faint" style={{ fontSize: 'var(--text-xs)', marginTop: '0.15rem' }}>
+          {!editing ? 'Tap edit to set a limit' : 'Enter a monthly limit'}
+        </p>
+      )}
+    </div>
+  )
+}
+
 export default function Budget() {
   const { get, post, patch, del } = useApi()
   const { toast } = useToast()
@@ -330,7 +396,10 @@ export default function Budget() {
 
   return (
     <div>
-      <h1 style={{ fontSize: 'var(--text-3xl)', marginBottom: '1rem' }}>Budget</h1>
+      <div style={{ marginBottom: '1rem' }}>
+        <h1 style={{ fontSize: 'var(--text-3xl)', marginBottom: '0.15rem' }}>Budget</h1>
+        <p className="label-caps">{monthLabel}</p>
+      </div>
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '1.5rem', borderBottom: '2px solid var(--color-border)' }}>
@@ -685,46 +754,17 @@ export default function Budget() {
               <button className="btn btn-ghost" onClick={saveGoals} style={{ fontSize: 'var(--text-sm)' }}>Save Goals</button>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.75rem' }}>
-              {CATEGORIES.filter(c => c !== 'Income' && c !== 'Transfer').map(cat => {
-                const spent = spendingByCategory[cat] || 0
-                const limit = parseFloat(goals[cat]) || 0
-                const pct = limit > 0 ? Math.min(100, (spent / limit) * 100) : 0
-                const over = limit > 0 && spent > limit
-                return (
-                  <div key={cat} style={{
-                    padding: '0.75rem', borderRadius: 4,
-                    background: over ? 'var(--color-danger-light)' : 'var(--color-surface-2)',
-                    border: `1px solid ${over ? 'var(--color-danger)' : 'var(--color-border)'}`,
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-                      <span style={{ fontSize: 'var(--text-sm)', fontWeight: 500 }}>{cat}</span>
-                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: CATEGORY_COLORS[cat] }} />
-                    </div>
-                    <input
-                      className="input"
-                      type="number"
-                      step="1"
-                      placeholder="Limit"
-                      value={goals[cat] || ''}
-                      onChange={e => setGoals(prev => ({ ...prev, [cat]: e.target.value }))}
-                      style={{ fontSize: 'var(--text-sm)', padding: '0.3rem 0.5rem', marginBottom: '0.35rem', width: '100%' }}
-                    />
-                    {limit > 0 && (
-                      <>
-                        <div className="progress-bar" style={{ height: 5 }}>
-                          <div className="progress-bar-fill" style={{
-                            width: `${pct}%`,
-                            background: over ? 'var(--color-danger)' : 'var(--color-primary)',
-                          }} />
-                        </div>
-                        <p className="mono" style={{ fontSize: 'var(--text-sm)', marginTop: '0.2rem', color: over ? 'var(--color-danger)' : 'var(--color-text-muted)' }}>
-                          {formatCurrency(spent)} / {formatCurrency(limit)}
-                        </p>
-                      </>
-                    )}
-                  </div>
-                )
-              })}
+              {CATEGORIES.filter(c => c !== 'Income' && c !== 'Transfer').map(cat => (
+                <BudgetCategoryCard
+                  key={cat}
+                  cat={cat}
+                  spent={spendingByCategory[cat] || 0}
+                  limit={parseFloat(goals[cat]) || 0}
+                  goalValue={goals[cat] || ''}
+                  onGoalChange={val => setGoals(prev => ({ ...prev, [cat]: val }))}
+                  color={CATEGORY_COLORS[cat]}
+                />
+              ))}
             </div>
           </div>
 

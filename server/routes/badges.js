@@ -4,16 +4,16 @@ const db = require('../db');
 const { sendError } = require('../utils/errors');
 
 const BADGE_DEFS = [
-  { key: 'first_import', name: 'First Import', description: 'Upload your first bank CSV', icon: 'upload' },
-  { key: 'first_stock', name: 'First Stock', description: 'Buy your first stock', icon: 'trending-up' },
-  { key: 'emergency_fund', name: 'Safety Net', description: 'Start an emergency fund goal', icon: 'shield' },
-  { key: 'debt_free', name: 'Debt Free', description: 'Pay off all your debts', icon: 'check-circle' },
-  { key: 'first_goal', name: 'Goal Setter', description: 'Set your first Atlas goal', icon: 'target' },
-  { key: 'score_check', name: 'Self Aware', description: 'View your health score', icon: 'activity' },
-  { key: 'net_worth', name: 'Net Worth Tracked', description: 'Add your first asset', icon: 'dollar' },
-  { key: 'budget_master', name: 'Budget Master', description: 'Stay under budget for a month', icon: 'award' },
-  { key: 'five_holdings', name: 'Diversified', description: 'Own 5 different stocks', icon: 'layers' },
-  { key: 'milestone_done', name: 'Milestone', description: 'Complete an Atlas milestone', icon: 'flag' },
+  { key: 'first_import', name: 'Data Pioneer', description: 'Imported your first financial statement', icon: 'upload' },
+  { key: 'first_stock', name: 'Market Entry', description: 'Acquired your first equity position', icon: 'trending-up' },
+  { key: 'emergency_fund', name: 'Risk Managed', description: 'Established an emergency fund', icon: 'shield' },
+  { key: 'debt_free', name: 'Clean Slate', description: 'Eliminated all outstanding debt', icon: 'check-circle' },
+  { key: 'first_goal', name: 'Strategic Planner', description: 'Set your first financial objective', icon: 'target' },
+  { key: 'score_check', name: 'Self Assessed', description: 'Reviewed your financial health score', icon: 'activity' },
+  { key: 'net_worth', name: 'Balance Sheet', description: 'Tracked your first asset', icon: 'dollar' },
+  { key: 'budget_master', name: 'Disciplined', description: 'Stayed under budget for a full month', icon: 'award' },
+  { key: 'five_holdings', name: 'Diversified Portfolio', description: 'Achieved 5-stock diversification', icon: 'layers' },
+  { key: 'milestone_done', name: 'Objective Complete', description: 'Completed a financial milestone', icon: 'flag' },
 ];
 
 function evaluateBadges(userId) {

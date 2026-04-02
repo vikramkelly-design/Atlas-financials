@@ -8,9 +8,17 @@ import LoadingSpinner from '../components/LoadingSpinner'
 import ErrorBanner from '../components/ErrorBanner'
 import ConfirmDialog from '../components/ConfirmDialog'
 
+function getGreeting() {
+  const hour = new Date().getHours()
+  if (hour < 12) return 'Good morning'
+  if (hour < 17) return 'Good afternoon'
+  return 'Good evening'
+}
+
 export default function Dashboard() {
   const navigate = useNavigate()
   const { get } = useApi()
+  const user = JSON.parse(localStorage.getItem('atlas_user') || '{}')
   const [netWorth, setNetWorth] = useState(null)
   const [budget, setBudget] = useState(null)
   const [positions, setPositions] = useState([])
@@ -152,20 +160,53 @@ export default function Dashboard() {
   const wlUp = watchlist.filter(w => (prices[w.ticker]?.changePercent || 0) > 0).length
   const wlDown = watchlist.length - wlUp
 
+  // Empty state detection
+  const hasPositions = positions.length > 0
+  const hasTransactions = (budget?.count || 0) > 0
+  const hasWatchlist = watchlist.length > 0
+  const hasAssets = (netWorth?.assets?.length || 0) > 0 || (netWorth?.liabilities?.length || 0) > 0
+  const isNewUser = !hasPositions && !hasTransactions && !hasWatchlist && !hasAssets
+  const hasRealData = hasPositions || hasTransactions || !!currentGoal
+  const showHealthScore = healthScore && hasRealData
+
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+
   if (loading) return <LoadingSpinner height={200} />
   if (error) return <ErrorBanner message={error} onRetry={fetchAll} />
 
   return (
     <div>
-      <h1 style={{ fontSize: 'var(--text-3xl)', marginBottom: '1.5rem' }}>Dashboard</h1>
+      <div style={{ marginBottom: '1.5rem' }}>
+        <h1 style={{ fontSize: 'var(--text-3xl)', marginBottom: '0.15rem' }}>
+          {getGreeting()}{user.name ? `, ${user.name.split(' ')[0]}` : ''}.
+        </h1>
+        <p className="label-caps">{today}</p>
+      </div>
+
+      {/* Welcome banner for new users */}
+      {isNewUser && (
+        <div className="card" style={{ marginBottom: '1.5rem', borderLeft: '3px solid var(--color-accent)' }}>
+          <h2 style={{ fontSize: 'var(--text-2xl)', marginBottom: '0.5rem' }}>
+            Welcome to Atlas{user.name ? `, ${user.name.split(' ')[0]}` : ''}.
+          </h2>
+          <p className="text-muted" style={{ marginBottom: '1rem', fontSize: 'var(--text-base)' }}>
+            Start building your financial picture. Here are three ways to get started:
+          </p>
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <button className="btn btn-primary" onClick={() => navigate('/budget')}>Import a bank CSV</button>
+            <button className="btn btn-ghost" onClick={() => navigate('/portfolio')}>Add a stock holding</button>
+            <button className="btn btn-ghost" onClick={() => { document.getElementById('nw-tracker')?.scrollIntoView({ behavior: 'smooth' }) }}>Track your net worth</button>
+          </div>
+        </div>
+      )}
 
       {/* Top Section: Health Score + Net Worth side by side */}
       <div className="grid-2" style={{ marginBottom: '1rem', alignItems: 'stretch' }}>
         {/* Financial Health Score */}
-        {healthScore ? (
+        {showHealthScore ? (
           <div className="card" style={{ borderLeft: `3px solid ${healthScore.score >= 70 ? 'var(--color-success)' : healthScore.score >= 50 ? 'var(--color-accent)' : 'var(--color-danger)'}` }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-              <h3 style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-base)', fontFamily: 'var(--font-body)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Financial Health</h3>
+              <span className="label-caps" style={{ color: 'var(--color-text-muted)' }}>Financial Health</span>
               <span style={{ fontSize: 'var(--text-xl)', fontWeight: 700, color: gradeColor(healthScore.grade), padding: '0.15rem 0.5rem', border: `1px solid ${gradeColor(healthScore.grade)}`, borderRadius: 2 }}>
                 {healthScore.grade}
               </span>
@@ -191,22 +232,39 @@ export default function Dashboard() {
             {healthScore.aiSummary && (
               <p className="text-muted" style={{ fontSize: 'var(--text-sm)', marginTop: '0.5rem', lineHeight: 1.5, borderTop: '1px solid var(--color-border)', paddingTop: '0.5rem' }}>{healthScore.aiSummary}</p>
             )}
+            <p className="text-faint" style={{ fontSize: 'var(--text-xs)', marginTop: '0.5rem' }}>
+              Calculated from your spending habits, savings rate, portfolio diversification, and goal progress.
+            </p>
           </div>
         ) : (
-          <div className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <p className="text-faint" style={{ fontSize: 'var(--text-base)' }}>Complete onboarding to see your health score</p>
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: '0.75rem', padding: '2rem var(--space-lg)' }}>
+            <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-muted)' }}>
+              Your financial health score appears after you add your first data.
+            </p>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button className="btn btn-primary" onClick={() => navigate('/portfolio')}>Add a holding</button>
+              <button className="btn btn-ghost" onClick={() => navigate('/budget')}>Import spending</button>
+            </div>
           </div>
         )}
 
         {/* Net Worth Card */}
         <div className="card">
-          <h3 style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-base)', marginBottom: '0.25rem', fontFamily: 'var(--font-body)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Net Worth</h3>
-          <span className="mono" style={{ fontSize: '2rem', color: numColor(netWorth?.netWorth || 0) }}>
-            {formatCurrency(netWorth?.netWorth || 0)}
-          </span>
-          <p className="text-faint" style={{ fontSize: 'var(--text-sm)', marginTop: '0.25rem' }}>
-            Last updated {new Date().toLocaleDateString()}
-          </p>
+          <span className="label-caps" style={{ color: 'var(--color-text-muted)', marginBottom: '0.25rem', display: 'block' }}>Net Worth</span>
+          {hasAssets ? (
+            <>
+              <span className="mono" style={{ fontSize: '2rem', color: numColor(netWorth?.netWorth || 0) }}>
+                {formatCurrency(netWorth?.netWorth || 0)}
+              </span>
+              <p className="text-faint" style={{ fontSize: 'var(--text-sm)', marginTop: '0.25rem' }}>
+                Last updated {new Date().toLocaleDateString()}
+              </p>
+            </>
+          ) : (
+            <p className="text-muted" style={{ fontSize: 'var(--text-base)', marginTop: '0.5rem' }}>
+              Add your assets and liabilities below to see your net worth.
+            </p>
+          )}
           {netWorth && (netWorth.totalAssets > 0 || netWorth.totalLiabilities > 0) && (
             <div style={{ marginTop: '1rem' }}>
               <div style={{ display: 'flex', gap: '0.5rem', fontSize: 'var(--text-sm)', marginBottom: '0.35rem' }}>
@@ -251,42 +309,60 @@ export default function Dashboard() {
       </div>
 
       {/* Quick Stats Row */}
-      <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600, marginBottom: '0.5rem' }}>Quick Stats</p>
+      <p className="label-caps" style={{ marginBottom: '0.5rem' }}>Quick Stats</p>
       <div className="grid-3" style={{ marginBottom: '1.5rem' }}>
         <div className="card card-clickable" onClick={() => navigate('/budget')}>
-          <h3 style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', fontFamily: 'var(--font-body)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>This Month's Spending</h3>
-          <span className="mono" style={{ fontSize: 'var(--text-2xl)', color: 'var(--color-danger)' }}>
-            {formatCurrency(Math.abs(budget?.totalSpent || 0))}
-          </span>
-          <div className="progress-bar" style={{ marginTop: '0.75rem' }}>
-            <div className="progress-bar-fill" style={{
-              width: `${Math.min(100, ((Math.abs(budget?.totalSpent || 0)) / (budgetLimit || 5000)) * 100)}%`,
-              background: Math.abs(budget?.totalSpent || 0) > (budgetLimit || 5000) ? 'var(--color-danger)' : 'var(--color-primary)'
-            }} />
-          </div>
-          <p className="text-faint" style={{ fontSize: 'var(--text-sm)', marginTop: '0.35rem' }}>{budget?.count || 0} transactions</p>
+          <span className="label-caps" style={{ color: 'var(--color-text-muted)', marginBottom: '0.5rem', display: 'block' }}>This Month's Spending</span>
+          {hasTransactions ? (
+            <>
+              <span className="mono" style={{ fontSize: 'var(--text-2xl)', color: 'var(--color-danger)' }}>
+                {formatCurrency(Math.abs(budget?.totalSpent || 0))}
+              </span>
+              <div className="progress-bar" style={{ marginTop: '0.75rem' }}>
+                <div className="progress-bar-fill" style={{
+                  width: `${Math.min(100, ((Math.abs(budget?.totalSpent || 0)) / (budgetLimit || 5000)) * 100)}%`,
+                  background: Math.abs(budget?.totalSpent || 0) > (budgetLimit || 5000) ? 'var(--color-danger)' : 'var(--color-primary)'
+                }} />
+              </div>
+              <p className="text-faint" style={{ fontSize: 'var(--text-sm)', marginTop: '0.35rem' }}>{budget?.count || 0} transactions</p>
+            </>
+          ) : (
+            <p className="text-muted" style={{ fontSize: 'var(--text-sm)', marginTop: '0.25rem' }}>No spending tracked yet</p>
+          )}
         </div>
 
         <div className="card card-clickable" onClick={() => navigate('/portfolio')}>
-          <h3 style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', fontFamily: 'var(--font-body)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Portfolio</h3>
-          <span className="mono" style={{ fontSize: 'var(--text-2xl)' }}>
-            {formatCurrency(portfolioValue)}
-          </span>
-          {portfolioCost > 0 && (
-            <p className="mono" style={{ fontSize: 'var(--text-base)', color: numColor(portfolioGain), marginTop: '0.25rem' }}>
-              {portfolioGain >= 0 ? '+' : ''}{portfolioGain.toFixed(2)}%
-            </p>
+          <span className="label-caps" style={{ color: 'var(--color-text-muted)', marginBottom: '0.5rem', display: 'block' }}>Portfolio</span>
+          {hasPositions ? (
+            <>
+              <span className="mono" style={{ fontSize: 'var(--text-2xl)' }}>
+                {formatCurrency(portfolioValue)}
+              </span>
+              {portfolioCost > 0 && (
+                <p className="mono" style={{ fontSize: 'var(--text-base)', color: numColor(portfolioGain), marginTop: '0.25rem' }}>
+                  {portfolioGain >= 0 ? '+' : ''}{portfolioGain.toFixed(2)}%
+                </p>
+              )}
+            </>
+          ) : (
+            <p className="text-muted" style={{ fontSize: 'var(--text-sm)', marginTop: '0.25rem' }}>No holdings yet</p>
           )}
         </div>
 
         <div className="card card-clickable" onClick={() => navigate('/markets')}>
-          <h3 style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', fontFamily: 'var(--font-body)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Watchlist</h3>
-          <span className="mono" style={{ fontSize: 'var(--text-2xl)' }}>{watchlist.length}</span>
-          <p style={{ fontSize: 'var(--text-sm)', marginTop: '0.25rem' }}>
-            <span className="text-success">{wlUp} up</span>
-            <span className="text-muted"> / </span>
-            <span className="text-danger">{wlDown} down</span>
-          </p>
+          <span className="label-caps" style={{ color: 'var(--color-text-muted)', marginBottom: '0.5rem', display: 'block' }}>Watchlist</span>
+          {hasWatchlist ? (
+            <>
+              <span className="mono" style={{ fontSize: 'var(--text-2xl)' }}>{watchlist.length}</span>
+              <p style={{ fontSize: 'var(--text-sm)', marginTop: '0.25rem' }}>
+                <span className="text-success">{wlUp} up</span>
+                <span className="text-muted"> / </span>
+                <span className="text-danger">{wlDown} down</span>
+              </p>
+            </>
+          ) : (
+            <p className="text-muted" style={{ fontSize: 'var(--text-sm)', marginTop: '0.25rem' }}>Watchlist empty</p>
+          )}
         </div>
       </div>
 
@@ -301,7 +377,7 @@ export default function Dashboard() {
           return (
             <div className="card" onClick={() => navigate('/atlas')} style={{ cursor: 'pointer' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                <h3 style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', fontFamily: 'var(--font-body)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Current Goal</h3>
+                <span className="label-caps" style={{ color: 'var(--color-text-muted)' }}>Current Goal</span>
                 <span className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>View Atlas →</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
@@ -328,14 +404,14 @@ export default function Dashboard() {
           )
         })() : (
           <div className="card" onClick={() => navigate('/atlas')} style={{ cursor: 'pointer' }}>
-            <h3 style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', fontFamily: 'var(--font-body)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Current Goal</h3>
+            <span className="label-caps" style={{ color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>Current Goal</span>
             <p className="text-faint" style={{ fontSize: 'var(--text-base)' }}>Set a goal in Atlas to track it here →</p>
           </div>
         )}
 
         {/* Recent Insights */}
         <div className="card">
-          <h3 style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', fontFamily: 'var(--font-body)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem' }}>Recent Insights</h3>
+          <span className="label-caps" style={{ color: 'var(--color-text-muted)', marginBottom: '0.75rem' }}>Recent Insights</span>
           {insights.length === 0 ? (
             <p className="text-faint" style={{ fontSize: 'var(--text-base)' }}>
               Import a CSV or add portfolio positions to generate insights.

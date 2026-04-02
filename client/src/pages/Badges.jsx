@@ -34,39 +34,39 @@ export default function Badges() {
 
   return (
     <div>
-      <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-muted)', marginBottom: 'var(--space-lg)' }}>
-        {earned.length} of {badges.length} badges earned
-      </p>
+      <div style={{ marginBottom: 'var(--space-lg)' }}>
+        <h1 style={{ fontSize: 'var(--text-3xl)', marginBottom: '0.15rem' }}>Track Record</h1>
+        <p className="label-caps">{earned.length} of {badges.length} milestones achieved</p>
+      </div>
 
       {earned.length === 0 && locked.length === 0 && (
-        <EmptyState title="No Badges" message="Start using Atlas to earn your first badge." />
+        <EmptyState title="No Milestones" message="Start using Atlas to begin building your track record." />
       )}
 
       {earned.length > 0 && (
         <>
-          <h3 style={{ fontSize: 'var(--text-sm)', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-text-faint)', marginBottom: 'var(--space-sm)' }}>
-            Earned
-          </h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 'var(--space-md)', marginBottom: 'var(--space-xl)' }}>
+          <p className="label-caps" style={{ marginBottom: 'var(--space-sm)' }}>Achieved</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)', marginBottom: 'var(--space-xl)' }}>
             {earned.map(b => (
-              <div key={b.key} className="card badge-card badge-earned">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', marginBottom: 'var(--space-xs)' }}>
-                  <div style={{
-                    width: 40, height: 40, borderRadius: '50%',
-                    background: 'var(--color-accent-15)', border: '1.5px solid var(--color-accent)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                  }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d={ICON_PATHS[b.icon] || ICON_PATHS.award} />
-                    </svg>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 'var(--text-base)', fontWeight: 600, color: 'var(--color-text)' }}>{b.name}</div>
-                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>{b.description}</div>
-                  </div>
+              <div key={b.key} className="card" style={{
+                borderLeft: '3px solid var(--color-accent)',
+                display: 'flex', alignItems: 'center', gap: 'var(--space-md)', padding: '1rem 1.25rem',
+              }}>
+                <div style={{
+                  width: 44, height: 44, borderRadius: '50%',
+                  background: 'var(--color-accent-15)', border: '1.5px solid var(--color-accent)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d={ICON_PATHS[b.icon] || ICON_PATHS.award} />
+                  </svg>
                 </div>
-                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-success)', marginTop: 'var(--space-xs)' }}>
-                  Earned {new Date(b.earned_at).toLocaleDateString()}
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 'var(--text-base)', fontWeight: 600, color: 'var(--color-text)' }}>{b.name}</div>
+                  <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>{b.description}</div>
+                </div>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-success)', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                  {new Date(b.earned_at).toLocaleDateString()}
                 </div>
               </div>
             ))}
@@ -76,26 +76,25 @@ export default function Badges() {
 
       {locked.length > 0 && (
         <>
-          <h3 style={{ fontSize: 'var(--text-sm)', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-text-faint)', marginBottom: 'var(--space-sm)' }}>
-            Locked
-          </h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 'var(--space-md)' }}>
+          <p className="label-caps" style={{ marginBottom: 'var(--space-sm)' }}>In Progress</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
             {locked.map(b => (
-              <div key={b.key} className="card badge-card badge-locked">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
-                  <div style={{
-                    width: 40, height: 40, borderRadius: '50%',
-                    background: 'var(--color-surface-2)', border: '1.5px solid var(--color-border)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                  }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-faint)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d={ICON_PATHS[b.icon] || ICON_PATHS.award} />
-                    </svg>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 'var(--text-base)', fontWeight: 600, color: 'var(--color-text-faint)' }}>{b.name}</div>
-                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>{b.description}</div>
-                  </div>
+              <div key={b.key} className="card" style={{
+                display: 'flex', alignItems: 'center', gap: 'var(--space-md)', padding: '1rem 1.25rem',
+                opacity: 0.55,
+              }}>
+                <div style={{
+                  width: 44, height: 44, borderRadius: '50%',
+                  background: 'var(--color-surface-2)', border: '1.5px solid var(--color-border)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-faint)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d={ICON_PATHS[b.icon] || ICON_PATHS.award} />
+                  </svg>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 'var(--text-base)', fontWeight: 600, color: 'var(--color-text-faint)' }}>{b.name}</div>
+                  <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>{b.description}</div>
                 </div>
               </div>
             ))}
