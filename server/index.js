@@ -1,6 +1,8 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const { getCacheStats, clearCache } = require('./utils/cache');
 const { startOrderExecutor } = require('./services/orderExecutor');
 const auth = require('./middleware/auth');
@@ -8,23 +10,30 @@ const auth = require('./middleware/auth');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Security headers
+app.use(helmet());
+
+// Rate limiting
+const globalLimiter = rateLimit({ windowMs: 60000, max: 100, standardHeaders: true, legacyHeaders: false });
+const authLimiter = rateLimit({ windowMs: 60000, max: 5, message: { success: false, error: 'Too many attempts. Try again in a minute.' } });
+const aiLimiter = rateLimit({ windowMs: 60000, max: 10, message: { success: false, error: 'Too many AI requests. Try again in a minute.' } });
+app.use(globalLimiter);
+
 // Middleware
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production'
-    ? 'https://your-vercel-domain.vercel.app'
-    : 'http://localhost:5173'
+  origin: process.env.CORS_ORIGIN || 'http://localhost:5173'
 }));
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '1mb' }));
 
 // Initialize database (runs schema + seeds)
 require('./db');
 
 // Public routes
-app.use('/api/auth', require('./routes/auth'));
+app.use('/api/auth', authLimiter, require('./routes/auth'));
 app.use('/api/share', require('./routes/share'));
 
 // Protected routes — require auth
-app.use('/api/chat', auth, require('./routes/chat'));
+app.use('/api/chat', auth, aiLimiter, require('./routes/chat'));
 app.use('/api/budget', auth, require('./routes/budget'));
 app.use('/api/networth', auth, require('./routes/networth'));
 app.use('/api/watchlist', auth, require('./routes/watchlist'));
@@ -40,15 +49,16 @@ app.use('/api/atlas', auth, require('./routes/atlas'));
 app.use('/api/insights', auth, require('./routes/insights'));
 app.use('/api/debt', auth, require('./routes/debt'));
 app.use('/api/pulse', auth, require('./routes/pulse'));
-app.use('/api/challenges', auth, require('./routes/challenges'));
+app.use('/api/badges', auth, require('./routes/badges'));
+app.use('/api/settings', auth, require('./routes/settings'));
 
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', cache: getCacheStats(), timestamp: new Date().toISOString() });
 });
 
-// Cache control
-app.delete('/api/cache', (req, res) => {
+// Cache control (requires auth)
+app.delete('/api/cache', auth, (req, res) => {
   clearCache();
   res.json({ message: 'Cache cleared.' });
 });
@@ -56,7 +66,8 @@ app.delete('/api/cache', (req, res) => {
 // Error handler
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
-  res.status(500).json({ success: false, error: err.message || 'Internal server error' });
+  const message = process.env.NODE_ENV === 'production' ? 'Internal server error' : (err.message || 'Internal server error');
+  res.status(500).json({ success: false, error: message });
 });
 
 const server = app.listen(PORT, () => {

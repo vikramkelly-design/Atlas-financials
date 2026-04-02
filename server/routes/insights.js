@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const { generateHealthSummary } = require('../services/claude');
+const { sendError } = require('../utils/errors');
 
 // ── Scoring helpers ──────────────────────────────────────
 
@@ -79,7 +80,7 @@ router.get('/onboarding-status', (req, res) => {
     const row = db.prepare('SELECT id FROM onboarding_answers WHERE user_id = ? LIMIT 1').get(req.userId);
     res.json({ success: true, data: { completed: !!row } });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -90,18 +91,18 @@ router.post('/onboarding', async (req, res) => {
       monthly_income, monthly_spending, monthly_savings,
       has_emergency_fund, invests, num_investments, concentrated,
       total_debt, total_assets, has_goal, goal_on_track,
-      budget_goals, debts
+      budget_goals, debts, biggest_goal
     } = req.body;
 
     // Save answers
     db.prepare(`
       INSERT INTO onboarding_answers (user_id, monthly_income, monthly_spending, monthly_savings,
         has_emergency_fund, invests, num_investments, concentrated, total_debt, total_assets,
-        has_goal, goal_on_track)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        has_goal, goal_on_track, biggest_goal)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(req.userId, monthly_income || 0, monthly_spending || 0, monthly_savings || 0,
       has_emergency_fund || 'No', invests || 'No', num_investments || null, concentrated || null,
-      total_debt || 0, total_assets || 0, has_goal || 'No', goal_on_track || null);
+      total_debt || 0, total_assets || 0, has_goal || 'No', goal_on_track || null, biggest_goal || null);
 
     // Save budget goals
     if (budget_goals && Array.isArray(budget_goals)) {
@@ -160,19 +161,57 @@ router.post('/onboarding', async (req, res) => {
       aiSummary = total >= 70 ? "You're in decent financial shape — keep building on your strengths." : "There's room to improve — focus on the areas with lower grades.";
     }
 
-    // Save score
+    // Save score (marked as baseline)
     db.prepare(`
-      INSERT INTO health_scores (user_id, score, spending_score, savings_score, portfolio_score, debt_score, goals_score, ai_summary)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO health_scores (user_id, score, spending_score, savings_score, portfolio_score, debt_score, goals_score, ai_summary, is_baseline)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
     `).run(req.userId, total, spending.score, savings.score, portfolio.score, debt.score, goals.score, aiSummary);
+
+    // Auto-create Atlas ultimate goal from biggest_goal answer
+    if (biggest_goal) {
+      const goalMap = {
+        'Emergency Fund': { name: 'Build Emergency Fund', target: (monthly_spending || 3000) * 6, years: 1, category: 'Savings' },
+        'Pay Off Debt': { name: 'Pay Off All Debt', target: total_debt || 10000, years: 2, category: 'Debt' },
+        'Save for House': { name: 'Save for a House', target: 50000, years: 3, category: 'Savings' },
+        'Retirement': { name: 'Retirement Savings', target: 100000, years: 10, category: 'Investing' },
+        'Investment Growth': { name: 'Grow Investments', target: 25000, years: 3, category: 'Investing' },
+      };
+      const mapped = goalMap[biggest_goal];
+      if (mapped) {
+        const deadline = new Date();
+        deadline.setFullYear(deadline.getFullYear() + mapped.years);
+        const deadlineStr = deadline.toISOString().split('T')[0];
+        try {
+          db.prepare(`
+            INSERT INTO atlas_ultimate_goals (user_id, name, description, target_amount, deadline, category)
+            VALUES (?, ?, ?, ?, ?, ?)
+          `).run(req.userId, mapped.name, `Auto-created from your onboarding quiz — your biggest financial goal.`, mapped.target, deadlineStr, mapped.category);
+        } catch {}
+      }
+    }
+
+    // Qualitative label for baseline score
+    function qualitativeLabel(score) {
+      if (score >= 90) return 'Excellent';
+      if (score >= 80) return 'Strong';
+      if (score >= 70) return 'Good';
+      if (score >= 60) return 'Fair';
+      if (score >= 50) return 'Needs Work';
+      return 'Needs Attention';
+    }
 
     res.json({
       success: true,
-      data: { score: total, grade: overallGrade(total), categories, aiSummary }
+      data: {
+        scoreType: 'baseline',
+        label: qualitativeLabel(total),
+        grade: overallGrade(total),
+        categories: categories.map(c => ({ name: c.name, grade: c.grade, summary: c.summary })),
+        aiSummary,
+      }
     });
   } catch (err) {
-    console.error('[Onboarding]', err.message);
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -191,6 +230,14 @@ router.get('/health-score', async (req, res) => {
       if (existing) {
         const hoursSince = (Date.now() - new Date(existing.created_at + 'Z').getTime()) / (1000 * 60 * 60);
         if (hoursSince < 24) {
+          // Check if this is a baseline score and user still has no real data
+          const txnCount = db.prepare('SELECT COUNT(*) as cnt FROM transactions WHERE user_id = ?').get(req.userId).cnt;
+          const posCount = db.prepare(`
+            SELECT COUNT(*) as cnt FROM portfolio_positions pp
+            JOIN portfolios p ON pp.portfolio_id = p.id WHERE p.user_id = ?
+          `).get(req.userId).cnt;
+          const isBaseline = existing.is_baseline && txnCount === 0 && posCount === 0;
+
           const categories = [
             { name: 'Spending', score: existing.spending_score, maxScore: 20, grade: scoreGrade(existing.spending_score), summary: '' },
             { name: 'Savings', score: existing.savings_score, maxScore: 20, grade: scoreGrade(existing.savings_score), summary: '' },
@@ -198,9 +245,31 @@ router.get('/health-score', async (req, res) => {
             { name: 'Debt', score: existing.debt_score, maxScore: 20, grade: scoreGrade(existing.debt_score), summary: '' },
             { name: 'Goals', score: existing.goals_score, maxScore: 20, grade: scoreGrade(existing.goals_score), summary: '' },
           ];
+
+          if (isBaseline) {
+            function qualitativeLabel(score) {
+              if (score >= 90) return 'Excellent';
+              if (score >= 80) return 'Strong';
+              if (score >= 70) return 'Good';
+              if (score >= 60) return 'Fair';
+              if (score >= 50) return 'Needs Work';
+              return 'Needs Attention';
+            }
+            return res.json({
+              success: true,
+              data: {
+                scoreType: 'baseline',
+                label: qualitativeLabel(existing.score),
+                grade: overallGrade(existing.score),
+                categories: categories.map(c => ({ name: c.name, grade: c.grade, summary: c.summary })),
+                aiSummary: existing.ai_summary,
+              }
+            });
+          }
+
           return res.json({
             success: true,
-            data: { score: existing.score, grade: overallGrade(existing.score), categories, aiSummary: existing.ai_summary }
+            data: { scoreType: 'full', score: existing.score, grade: overallGrade(existing.score), categories, aiSummary: existing.ai_summary }
           });
         }
       }
@@ -300,19 +369,18 @@ router.get('/health-score', async (req, res) => {
       aiSummary = total >= 70 ? "You're in decent shape — keep it up." : "Some areas need work — check the grades below.";
     }
 
-    // Save updated score
+    // Save updated score (full, not baseline)
     db.prepare(`
-      INSERT INTO health_scores (user_id, score, spending_score, savings_score, portfolio_score, debt_score, goals_score, ai_summary)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO health_scores (user_id, score, spending_score, savings_score, portfolio_score, debt_score, goals_score, ai_summary, is_baseline)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
     `).run(req.userId, total, spending.score, savings.score, portfolio.score, debt.score, goalsScore.score, aiSummary);
 
     res.json({
       success: true,
-      data: { score: total, grade: overallGrade(total), categories, aiSummary }
+      data: { scoreType: 'full', score: total, grade: overallGrade(total), categories, aiSummary }
     });
   } catch (err) {
-    console.error('[HealthScore]', err.message);
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -335,7 +403,7 @@ router.post('/share-score', (req, res) => {
 
     res.json({ success: true, data: { token } });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -444,8 +512,7 @@ router.get('/dashboard', (req, res) => {
 
     res.json({ success: true, data: insights.slice(0, 5) });
   } catch (err) {
-    console.error('[Insights]', err.message);
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 

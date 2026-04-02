@@ -1,15 +1,18 @@
 import { useState, useEffect } from 'react'
 import useApi, { api } from '../hooks/useApi'
+import { gradeColor, gradeBg } from '../utils/grades'
 import LoadingSpinner from '../components/LoadingSpinner'
 import ErrorBanner from '../components/ErrorBanner'
+import { useToast } from '../components/Toast'
+import EmptyState from '../components/EmptyState'
 
 export default function MyScore() {
   const { get } = useApi()
+  const { toast } = useToast()
   const [score, setScore] = useState(null)
   const [loading, setLoading] = useState(true)
   const [recalculating, setRecalculating] = useState(false)
   const [error, setError] = useState(null)
-  const [shareUrl, setShareUrl] = useState(null)
   const [sharing, setSharing] = useState(false)
 
   const fetchScore = async (force = false) => {
@@ -28,36 +31,86 @@ export default function MyScore() {
 
   useEffect(() => { fetchScore() }, [])
 
-  const gradeColor = (grade) => {
-    if (grade === 'A' || grade === 'B+') return '#2A5C3A'
-    if (grade === 'B' || grade === 'C+') return '#8B6A2A'
-    return '#8B3A2A'
-  }
-
-  const gradeBg = (grade) => {
-    if (grade === 'A' || grade === 'B+') return '#E8F5E8'
-    if (grade === 'B' || grade === 'C+') return '#FFF8E8'
-    return '#F5E8E8'
-  }
-
   if (loading) return <LoadingSpinner height={200} />
   if (error) return <ErrorBanner message={error} onRetry={() => fetchScore()} />
 
   if (!score) {
     return (
       <div>
-        <h1 style={{ fontSize: '1.75rem', marginBottom: '1.5rem' }}>My Score</h1>
-        <div className="card" style={{ textAlign: 'center', padding: '2rem' }}>
-          <p className="text-muted" style={{ fontSize: '0.9rem' }}>Complete the onboarding quiz to get your score.</p>
-        </div>
+        <h1 style={{ fontSize: 'var(--text-3xl)', marginBottom: '1.5rem' }}>My Score</h1>
+        <EmptyState
+          icon="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+          title="No Score Yet"
+          description="Complete the onboarding quiz to get your financial health score."
+          actionLabel="Take the Quiz"
+          onAction={() => window.location.href = '/onboarding'}
+        />
       </div>
     )
   }
 
+  // Baseline view (qualitative, no numbers)
+  if (score.scoreType === 'baseline') {
+    return (
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <h1 style={{ fontSize: 'var(--text-3xl)' }}>My Score</h1>
+          <button className="btn btn-ghost" onClick={() => fetchScore(true)} disabled={recalculating} style={{ fontSize: 'var(--text-sm)' }}>
+            {recalculating ? 'Checking...' : 'Check for Updates'}
+          </button>
+        </div>
+
+        <div className="card" style={{ textAlign: 'center', marginBottom: '1rem' }}>
+          <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Baseline Assessment</p>
+          <div style={{ marginBottom: '0.75rem' }}>
+            <span style={{ fontSize: 'var(--text-4xl)', fontWeight: 700, color: 'var(--color-primary)' }}>{score.label}</span>
+          </div>
+          <span style={{
+            fontSize: 'var(--text-xl)', fontWeight: 700, color: gradeColor(score.grade),
+            padding: '0.3rem 1rem', background: gradeBg(score.grade),
+            border: `1px solid ${gradeColor(score.grade)}`, borderRadius: 2,
+          }}>
+            {score.grade}
+          </span>
+        </div>
+
+        <div style={{ background: 'var(--color-accent-15)', border: '1px solid var(--color-accent-30)', borderRadius: 2, padding: '0.65rem 0.85rem', marginBottom: '1rem', fontSize: 'var(--text-sm)', color: 'var(--color-accent)' }}>
+          This is a baseline score from your quiz answers. Import a bank CSV or add portfolio positions to unlock your full numerical score.
+        </div>
+
+        <div className="card" style={{ marginBottom: '1rem' }}>
+          <h3 style={{ fontSize: 'var(--text-lg)', marginBottom: '0.75rem' }}>Breakdown</h3>
+          {score.categories?.map((cat, i) => (
+            <div key={cat.name} style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '0.65rem 0',
+              borderBottom: i < score.categories.length - 1 ? '1px solid var(--color-border)' : 'none',
+            }}>
+              <div style={{ flex: 1 }}>
+                <span style={{ fontSize: 'var(--text-base)', fontWeight: 500, color: 'var(--color-text)' }}>{cat.name}</span>
+                {cat.summary && <p className="text-faint" style={{ fontSize: 'var(--text-sm)', marginTop: 2 }}>{cat.summary}</p>}
+              </div>
+              <span style={{ fontSize: 'var(--text-xl)', fontWeight: 700, color: gradeColor(cat.grade), minWidth: 36, textAlign: 'right' }}>
+                {cat.grade}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {score.aiSummary && (
+          <div className="card">
+            <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-muted)', lineHeight: 1.6 }}>{score.aiSummary}</p>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // Full numerical view
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <h1 style={{ fontSize: '1.75rem' }}>My Score</h1>
+        <h1 style={{ fontSize: 'var(--text-3xl)' }}>My Score</h1>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button
             className="btn btn-ghost"
@@ -66,21 +119,21 @@ export default function MyScore() {
               try {
                 const res = await api.post('/api/insights/share-score')
                 const url = `${window.location.origin}/share/score/${res.data.data.token}`
-                setShareUrl(url)
                 navigator.clipboard.writeText(url).catch(() => {})
+                toast('Share link copied to clipboard!', 'success')
               } catch {}
               setSharing(false)
             }}
             disabled={sharing}
-            style={{ fontSize: '0.8rem' }}
+            style={{ fontSize: 'var(--text-sm)' }}
           >
-            {shareUrl ? 'Link Copied!' : sharing ? 'Generating...' : 'Share My Score'}
+            {sharing ? 'Generating...' : 'Share My Score'}
           </button>
           <button
             className="btn btn-ghost"
             onClick={() => fetchScore(true)}
             disabled={recalculating}
-            style={{ fontSize: '0.8rem' }}
+            style={{ fontSize: 'var(--text-sm)' }}
           >
             {recalculating ? 'Recalculating...' : 'Recalculate'}
           </button>
@@ -89,22 +142,22 @@ export default function MyScore() {
 
       {/* Big Score */}
       <div className="card" style={{ textAlign: 'center', marginBottom: '1rem' }}>
-        <p style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Financial Health Score</p>
+        <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Financial Health Score</p>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: '0.35rem', marginBottom: '0.75rem' }}>
-          <span className="mono" style={{ fontSize: '4rem', fontWeight: 700, color: '#1B2A4A' }}>{score.score}</span>
-          <span style={{ fontSize: '1.5rem', color: 'var(--color-text-faint)' }}>/ 100</span>
+          <span className="mono" style={{ fontSize: 'var(--text-5xl)', fontWeight: 700, color: 'var(--color-primary)' }}>{score.score}</span>
+          <span style={{ fontSize: 'var(--text-2xl)', color: 'var(--color-text-faint)' }}>/ 100</span>
         </div>
         <div style={{ maxWidth: 350, margin: '0 auto 1rem' }}>
           <div style={{ height: 12, borderRadius: 6, background: 'var(--color-surface-2)', overflow: 'hidden' }}>
             <div style={{
               width: `${score.score}%`, height: '100%', borderRadius: 6,
-              background: score.score >= 70 ? '#2A5C3A' : score.score >= 50 ? '#C9A84C' : '#8B3A2A',
+              background: score.score >= 70 ? 'var(--color-success)' : score.score >= 50 ? 'var(--color-accent)' : 'var(--color-danger)',
               transition: 'width 0.5s',
             }} />
           </div>
         </div>
         <span style={{
-          fontSize: '1.3rem', fontWeight: 700, color: gradeColor(score.grade),
+          fontSize: 'var(--text-xl)', fontWeight: 700, color: gradeColor(score.grade),
           padding: '0.3rem 1rem', background: gradeBg(score.grade),
           border: `1px solid ${gradeColor(score.grade)}`, borderRadius: 2,
         }}>
@@ -114,7 +167,7 @@ export default function MyScore() {
 
       {/* Category Breakdown */}
       <div className="card" style={{ marginBottom: '1rem' }}>
-        <h3 style={{ fontSize: '0.95rem', marginBottom: '0.75rem' }}>Breakdown</h3>
+        <h3 style={{ fontSize: 'var(--text-lg)', marginBottom: '0.75rem' }}>Breakdown</h3>
         {score.categories?.map((cat, i) => (
           <div key={cat.name} style={{
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -123,11 +176,11 @@ export default function MyScore() {
           }}>
             <div style={{ flex: 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                <span style={{ fontSize: '0.9rem', fontWeight: 500, color: 'var(--color-text)' }}>{cat.name}</span>
-                <span className="mono text-faint" style={{ fontSize: '0.75rem' }}>{cat.score}/{cat.maxScore}</span>
+                <span style={{ fontSize: 'var(--text-base)', fontWeight: 500, color: 'var(--color-text)' }}>{cat.name}</span>
+                <span className="mono text-faint" style={{ fontSize: 'var(--text-sm)' }}>{cat.score}/{cat.maxScore}</span>
               </div>
               {cat.summary && (
-                <p className="text-faint" style={{ fontSize: '0.75rem' }}>{cat.summary}</p>
+                <p className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>{cat.summary}</p>
               )}
               <div style={{ height: 6, borderRadius: 3, background: 'var(--color-surface-2)', overflow: 'hidden', marginTop: '0.35rem', maxWidth: 200 }}>
                 <div style={{
@@ -137,7 +190,7 @@ export default function MyScore() {
               </div>
             </div>
             <span style={{
-              fontSize: '1.1rem', fontWeight: 700, color: gradeColor(cat.grade),
+              fontSize: 'var(--text-xl)', fontWeight: 700, color: gradeColor(cat.grade),
               minWidth: 36, textAlign: 'right',
             }}>
               {cat.grade}
@@ -149,7 +202,7 @@ export default function MyScore() {
       {/* AI Summary */}
       {score.aiSummary && (
         <div className="card">
-          <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
+          <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
             {score.aiSummary}
           </p>
         </div>

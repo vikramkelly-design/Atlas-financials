@@ -204,6 +204,7 @@ db.exec(`
 
   CREATE TABLE IF NOT EXISTS challenges (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
     name TEXT NOT NULL,
     description TEXT,
     type TEXT CHECK(type IN ('spending','saving','debt')),
@@ -219,6 +220,21 @@ db.exec(`
     progress REAL DEFAULT 0,
     joined_at TEXT DEFAULT (datetime('now')),
     completed_at TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS user_badges (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    badge_key TEXT NOT NULL,
+    earned_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(user_id, badge_key)
+  );
+
+  CREATE TABLE IF NOT EXISTS user_settings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER UNIQUE NOT NULL,
+    debt_strategy TEXT DEFAULT 'avalanche',
+    created_at TEXT DEFAULT (datetime('now'))
   );
 `);
 
@@ -248,8 +264,42 @@ const migrate2 = [
   'ALTER TABLE users ADD COLUMN email_verified INTEGER DEFAULT 1',
   'ALTER TABLE users ADD COLUMN verification_code TEXT',
   'ALTER TABLE users ADD COLUMN verification_expires TEXT',
+  'ALTER TABLE challenges ADD COLUMN user_id INTEGER',
 ];
 for (const sql of migrate2) {
+  try { db.exec(sql); } catch {}
+}
+
+// Add biggest_goal and is_baseline columns
+const migrate3 = [
+  'ALTER TABLE onboarding_answers ADD COLUMN biggest_goal TEXT',
+  'ALTER TABLE health_scores ADD COLUMN is_baseline INTEGER DEFAULT 0',
+];
+for (const sql of migrate3) {
+  try { db.exec(sql); } catch {}
+}
+
+// Performance indexes on user_id and foreign key columns
+const indexes = [
+  'CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON transactions(user_id)',
+  'CREATE INDEX IF NOT EXISTS idx_transactions_user_month ON transactions(user_id, month)',
+  'CREATE INDEX IF NOT EXISTS idx_budget_goals_user_id ON budget_goals(user_id)',
+  'CREATE INDEX IF NOT EXISTS idx_portfolios_user_id ON portfolios(user_id)',
+  'CREATE INDEX IF NOT EXISTS idx_watchlist_user_id ON watchlist(user_id)',
+  'CREATE INDEX IF NOT EXISTS idx_net_worth_assets_user_id ON net_worth_assets(user_id)',
+  'CREATE INDEX IF NOT EXISTS idx_net_worth_liabilities_user_id ON net_worth_liabilities(user_id)',
+  'CREATE INDEX IF NOT EXISTS idx_debts_user_id ON debts(user_id)',
+  'CREATE INDEX IF NOT EXISTS idx_health_scores_user_id ON health_scores(user_id)',
+  'CREATE INDEX IF NOT EXISTS idx_atlas_goals_user_id ON atlas_goals(user_id)',
+  'CREATE INDEX IF NOT EXISTS idx_atlas_ultimate_goals_user_id ON atlas_ultimate_goals(user_id)',
+  'CREATE INDEX IF NOT EXISTS idx_onboarding_answers_user_id ON onboarding_answers(user_id)',
+  'CREATE INDEX IF NOT EXISTS idx_portfolio_positions_portfolio_id ON portfolio_positions(portfolio_id)',
+  'CREATE INDEX IF NOT EXISTS idx_orders_portfolio_id ON orders(portfolio_id)',
+  'CREATE INDEX IF NOT EXISTS idx_portfolio_transactions_portfolio_id ON portfolio_transactions(portfolio_id)',
+  'CREATE INDEX IF NOT EXISTS idx_user_badges_user_id ON user_badges(user_id)',
+  'CREATE INDEX IF NOT EXISTS idx_user_settings_user_id ON user_settings(user_id)',
+];
+for (const sql of indexes) {
   try { db.exec(sql); } catch {}
 }
 

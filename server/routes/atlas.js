@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const { sendError } = require('../utils/errors');
 
 // ── Ultimate Goals ──────────────────────────────────────────
 
@@ -12,7 +13,7 @@ router.get('/ultimate', (req, res) => {
     ).all(req.userId);
     res.json({ success: true, data: goals });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -36,7 +37,7 @@ router.post('/ultimate', (req, res) => {
     const goal = db.prepare('SELECT * FROM atlas_ultimate_goals WHERE id = ?').get(result.lastInsertRowid);
     res.json({ success: true, data: goal });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -66,7 +67,7 @@ router.patch('/ultimate/:id', (req, res) => {
     const updated = db.prepare('SELECT * FROM atlas_ultimate_goals WHERE id = ? AND user_id = ?').get(id, req.userId);
     res.json({ success: true, data: updated });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -77,7 +78,7 @@ router.delete('/ultimate/:id', (req, res) => {
     db.prepare('DELETE FROM atlas_ultimate_goals WHERE id = ? AND user_id = ?').run(id, req.userId);
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -91,7 +92,7 @@ router.get('/milestones/:ultimateId', (req, res) => {
     ).all(req.userId, req.params.ultimateId);
     res.json({ success: true, data: goals });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -106,7 +107,7 @@ router.get('/current', (req, res) => {
     ).get(req.userId);
     res.json({ success: true, data: goal || null });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -128,7 +129,7 @@ router.post('/milestone', (req, res) => {
     const goal = db.prepare('SELECT * FROM atlas_goals WHERE id = ?').get(result.lastInsertRowid);
     res.json({ success: true, data: goal });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -167,7 +168,7 @@ router.patch('/:id', (req, res) => {
     const updated = db.prepare('SELECT * FROM atlas_goals WHERE id = ? AND user_id = ?').get(id, req.userId);
     res.json({ success: true, data: updated });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -178,7 +179,7 @@ router.delete('/:id', (req, res) => {
     db.prepare('DELETE FROM atlas_goals WHERE id = ? AND user_id = ?').run(id, req.userId);
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 

@@ -20,63 +20,59 @@ export default function Landing({ onAuth }) {
   const [showLogin, setShowLogin] = useState(false)
 
   return (
-    <div style={{ minHeight: '100vh', background: '#FFFCF5' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--color-bg)' }}>
       {/* Nav */}
       <nav style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         padding: '1rem 2rem', maxWidth: 1100, margin: '0 auto',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span style={{ fontFamily: "'Allura', cursive", fontSize: 36, color: '#C9A84C' }}>Atlas</span>
-          <span style={{ fontSize: '0.55rem', color: '#B89090', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Finance Terminal</span>
+          <span style={{ fontFamily: 'var(--font-brand)', fontSize: 36, color: 'var(--color-accent)' }}>Atlas</span>
+          <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Finance Terminal</span>
         </div>
         <button onClick={() => setShowLogin(true)} className="btn btn-primary">Log In</button>
       </nav>
 
       {/* Hero */}
       <section style={{ textAlign: 'center', padding: '4rem 2rem 3rem', maxWidth: 700, margin: '0 auto' }}>
-        <h1 style={{ fontSize: '2.75rem', lineHeight: 1.15, marginBottom: '1rem', color: '#1B2A4A' }}>
+        <h1 style={{ fontSize: 'var(--text-4xl)', lineHeight: 1.15, marginBottom: '1rem', color: 'var(--color-primary)' }}>
           Take Control of Your Money
         </h1>
-        <p style={{ fontSize: '1.1rem', color: '#8B3A3A', lineHeight: 1.6, marginBottom: '2rem' }}>
+        <p style={{ fontSize: 'var(--text-xl)', color: 'var(--color-text-muted)', lineHeight: 1.6, marginBottom: '2rem' }}>
           Track spending, grow your portfolio, crush debt, and get a personalized financial health score — all with AI-powered insights that actually make sense.
         </p>
-        <button onClick={() => setShowLogin(true)} style={{
-          padding: '0.85rem 2.5rem', background: '#1B2A4A', color: '#C9A84C',
-          border: 'none', borderRadius: 2, fontSize: '1rem', fontWeight: 600,
-          cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.06em',
-        }}>
+        <button onClick={() => setShowLogin(true)} className="btn btn-primary btn-lg">
           Get Started Free
         </button>
-        <p style={{ fontSize: '0.75rem', color: '#B89090', marginTop: '0.75rem' }}>No credit card required</p>
+        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-faint)', marginTop: '0.75rem' }}>No credit card required</p>
       </section>
 
       {/* Features */}
       <section style={{ maxWidth: 1000, margin: '0 auto', padding: '2rem 2rem 3rem' }}>
-        <h2 style={{ textAlign: 'center', fontSize: '1.5rem', marginBottom: '2rem', color: '#1B2A4A' }}>Everything You Need</h2>
+        <h2 style={{ textAlign: 'center', fontSize: 'var(--text-2xl)', marginBottom: '2rem', color: 'var(--color-primary)' }}>Everything You Need</h2>
         <div style={{
           display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
           gap: '1rem',
         }}>
           {FEATURES.map(f => (
             <div key={f.title} style={{
-              background: '#FFF8F0', border: '1px solid #E8DDD0', borderRadius: 2,
+              background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 2,
               padding: '1.5rem', transition: 'border-color 0.1s',
             }}>
-              <svg width="24" height="24" fill="none" stroke="#C9A84C" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" style={{ marginBottom: '0.75rem' }}>
+              <svg width="24" height="24" fill="none" stroke="var(--color-accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" style={{ marginBottom: '0.75rem' }}>
                 <path d={f.icon} />
               </svg>
-              <h3 style={{ fontSize: '1rem', marginBottom: '0.35rem', color: '#1B2A4A' }}>{f.title}</h3>
-              <p style={{ fontSize: '0.85rem', color: '#8B3A3A', lineHeight: 1.5 }}>{f.desc}</p>
+              <h3 style={{ fontSize: 'var(--text-lg)', marginBottom: '0.35rem', color: 'var(--color-primary)' }}>{f.title}</h3>
+              <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>{f.desc}</p>
             </div>
           ))}
         </div>
       </section>
 
       {/* How It Works */}
-      <section style={{ background: '#1B2A4A', padding: '3rem 2rem' }}>
+      <section style={{ background: 'var(--color-primary)', padding: '3rem 2rem' }}>
         <div style={{ maxWidth: 900, margin: '0 auto' }}>
-          <h2 style={{ textAlign: 'center', fontSize: '1.5rem', marginBottom: '2rem', color: '#C9A84C' }}>How It Works</h2>
+          <h2 style={{ textAlign: 'center', fontSize: 'var(--text-2xl)', marginBottom: '2rem', color: 'var(--color-accent)' }}>How It Works</h2>
           <div style={{
             display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
             gap: '2rem',
@@ -84,15 +80,15 @@ export default function Landing({ onAuth }) {
             {STEPS.map(s => (
               <div key={s.num} style={{ textAlign: 'center' }}>
                 <div style={{
-                  width: 48, height: 48, borderRadius: '50%', border: '2px solid #C9A84C',
+                  width: 48, height: 48, borderRadius: '50%', border: '2px solid var(--color-accent)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  margin: '0 auto 1rem', color: '#C9A84C', fontSize: '1.25rem', fontWeight: 700,
+                  margin: '0 auto 1rem', color: 'var(--color-accent)', fontSize: '1.25rem', fontWeight: 700,
                   fontFamily: "'DM Mono', monospace",
                 }}>
                   {s.num}
                 </div>
-                <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem', color: '#C9A84C' }}>{s.title}</h3>
-                <p style={{ fontSize: '0.85rem', color: 'rgba(201, 168, 76, 0.7)', lineHeight: 1.5 }}>{s.desc}</p>
+                <h3 style={{ fontSize: 'var(--text-lg)', marginBottom: '0.5rem', color: 'var(--color-accent)' }}>{s.title}</h3>
+                <p style={{ fontSize: 'var(--text-base)', color: 'rgba(201, 168, 76, 0.7)', lineHeight: 1.5 }}>{s.desc}</p>
               </div>
             ))}
           </div>
@@ -101,45 +97,39 @@ export default function Landing({ onAuth }) {
 
       {/* CTA */}
       <section style={{ textAlign: 'center', padding: '3rem 2rem' }}>
-        <h2 style={{ fontSize: '1.75rem', marginBottom: '0.75rem', color: '#1B2A4A' }}>
+        <h2 style={{ fontSize: 'var(--text-3xl)', marginBottom: '0.75rem', color: 'var(--color-primary)' }}>
           Ready to Get Financially Fit?
         </h2>
-        <p style={{ fontSize: '0.95rem', color: '#8B3A3A', marginBottom: '1.5rem' }}>
+        <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-muted)', marginBottom: '1.5rem' }}>
           Join Atlas and start building real financial habits today.
         </p>
-        <button onClick={() => setShowLogin(true)} style={{
-          padding: '0.85rem 2.5rem', background: '#1B2A4A', color: '#C9A84C',
-          border: 'none', borderRadius: 2, fontSize: '1rem', fontWeight: 600,
-          cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.06em',
-        }}>
+        <button onClick={() => setShowLogin(true)} className="btn btn-primary btn-lg">
           Create Free Account
         </button>
       </section>
 
       {/* Footer */}
       <footer style={{
-        borderTop: '1px solid #E8DDD0', padding: '1.5rem 2rem',
-        textAlign: 'center', color: '#B89090', fontSize: '0.7rem',
+        borderTop: '1px solid var(--color-border)', padding: '1.5rem 2rem',
+        textAlign: 'center', color: 'var(--color-text-faint)', fontSize: 'var(--text-sm)',
         textTransform: 'uppercase', letterSpacing: '0.05em',
       }}>
         For informational purposes only. Not financial advice.
       </footer>
 
-      {/* Login Modal */}
+      {/* Login — Full Screen */}
       {showLogin && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(27, 42, 74, 0.7)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
-        }}
-          onClick={e => { if (e.target === e.currentTarget) setShowLogin(false) }}
-        >
-          <div style={{ position: 'relative' }}>
-            <button onClick={() => setShowLogin(false)} style={{
-              position: 'absolute', top: 12, right: 16, background: 'none', border: 'none',
-              color: '#B89090', fontSize: '1.25rem', cursor: 'pointer', zIndex: 1,
-            }}>x</button>
-            <Login onAuth={onAuth} />
-          </div>
+        <div className="login-overlay" style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'var(--color-bg)' }}>
+          <button onClick={() => setShowLogin(false)} aria-label="Close login" style={{
+            position: 'absolute', top: 16, right: 20, background: 'none', border: 'none',
+            color: 'var(--color-text-faint)', fontSize: 'var(--text-2xl)', cursor: 'pointer', zIndex: 1,
+          }}>
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="4" y1="4" x2="16" y2="16" />
+              <line x1="16" y1="4" x2="4" y2="16" />
+            </svg>
+          </button>
+          <Login onAuth={onAuth} />
         </div>
       )}
     </div>

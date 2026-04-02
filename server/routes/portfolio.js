@@ -3,6 +3,7 @@ const db = require('../db');
 const { getYF } = require('../utils/yahoo');
 const { withCache } = require('../utils/cache');
 const { generatePortfolioAnalysis } = require('../services/claude');
+const { sendError } = require('../utils/errors');
 
 const router = express.Router();
 
@@ -14,8 +15,7 @@ router.get('/', (req, res) => {
     const rows = db.prepare('SELECT * FROM portfolios WHERE user_id = ? ORDER BY created_at').all(req.userId);
     res.json({ success: true, data: rows });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -38,8 +38,7 @@ router.post('/', (req, res) => {
 
     res.status(201).json({ success: true, data: portfolio });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -61,20 +60,18 @@ router.put('/:id', (req, res) => {
     const updated = db.prepare('SELECT * FROM portfolios WHERE id = ?').get(portfolio.id);
     res.json({ success: true, data: updated });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 
 // Delete portfolio
 router.delete('/:id', (req, res) => {
   try {
-    const result = db.prepare('DELETE FROM portfolios WHERE id = ?').run(req.params.id);
+    const result = db.prepare('DELETE FROM portfolios WHERE id = ? AND user_id = ?').run(req.params.id, req.userId);
     if (result.changes === 0) return res.status(404).json({ success: false, error: 'Portfolio not found' });
     res.json({ success: true });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -93,8 +90,7 @@ router.post('/:id/deposit', (req, res) => {
     const updated = db.prepare('SELECT * FROM portfolios WHERE id = ?').get(portfolio.id);
     res.json({ success: true, data: updated });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -108,8 +104,7 @@ router.get('/positions', (req, res) => {
     const positions = db.prepare('SELECT * FROM portfolio_positions WHERE portfolio_id = ? ORDER BY created_at').all(portfolio.id);
     res.json({ success: true, data: positions });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -121,8 +116,7 @@ router.get('/:id/positions', (req, res) => {
     const positions = db.prepare('SELECT * FROM portfolio_positions WHERE portfolio_id = ? ORDER BY created_at').all(portfolio.id);
     res.json({ success: true, data: positions });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -159,8 +153,7 @@ router.post('/:id/positions', async (req, res) => {
     const positions = db.prepare('SELECT * FROM portfolio_positions WHERE portfolio_id = ? ORDER BY created_at').all(portfolio.id);
     res.status(201).json({ success: true, data: positions });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -171,8 +164,7 @@ router.delete('/:id/positions/:posId', (req, res) => {
     if (result.changes === 0) return res.status(404).json({ success: false, error: 'Position not found' });
     res.json({ success: true });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -190,8 +182,7 @@ router.get('/:id/orders', (req, res) => {
     const orders = status ? db.prepare(query).all(portfolio.id, status) : db.prepare(query).all(portfolio.id);
     res.json({ success: true, data: orders });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -246,10 +237,11 @@ router.post('/:id/orders', async (req, res) => {
       const total = price * shares;
 
       if (side === 'buy') {
-        if (portfolio.cash_balance < total) {
-          return res.status(400).json({ success: false, error: `Insufficient cash. Need $${total.toFixed(2)}, have $${portfolio.cash_balance.toFixed(2)}` });
+        try {
+          executeMarketBuy(portfolio.id, ticker.toUpperCase(), shares, price, total);
+        } catch (buyErr) {
+          return res.status(400).json({ success: false, error: buyErr.message });
         }
-        executeMarketBuy(portfolio.id, ticker.toUpperCase(), shares, price, total);
       } else {
         executeMarketSell(portfolio.id, ticker.toUpperCase(), shares, price, total);
       }
@@ -274,8 +266,7 @@ router.post('/:id/orders', async (req, res) => {
     const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(result.lastInsertRowid);
     res.status(201).json({ success: true, data: order });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -292,8 +283,7 @@ router.delete('/:id/orders/:orderId', (req, res) => {
     if (result.changes === 0) return res.status(404).json({ success: false, error: 'Pending order not found' });
     res.json({ success: true });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -307,8 +297,7 @@ router.get('/:id/transactions', (req, res) => {
     const txns = db.prepare('SELECT * FROM portfolio_transactions WHERE portfolio_id = ? ORDER BY created_at DESC LIMIT 100').all(portfolio.id);
     res.json({ success: true, data: txns });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -452,8 +441,7 @@ router.get('/:id/analysis', async (req, res) => {
     }
     res.json({ success: true, data: { analysis, positions: enriched } });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -511,19 +499,22 @@ function generateFallbackAnalysis(positions, totalValue) {
 // ── Helpers ────────────────────────────────────────────────
 
 function executeMarketBuy(portfolioId, ticker, shares, price, total) {
-  const insertOrder = db.prepare(`
-    INSERT INTO orders (portfolio_id, ticker, order_type, side, shares, executed_price, status, executed_at)
-    VALUES (?, ?, 'market', 'buy', ?, ?, 'executed', datetime('now'))
-  `);
-
-  const existing = db.prepare('SELECT * FROM portfolio_positions WHERE portfolio_id = ? AND ticker = ?').get(portfolioId, ticker);
-
   const txn = db.transaction(() => {
-    const orderResult = insertOrder.run(portfolioId, ticker, shares, price);
+    // Re-read balance inside transaction to prevent race condition
+    const portfolio = db.prepare('SELECT cash_balance FROM portfolios WHERE id = ?').get(portfolioId);
+    if (portfolio.cash_balance < total) {
+      throw new Error(`Insufficient cash. Need $${total.toFixed(2)}, have $${portfolio.cash_balance.toFixed(2)}`);
+    }
 
+    const orderResult = db.prepare(`
+      INSERT INTO orders (portfolio_id, ticker, order_type, side, shares, executed_price, status, executed_at)
+      VALUES (?, ?, 'market', 'buy', ?, ?, 'executed', datetime('now'))
+    `).run(portfolioId, ticker, shares, price);
+
+    const existing = db.prepare('SELECT * FROM portfolio_positions WHERE portfolio_id = ? AND ticker = ?').get(portfolioId, ticker);
     if (existing) {
       const newShares = existing.shares + shares;
-      const newAvgCost = ((existing.avg_cost * existing.shares) + total) / newShares;
+      const newAvgCost = Math.round(((existing.avg_cost * existing.shares) + total) / newShares * 100) / 100;
       db.prepare('UPDATE portfolio_positions SET shares = ?, avg_cost = ? WHERE id = ?').run(newShares, newAvgCost, existing.id);
     } else {
       db.prepare('INSERT INTO portfolio_positions (portfolio_id, ticker, shares, avg_cost) VALUES (?, ?, ?, ?)').run(portfolioId, ticker, shares, price);

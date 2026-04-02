@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const { sendError } = require('../utils/errors');
 
 // GET /api/watchlist
 router.get('/', (req, res) => {
@@ -8,8 +9,7 @@ router.get('/', (req, res) => {
     const items = db.prepare('SELECT * FROM watchlist WHERE user_id = ? ORDER BY added_at DESC').all(req.userId);
     res.json({ success: true, data: items });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -22,8 +22,7 @@ router.post('/', (req, res) => {
     const item = db.prepare('SELECT * FROM watchlist WHERE user_id = ? AND ticker = ?').get(req.userId, ticker.toUpperCase());
     res.json({ success: true, data: item });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -33,8 +32,7 @@ router.delete('/:ticker', (req, res) => {
     db.prepare('DELETE FROM watchlist WHERE user_id = ? AND ticker = ?').run(req.userId, req.params.ticker.toUpperCase());
     res.json({ success: true });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 

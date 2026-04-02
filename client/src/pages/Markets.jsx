@@ -65,7 +65,7 @@ function InfoTip({ text }) {
         onClick={(e) => { e.stopPropagation(); setShow(s => !s) }}
         style={{
           background: 'none', border: '1px solid var(--color-border-dark)', borderRadius: '50%',
-          width: 14, height: 14, fontSize: '0.55rem', lineHeight: '12px', textAlign: 'center',
+          width: 14, height: 14, fontSize: 'var(--text-xs)', lineHeight: '12px', textAlign: 'center',
           cursor: 'pointer', color: 'var(--color-text-muted)', marginLeft: 3, padding: 0,
           fontWeight: 700, verticalAlign: 'middle',
         }}
@@ -78,7 +78,7 @@ function InfoTip({ text }) {
             position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)',
             marginTop: 6, width: 260, padding: '0.65rem 0.75rem',
             background: 'var(--color-surface)', border: '1px solid var(--color-border)',
-            borderRadius: 6, fontSize: '0.75rem', lineHeight: 1.5,
+            borderRadius: 6, fontSize: 'var(--text-sm)', lineHeight: 1.5,
             color: 'var(--color-text)', zIndex: 100,
             whiteSpace: 'normal',
           }}>
@@ -99,7 +99,7 @@ export default function Markets() {
 
   return (
     <div>
-      <h1 style={{ fontSize: '1.75rem', marginBottom: '1rem' }}>Markets</h1>
+      <h1 style={{ fontSize: 'var(--text-3xl)', marginBottom: '1rem' }}>Markets</h1>
 
       {/* Tab bar */}
       <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '1.5rem', borderBottom: '2px solid var(--color-border)' }}>
@@ -112,7 +112,7 @@ export default function Markets() {
             padding: '0.6rem 1.25rem', border: 'none', borderBottom: tab === t.key ? '2px solid var(--color-accent)' : '2px solid transparent',
             background: 'none', cursor: 'pointer', fontWeight: tab === t.key ? 600 : 400,
             color: tab === t.key ? 'var(--color-accent)' : 'var(--color-text-muted)',
-            fontSize: '0.9rem', marginBottom: '-2px', transition: 'all 0.15s ease',
+            fontSize: 'var(--text-base)', marginBottom: '-2px', transition: 'all 0.15s ease',
           }}>
             {t.label}
           </button>
@@ -251,7 +251,7 @@ function WatchlistTab() {
           }}>
             {searchResults.map(r => (
               <div key={r.symbol} onClick={() => addToWatchlist(r.symbol)}
-                style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', fontSize: '0.85rem', borderBottom: '1px solid var(--color-border)', transition: 'background 0.15s ease' }}
+                style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', fontSize: 'var(--text-base)', borderBottom: '1px solid var(--color-border)', transition: 'background 0.15s ease' }}
                 onMouseEnter={e => e.currentTarget.style.background = 'var(--color-surface-2)'}
                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
               >
@@ -271,23 +271,23 @@ function WatchlistTab() {
               <div key={w.ticker} className="card" style={{ position: 'relative' }}>
                 <button onClick={() => removeFromWatchlist(w.ticker)} style={{
                   position: 'absolute', top: 8, right: 10, background: 'none', border: 'none',
-                  color: 'var(--color-text-faint)', cursor: 'pointer', fontSize: '1.1rem'
+                  color: 'var(--color-text-faint)', cursor: 'pointer', fontSize: 'var(--text-lg)'
                 }}>x</button>
 
-                <h3 style={{ fontSize: '1.4rem', marginBottom: 0 }}>{w.ticker}</h3>
-                <p className="text-muted" style={{ fontSize: '0.8rem', marginBottom: '0.75rem' }}>{q.name || '--'}</p>
+                <h3 style={{ fontSize: 'var(--text-xl)', marginBottom: 0 }}>{w.ticker}</h3>
+                <p className="text-muted" style={{ fontSize: 'var(--text-sm)', marginBottom: '0.75rem' }}>{q.name || '--'}</p>
 
-                <span className="mono" style={{ fontSize: '1.25rem' }}>
+                <span className="mono" style={{ fontSize: 'var(--text-xl)' }}>
                   {q.price ? formatCurrency(q.price) : '--'}
                 </span>
 
                 {q.change !== undefined && (
-                  <p className="mono" style={{ fontSize: '0.85rem', color: numColor(q.change) }}>
+                  <p className="mono" style={{ fontSize: 'var(--text-base)', color: numColor(q.change) }}>
                     {q.change >= 0 ? '+' : ''}{formatCurrency(q.change)} ({formatPercent(q.changePercent)})
                   </p>
                 )}
 
-                <div style={{ marginTop: '0.75rem', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                <div style={{ marginTop: '0.75rem', fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>
                   {[['52W High', q.high52 ? formatCurrency(q.high52) : '--'],
                     ['52W Low', q.low52 ? formatCurrency(q.low52) : '--'],
                     ['Mkt Cap', formatMarketCap(q.marketCap)]
@@ -300,12 +300,12 @@ function WatchlistTab() {
                 </div>
 
                 {digests[w.ticker] && (
-                  <p style={{ marginTop: '0.75rem', fontSize: '0.8rem', color: 'var(--color-text-muted)', fontStyle: 'italic', lineHeight: 1.4 }}>
+                  <p style={{ marginTop: '0.75rem', fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', fontStyle: 'italic', lineHeight: 1.4 }}>
                     {digests[w.ticker]}
                   </p>
                 )}
 
-                <button onClick={() => openDetail(w.ticker)} className="btn btn-ghost" style={{ marginTop: '0.75rem', width: '100%', fontSize: '0.8rem' }}>
+                <button onClick={() => openDetail(w.ticker)} className="btn btn-ghost" style={{ marginTop: '0.75rem', width: '100%', fontSize: 'var(--text-sm)' }}>
                   View details
                 </button>
               </div>
@@ -330,15 +330,15 @@ function WatchlistTab() {
           }}>
             <button onClick={() => setDetailModal(null)} style={{
               position: 'absolute', top: 12, right: 16, background: 'none', border: 'none',
-              fontSize: '1.25rem', cursor: 'pointer', color: 'var(--color-text-muted)'
+              fontSize: 'var(--text-xl)', cursor: 'pointer', color: 'var(--color-text-muted)'
             }}>x</button>
 
             {detailLoading ? <LoadingSpinner /> : detailData ? (
               <>
-                <h2 style={{ fontSize: '1.5rem', marginBottom: 0 }}>
+                <h2 style={{ fontSize: 'var(--text-2xl)', marginBottom: 0 }}>
                   {detailData.quote?.companyName || detailData.quote?.name || detailModal}
                 </h2>
-                <p className="text-muted" style={{ fontSize: '0.85rem', marginBottom: '1rem' }}>
+                <p className="text-muted" style={{ fontSize: 'var(--text-base)', marginBottom: '1rem' }}>
                   {detailData.quote?.sector || ''}{detailData.quote?.industry ? ` · ${detailData.quote.industry}` : ''}
                 </p>
 
@@ -346,10 +346,10 @@ function WatchlistTab() {
                 {detailData.iv?.summary && (
                   <div className="card" style={{ marginBottom: '1.25rem', padding: '1rem', background: 'var(--color-surface-2)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                      <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>Intrinsic Value</span>
+                      <span style={{ fontWeight: 600, fontSize: 'var(--text-base)' }}>Intrinsic Value</span>
                       {verdictBadge(detailData.iv.summary.verdict)}
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', fontSize: '0.8rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', fontSize: 'var(--text-sm)' }}>
                       <div>
                         <div className="text-muted">Buy Below (30% MoS)</div>
                         <div className="mono" style={{ fontWeight: 700, color: 'var(--color-accent)' }}>
@@ -369,7 +369,7 @@ function WatchlistTab() {
                 )}
 
                 {/* Key Stats */}
-                <h3 style={{ fontSize: '1rem', marginBottom: '0.75rem' }}>Key Statistics</h3>
+                <h3 style={{ fontSize: 'var(--text-lg)', marginBottom: '0.75rem' }}>Key Statistics</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '1.25rem' }}>
                   {[
                     ['P/E Ratio', detailData.quote?.peRatio != null ? fmtNum(detailData.quote.peRatio) + 'x' : null],
@@ -384,8 +384,8 @@ function WatchlistTab() {
                     ['Div Yield', detailData.quote?.dividendYield != null ? fmtPct(detailData.quote.dividendYield) : null],
                   ].map(([label, val]) => (
                     <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.35rem 0', borderBottom: '1px solid var(--color-border)' }}>
-                      <span className="text-muted" style={{ fontSize: '0.8rem' }}>{label}</span>
-                      <span className="mono" style={{ fontSize: '0.85rem' }}>{val || '--'}</span>
+                      <span className="text-muted" style={{ fontSize: 'var(--text-sm)' }}>{label}</span>
+                      <span className="mono" style={{ fontSize: 'var(--text-base)' }}>{val || '--'}</span>
                     </div>
                   ))}
                 </div>
@@ -393,7 +393,7 @@ function WatchlistTab() {
                 {/* AI Explainer */}
                 {explanation ? (
                   <div style={{ padding: '1rem', background: 'var(--color-accent-light)', borderRadius: 8 }}>
-                    <p style={{ fontSize: '0.9rem', lineHeight: 1.6 }}>{explanation}</p>
+                    <p style={{ fontSize: 'var(--text-base)', lineHeight: 1.6 }}>{explanation}</p>
                   </div>
                 ) : (
                   <button className="btn btn-ghost" onClick={() => fetchExplanation(detailModal)} disabled={explainLoading}>
@@ -495,7 +495,7 @@ function ScreenerTab() {
 
   return (
     <div>
-      <p className="text-muted" style={{ fontSize: '0.85rem', marginBottom: '1rem' }}>
+      <p className="text-muted" style={{ fontSize: 'var(--text-base)', marginBottom: '1rem' }}>
         Screen & compare stocks by intrinsic value, fundamentals, and analyst ratings.
       </p>
 
@@ -505,7 +505,7 @@ function ScreenerTab() {
           <span className="badge badge-success">{undervalued} Undervalued</span>
           <span className="badge badge-gold">{fair} Fairly Valued</span>
           <span className="badge badge-danger">{over} Overvalued</span>
-          {lastFetched && <span className="text-faint" style={{ fontSize: '0.7rem' }}>Updated {lastFetched.toLocaleTimeString()}</span>}
+          {lastFetched && <span className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>Updated {lastFetched.toLocaleTimeString()}</span>}
         </div>
       )}
 
@@ -515,12 +515,12 @@ function ScreenerTab() {
           {tickers.map(t => (
             <span key={t} style={{
               display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.2rem 0.5rem',
-              background: 'var(--color-surface-2)', borderRadius: 3, fontSize: '0.75rem', fontFamily: 'var(--font-mono)'
+              background: 'var(--color-surface-2)', borderRadius: 3, fontSize: 'var(--text-sm)', fontFamily: 'var(--font-mono)'
             }}>
               {t}
               <button onClick={() => removeTicker(t)} style={{
                 background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-faint)',
-                fontSize: '0.8rem', lineHeight: 1, padding: 0
+                fontSize: 'var(--text-sm)', lineHeight: 1, padding: 0
               }}>x</button>
             </span>
           ))}
@@ -534,34 +534,34 @@ function ScreenerTab() {
             onKeyDown={e => e.key === 'Enter' && addTicker()}
             placeholder="Add ticker..."
           />
-          <button className="btn btn-primary" onClick={addTicker} style={{ fontSize: '0.8rem' }}>+ Add</button>
-          <button className="btn btn-ghost" onClick={() => fetchScreener(tickers, discountRate)} disabled={loading} style={{ fontSize: '0.8rem' }}>
+          <button className="btn btn-primary" onClick={addTicker} style={{ fontSize: 'var(--text-sm)' }}>+ Add</button>
+          <button className="btn btn-ghost" onClick={() => fetchScreener(tickers, discountRate)} disabled={loading} style={{ fontSize: 'var(--text-sm)' }}>
             {loading ? 'Loading...' : 'Refresh All'}
           </button>
-          <button className="btn btn-ghost" onClick={() => { setTickers(DEFAULT_TICKERS); fetchScreener(DEFAULT_TICKERS, discountRate) }} style={{ fontSize: '0.8rem' }}>
+          <button className="btn btn-ghost" onClick={() => { setTickers(DEFAULT_TICKERS); fetchScreener(DEFAULT_TICKERS, discountRate) }} style={{ fontSize: 'var(--text-sm)' }}>
             Reset Defaults
           </button>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: 'auto' }}>
-            <span className="text-muted" style={{ fontSize: '0.8rem' }}>Discount Rate</span>
+            <span className="text-muted" style={{ fontSize: 'var(--text-sm)' }}>Discount Rate</span>
             <input
               type="range" min={0.08} max={0.15} step={0.005}
               value={discountRate}
               onChange={e => setDiscountRate(parseFloat(e.target.value))}
               style={{ width: 120 }}
             />
-            <span className="mono" style={{ fontSize: '0.8rem', width: 40 }}>{(discountRate * 100).toFixed(1)}%</span>
-            <button className="btn btn-primary" style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}
+            <span className="mono" style={{ fontSize: 'var(--text-sm)', width: 40 }}>{(discountRate * 100).toFixed(1)}%</span>
+            <button className="btn btn-primary" style={{ fontSize: 'var(--text-sm)', padding: '0.3rem 0.6rem' }}
               onClick={() => fetchScreener(tickers, discountRate)}>Apply</button>
           </div>
         </div>
       </div>
 
       {/* Filters */}
-      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'flex-end', fontSize: '0.8rem' }}>
+      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'flex-end', fontSize: 'var(--text-sm)' }}>
         <div>
-          <label className="text-muted" style={{ display: 'block', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>Verdict</label>
-          <select className="select" value={filterVerdict} onChange={e => setFilterVerdict(e.target.value)} style={{ fontSize: '0.8rem', padding: '0.35rem 0.5rem' }}>
+          <label className="text-muted" style={{ display: 'block', fontSize: 'var(--text-sm)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>Verdict</label>
+          <select className="select" value={filterVerdict} onChange={e => setFilterVerdict(e.target.value)} style={{ fontSize: 'var(--text-sm)', padding: '0.35rem 0.5rem' }}>
             <option value="">All</option>
             <option value="UNDERVALUED">Undervalued</option>
             <option value="FAIRLY VALUED">Fairly Valued</option>
@@ -569,22 +569,22 @@ function ScreenerTab() {
           </select>
         </div>
         <div>
-          <label className="text-muted" style={{ display: 'block', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>Max P/E</label>
-          <input className="input" type="number" value={filterMaxPE} onChange={e => setFilterMaxPE(e.target.value)} placeholder="e.g. 30" style={{ width: 80, fontSize: '0.8rem', padding: '0.35rem 0.5rem' }} />
+          <label className="text-muted" style={{ display: 'block', fontSize: 'var(--text-sm)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>Max P/E</label>
+          <input className="input" type="number" value={filterMaxPE} onChange={e => setFilterMaxPE(e.target.value)} placeholder="e.g. 30" style={{ width: 80, fontSize: 'var(--text-sm)', padding: '0.35rem 0.5rem' }} />
         </div>
         <div>
-          <label className="text-muted" style={{ display: 'block', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>Min ROE %</label>
-          <input className="input" type="number" value={filterMinROE} onChange={e => setFilterMinROE(e.target.value)} placeholder="e.g. 15" style={{ width: 80, fontSize: '0.8rem', padding: '0.35rem 0.5rem' }} />
+          <label className="text-muted" style={{ display: 'block', fontSize: 'var(--text-sm)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>Min ROE %</label>
+          <input className="input" type="number" value={filterMinROE} onChange={e => setFilterMinROE(e.target.value)} placeholder="e.g. 15" style={{ width: 80, fontSize: 'var(--text-sm)', padding: '0.35rem 0.5rem' }} />
         </div>
         <div>
-          <label className="text-muted" style={{ display: 'block', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>Min Cap ($B)</label>
-          <input className="input" type="number" value={filterMinCap} onChange={e => setFilterMinCap(e.target.value)} placeholder="e.g. 10" style={{ width: 80, fontSize: '0.8rem', padding: '0.35rem 0.5rem' }} />
+          <label className="text-muted" style={{ display: 'block', fontSize: 'var(--text-sm)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>Min Cap ($B)</label>
+          <input className="input" type="number" value={filterMinCap} onChange={e => setFilterMinCap(e.target.value)} placeholder="e.g. 10" style={{ width: 80, fontSize: 'var(--text-sm)', padding: '0.35rem 0.5rem' }} />
         </div>
         <div>
-          <label className="text-muted" style={{ display: 'block', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>Max Cap ($B)</label>
-          <input className="input" type="number" value={filterMaxCap} onChange={e => setFilterMaxCap(e.target.value)} placeholder="e.g. 3000" style={{ width: 80, fontSize: '0.8rem', padding: '0.35rem 0.5rem' }} />
+          <label className="text-muted" style={{ display: 'block', fontSize: 'var(--text-sm)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>Max Cap ($B)</label>
+          <input className="input" type="number" value={filterMaxCap} onChange={e => setFilterMaxCap(e.target.value)} placeholder="e.g. 3000" style={{ width: 80, fontSize: 'var(--text-sm)', padding: '0.35rem 0.5rem' }} />
         </div>
-        <button className="btn btn-ghost" style={{ fontSize: '0.75rem', padding: '0.35rem 0.6rem' }}
+        <button className="btn btn-ghost" style={{ fontSize: 'var(--text-sm)', padding: '0.35rem 0.6rem' }}
           onClick={() => { setFilterVerdict(''); setFilterMaxPE(''); setFilterMinROE(''); setFilterMinCap(''); setFilterMaxCap('') }}>
           Clear Filters
         </button>
@@ -594,7 +594,7 @@ function ScreenerTab() {
 
       {/* Table */}
       <div className="table-wrapper">
-        <table style={{ fontSize: '0.78rem' }}>
+        <table style={{ fontSize: 'var(--text-sm)' }}>
           <thead>
             <tr>
               {COLUMNS.map(col => (
@@ -623,12 +623,12 @@ function ScreenerTab() {
             ) : (
               filteredSorted.map(stock => (
                 <tr key={stock.ticker} style={{
-                  background: stock.verdict === 'UNDERVALUED' ? '#2A5C3A0A' : stock.verdict === 'OVERVALUED' ? '#8B3A2A0A' : undefined
+                  background: stock.verdict === 'UNDERVALUED' ? 'color-mix(in srgb, var(--color-success) 4%, transparent)' : stock.verdict === 'OVERVALUED' ? 'color-mix(in srgb, var(--color-danger) 4%, transparent)' : undefined
                 }}>
                   {COLUMNS.map(col => (
                     <td key={col.key} style={{ whiteSpace: 'nowrap' }}>
                       {stock.error && col.key !== 'ticker'
-                        ? (col.key === 'currentPrice' ? <span style={{ color: 'var(--color-danger)', fontSize: '0.7rem' }}>{stock.error}</span> : '—')
+                        ? (col.key === 'currentPrice' ? <span style={{ color: 'var(--color-danger)', fontSize: 'var(--text-sm)' }}>{stock.error}</span> : '—')
                         : <ScreenerCell col={col.key} stock={stock} />
                       }
                     </td>
@@ -640,7 +640,7 @@ function ScreenerTab() {
         </table>
       </div>
 
-      <p className="text-faint" style={{ fontSize: '0.7rem', marginTop: '0.75rem' }}>
+      <p className="text-faint" style={{ fontSize: 'var(--text-sm)', marginTop: '0.75rem' }}>
         Showing {filteredSorted.length} of {stocks.length} stocks · Data cached for 15 minutes · Not financial advice
       </p>
     </div>
@@ -651,7 +651,7 @@ function ScreenerCell({ col, stock }) {
   const v = stock[col]
   switch (col) {
     case 'ticker':
-      return <div><strong>{stock.ticker}</strong>{stock.companyName && <div className="text-muted" style={{ fontSize: '0.7rem', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{stock.companyName}</div>}</div>
+      return <div><strong>{stock.ticker}</strong>{stock.companyName && <div className="text-muted" style={{ fontSize: 'var(--text-sm)', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{stock.companyName}</div>}</div>
     case 'currentPrice': return <span className="mono" style={{ fontWeight: 600 }}>{formatCurrency(v)}</span>
     case 'buyBelowPrice': return <span className="mono" style={{ fontWeight: 700, color: 'var(--color-accent)' }}>{v != null ? formatCurrency(v) : 'N/A'}</span>
     case 'upside':
@@ -738,7 +738,7 @@ function AnalyzerTab() {
 
   return (
     <div>
-      <p className="text-muted" style={{ fontSize: '0.85rem', marginBottom: '1rem' }}>
+      <p className="text-muted" style={{ fontSize: 'var(--text-base)', marginBottom: '1rem' }}>
         Enter a ticker to calculate intrinsic value using Owner Earnings & DCF methods.
       </p>
 
@@ -751,27 +751,27 @@ function AnalyzerTab() {
           onChange={e => setInputVal(e.target.value.toUpperCase())}
           placeholder="Enter ticker (e.g. AAPL)"
         />
-        <button type="submit" className="btn btn-primary" style={{ fontSize: '0.85rem' }}>Analyze</button>
+        <button type="submit" className="btn btn-primary" style={{ fontSize: 'var(--text-base)' }}>Analyze</button>
         {ticker && (
-          <button type="button" className="btn btn-ghost" style={{ fontSize: '0.85rem' }}
+          <button type="button" className="btn btn-ghost" style={{ fontSize: 'var(--text-base)' }}
             onClick={() => fetchAll(ticker, discountRate)}>Refresh</button>
         )}
       </form>
 
       {/* Discount Rate */}
       <div className="card" style={{ marginBottom: '1.25rem', padding: '1rem' }}>
-        <div style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.5rem' }}>Valuation Settings</div>
+        <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, marginBottom: '0.5rem' }}>Valuation Settings</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <span className="text-muted" style={{ fontSize: '0.8rem' }}>Discount Rate</span>
+          <span className="text-muted" style={{ fontSize: 'var(--text-sm)' }}>Discount Rate</span>
           <input
             type="range" min={0.08} max={0.15} step={0.005}
             value={discountRate}
             onChange={e => handleDiscountChange(parseFloat(e.target.value))}
             style={{ flex: 1, maxWidth: 300 }}
           />
-          <span className="mono" style={{ fontSize: '0.85rem' }}>{(discountRate * 100).toFixed(1)}%</span>
+          <span className="mono" style={{ fontSize: 'var(--text-base)' }}>{(discountRate * 100).toFixed(1)}%</span>
         </div>
-        <p className="text-faint" style={{ fontSize: '0.7rem', marginTop: '0.35rem' }}>
+        <p className="text-faint" style={{ fontSize: 'var(--text-sm)', marginTop: '0.35rem' }}>
           Adjust discount rate (8–15%). Higher = more conservative. {ticker && 'Changes auto-recalculate.'}
         </p>
       </div>
@@ -781,9 +781,9 @@ function AnalyzerTab() {
         <div style={{ marginBottom: '1rem' }}>
           {quoteData ? (
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', flexWrap: 'wrap' }}>
-              <h2 style={{ fontSize: '1.5rem' }}>{quoteData.companyName || ticker}</h2>
+              <h2 style={{ fontSize: 'var(--text-2xl)' }}>{quoteData.companyName || ticker}</h2>
               <span className="text-muted">{ticker}</span>
-              <span className="mono" style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--color-accent)' }}>
+              <span className="mono" style={{ fontSize: 'var(--text-xl)', fontWeight: 700, color: 'var(--color-accent)' }}>
                 {formatCurrency(quoteData.currentPrice)}
               </span>
               {quoteData.exchange && <span className="badge badge-neutral">{quoteData.exchange}</span>}
@@ -799,7 +799,7 @@ function AnalyzerTab() {
       {(loadingIV || ivData) && <IVSummarySection data={ivData} loading={loadingIV} />}
 
       {/* Key Metrics */}
-      {errorQuote && !loadingQuote && <p style={{ color: 'var(--color-danger)', fontSize: '0.8rem', marginBottom: '0.75rem' }}>Quote error: {errorQuote}</p>}
+      {errorQuote && !loadingQuote && <p style={{ color: 'var(--color-danger)', fontSize: 'var(--text-sm)', marginBottom: '0.75rem' }}>Quote error: {errorQuote}</p>}
       {(loadingQuote || quoteData) && <QuoteMetricsSection data={quoteData} loading={loadingQuote} />}
 
       {/* DCF Projections */}
@@ -818,8 +818,8 @@ function AnalyzerTab() {
       {/* Empty state */}
       {!ticker && (
         <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
-          <p style={{ fontSize: '1.75rem', marginBottom: '0.5rem' }}>Enter a ticker to get started</p>
-          <p className="text-muted" style={{ fontSize: '0.85rem', maxWidth: 400, margin: '0 auto' }}>
+          <p style={{ fontSize: 'var(--text-3xl)', marginBottom: '0.5rem' }}>Enter a ticker to get started</p>
+          <p className="text-muted" style={{ fontSize: 'var(--text-base)', maxWidth: 400, margin: '0 auto' }}>
             Search for any stock ticker to calculate its intrinsic value using Warren Buffett's Owner Earnings model and DCF analysis with a 30% margin of safety.
           </p>
         </div>
@@ -852,20 +852,20 @@ function IVSummarySection({ data, loading }) {
       <div className="card" style={{ padding: '1.25rem', background: 'var(--color-surface-2)', marginBottom: '0.75rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <div className="text-muted" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>
+            <div className="text-muted" style={{ fontSize: 'var(--text-sm)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>
               Buy Below (30% Margin of Safety)
             </div>
-            <div className="mono" style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--color-accent)' }}>
+            <div className="mono" style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-accent)' }}>
               {summary.mosPrice != null ? formatCurrency(summary.mosPrice) : 'N/A'}
             </div>
-            <div className="text-muted" style={{ fontSize: '0.8rem' }}>
+            <div className="text-muted" style={{ fontSize: 'var(--text-sm)' }}>
               Raw IV: {summary.rawIV != null ? formatCurrency(summary.rawIV) : 'N/A'} · Current: {formatCurrency(currentPrice)}
             </div>
           </div>
           <div style={{ textAlign: 'right' }}>
             {verdictBadge(summary.verdict)}
             {upside != null && (
-              <div className="mono" style={{ fontSize: '0.8rem', marginTop: '0.5rem', color: upside >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
+              <div className="mono" style={{ fontSize: 'var(--text-sm)', marginTop: '0.5rem', color: upside >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
                 {upside >= 0
                   ? `${upside.toFixed(1)}% upside to buy price`
                   : `${Math.abs(upside).toFixed(1)}% above buy price`
@@ -886,9 +886,9 @@ function IVSummarySection({ data, loading }) {
           { label: 'Current Price', value: formatCurrency(currentPrice) },
         ].map(m => (
           <div key={m.label} className="card" style={{ padding: '0.75rem' }}>
-            <div className="text-muted" style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>{m.label}</div>
+            <div className="text-muted" style={{ fontSize: 'var(--text-sm)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>{m.label}</div>
             <div className="mono" style={{
-              fontSize: m.isError ? '0.7rem' : '1rem', fontWeight: 600,
+              fontSize: m.isError ? 'var(--text-sm)' : 'var(--text-lg)', fontWeight: 600,
               color: m.isError ? 'var(--color-warning)' : m.accent ? 'var(--color-accent)' : 'var(--color-text)'
             }}>{m.value}</div>
           </div>
@@ -927,12 +927,12 @@ function QuoteMetricsSection({ data, loading }) {
 
   return (
     <div style={{ marginBottom: '1.25rem' }}>
-      <h3 style={{ fontSize: '1rem', marginBottom: '0.75rem' }}>Key Metrics</h3>
+      <h3 style={{ fontSize: 'var(--text-lg)', marginBottom: '0.75rem' }}>Key Metrics</h3>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '0.5rem' }}>
         {metrics.map(m => (
           <div key={m.label} className="card" style={{ padding: '0.75rem' }}>
-            <div className="text-muted" style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>{m.label}</div>
-            <div className="mono" style={{ fontSize: '0.95rem', fontWeight: 600 }}>{m.value}</div>
+            <div className="text-muted" style={{ fontSize: 'var(--text-sm)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>{m.label}</div>
+            <div className="mono" style={{ fontSize: 'var(--text-lg)', fontWeight: 600 }}>{m.value}</div>
           </div>
         ))}
       </div>
@@ -950,31 +950,31 @@ function DCFBarChart({ projectedFCFs, freeCashFlow }) {
 
   return (
     <div className="card" style={{ marginBottom: '1.25rem', padding: '1.25rem' }}>
-      <h3 style={{ fontSize: '1rem', marginBottom: '0.25rem' }}>10-Year DCF Projection</h3>
-      <p className="text-muted" style={{ fontSize: '0.75rem', marginBottom: '1rem' }}>Projected vs. discounted free cash flows</p>
+      <h3 style={{ fontSize: 'var(--text-lg)', marginBottom: '0.25rem' }}>10-Year DCF Projection</h3>
+      <p className="text-muted" style={{ fontSize: 'var(--text-sm)', marginBottom: '1rem' }}>Projected vs. discounted free cash flows</p>
       <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'flex-end', height: 160 }}>
         {/* Base year */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-          <div className="mono" style={{ fontSize: '0.6rem', color: 'var(--color-text-muted)' }}>{fmtLarge(freeCashFlow)}</div>
+          <div className="mono" style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>{fmtLarge(freeCashFlow)}</div>
           <div style={{ width: '80%', background: 'var(--color-accent)', borderRadius: '3px 3px 0 0', height: `${Math.max(4, (Math.abs(freeCashFlow) / maxVal) * 140)}px` }} />
-          <div className="mono" style={{ fontSize: '0.6rem' }}>Now</div>
+          <div className="mono" style={{ fontSize: 'var(--text-xs)' }}>Now</div>
         </div>
         {projectedFCFs.map(d => (
           <div key={d.year} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-            <div className="mono" style={{ fontSize: '0.55rem', color: 'var(--color-text-faint)' }}>{fmtLarge(d.fcf)}</div>
+            <div className="mono" style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>{fmtLarge(d.fcf)}</div>
             <div style={{ display: 'flex', gap: 1, width: '80%', justifyContent: 'center', alignItems: 'flex-end', height: `${Math.max(4, (Math.abs(d.fcf) / maxVal) * 140)}px` }}>
               <div style={{ width: '45%', background: 'var(--color-accent)', opacity: 0.7, borderRadius: '2px 2px 0 0', height: '100%' }} />
               <div style={{ width: '45%', background: 'var(--color-success)', opacity: 0.7, borderRadius: '2px 2px 0 0', height: `${Math.max(4, (Math.abs(d.discountedFCF) / Math.abs(d.fcf)) * 100)}%` }} />
             </div>
-            <div className="mono" style={{ fontSize: '0.6rem' }}>Y{d.year}</div>
+            <div className="mono" style={{ fontSize: 'var(--text-xs)' }}>Y{d.year}</div>
           </div>
         ))}
       </div>
       <div style={{ display: 'flex', gap: '1rem', marginTop: '0.75rem', justifyContent: 'center' }}>
-        <span style={{ fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: 4 }}>
+        <span style={{ fontSize: 'var(--text-sm)', display: 'flex', alignItems: 'center', gap: 4 }}>
           <span style={{ width: 10, height: 10, background: 'var(--color-accent)', opacity: 0.7, borderRadius: 2, display: 'inline-block' }} /> Projected FCF
         </span>
-        <span style={{ fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: 4 }}>
+        <span style={{ fontSize: 'var(--text-sm)', display: 'flex', alignItems: 'center', gap: 4 }}>
           <span style={{ width: 10, height: 10, background: 'var(--color-success)', opacity: 0.7, borderRadius: 2, display: 'inline-block' }} /> Discounted FCF
         </span>
       </div>
@@ -1005,9 +1005,9 @@ function RawInputsSection({ data }) {
 
   return (
     <div className="card" style={{ marginBottom: '1.25rem', padding: '1.25rem' }}>
-      <h3 style={{ fontSize: '1rem', marginBottom: '0.75rem' }}>Raw Inputs & Data Sources</h3>
+      <h3 style={{ fontSize: 'var(--text-lg)', marginBottom: '0.75rem' }}>Raw Inputs & Data Sources</h3>
       <div className="table-wrapper">
-        <table style={{ fontSize: '0.8rem' }}>
+        <table style={{ fontSize: 'var(--text-sm)' }}>
           <thead>
             <tr>
               <th>Metric</th>
@@ -1033,7 +1033,7 @@ function RawInputsSection({ data }) {
 function AnalystRatingsSection({ data, loading, error }) {
   if (loading) return (
     <div className="card" style={{ marginBottom: '1.25rem', padding: '1.25rem' }}>
-      <h3 style={{ fontSize: '1rem', marginBottom: '0.75rem' }}>Analyst Consensus</h3>
+      <h3 style={{ fontSize: 'var(--text-lg)', marginBottom: '0.75rem' }}>Analyst Consensus</h3>
       <div className="skeleton" style={{ height: 20, width: '50%', marginBottom: 8 }} />
       <div className="skeleton" style={{ height: 8, marginBottom: 12 }} />
       <div className="skeleton" style={{ height: 60 }} />
@@ -1042,8 +1042,8 @@ function AnalystRatingsSection({ data, loading, error }) {
 
   if (error || !data) return (
     <div className="card" style={{ marginBottom: '1.25rem', padding: '1.25rem' }}>
-      <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>Analyst Consensus</h3>
-      <p className="text-muted" style={{ fontSize: '0.85rem' }}>{error || 'No analyst data available.'}</p>
+      <h3 style={{ fontSize: 'var(--text-lg)', marginBottom: '0.5rem' }}>Analyst Consensus</h3>
+      <p className="text-muted" style={{ fontSize: 'var(--text-base)' }}>{error || 'No analyst data available.'}</p>
     </div>
   )
 
@@ -1071,17 +1071,17 @@ function AnalystRatingsSection({ data, loading, error }) {
 
   return (
     <div className="card" style={{ marginBottom: '1.25rem', padding: '1.25rem' }}>
-      <h3 style={{ fontSize: '1rem', marginBottom: '0.75rem' }}>Analyst Consensus</h3>
+      <h3 style={{ fontSize: 'var(--text-lg)', marginBottom: '0.75rem' }}>Analyst Consensus</h3>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.75rem' }}>
-        <span style={{ fontSize: '1.25rem', fontWeight: 700, color: ratingColor(consensusLabel) }}>
+        <span style={{ fontSize: 'var(--text-xl)', fontWeight: 700, color: ratingColor(consensusLabel) }}>
           {consensusLabel}
         </span>
-        <span className="text-muted" style={{ fontSize: '0.8rem' }}>
+        <span className="text-muted" style={{ fontSize: 'var(--text-sm)' }}>
           {numberOfAnalystOpinions != null ? `${numberOfAnalystOpinions} analysts` : trend ? `${trend.totalAnalysts} analysts` : ''}
         </span>
         {consensusScore != null && (
-          <span className="text-faint" style={{ fontSize: '0.75rem' }}>Score: {consensusScore.toFixed(2)} / 5</span>
+          <span className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>Score: {consensusScore.toFixed(2)} / 5</span>
         )}
       </div>
 
@@ -1095,7 +1095,7 @@ function AnalystRatingsSection({ data, loading, error }) {
         }} />
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.35rem' }}>
           {['Strong Sell', 'Sell', 'Hold', 'Buy', 'Strong Buy'].map(l => (
-            <span key={l} className="text-faint" style={{ fontSize: '0.6rem' }}>{l}</span>
+            <span key={l} className="text-faint" style={{ fontSize: 'var(--text-xs)' }}>{l}</span>
           ))}
         </div>
       </div>
@@ -1105,12 +1105,12 @@ function AnalystRatingsSection({ data, loading, error }) {
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end', height: 80, marginBottom: '1rem' }}>
           {bars.map(b => (
             <div key={b.label} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-              <span className="mono" style={{ fontSize: '0.7rem' }}>{b.count}</span>
+              <span className="mono" style={{ fontSize: 'var(--text-sm)' }}>{b.count}</span>
               <div style={{
                 width: '60%', borderRadius: '3px 3px 0 0', background: b.color, opacity: 0.8,
                 height: `${Math.max(4, (b.count / maxCount) * 60)}px`
               }} />
-              <span className="text-faint" style={{ fontSize: '0.55rem', textAlign: 'center', lineHeight: 1.1 }}>{b.label}</span>
+              <span className="text-faint" style={{ fontSize: 'var(--text-xs)', textAlign: 'center', lineHeight: 1.1 }}>{b.label}</span>
             </div>
           ))}
         </div>
@@ -1119,7 +1119,7 @@ function AnalystRatingsSection({ data, loading, error }) {
       {/* Price targets */}
       {priceTargets && (
         <div>
-          <h4 style={{ fontSize: '0.85rem', marginBottom: '0.5rem', marginTop: '0.5rem' }}>Price Targets</h4>
+          <h4 style={{ fontSize: 'var(--text-base)', marginBottom: '0.5rem', marginTop: '0.5rem' }}>Price Targets</h4>
           <div className="grid-3">
             {[
               { label: 'Low', value: priceTargets.low, color: 'var(--color-danger)' },
@@ -1127,15 +1127,15 @@ function AnalystRatingsSection({ data, loading, error }) {
               { label: 'High', value: priceTargets.high, color: 'var(--color-success)' },
             ].map(t => (
               <div key={t.label} style={{ textAlign: 'center' }}>
-                <div className="text-muted" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>{t.label}</div>
-                <div className="mono" style={{ fontSize: '1.1rem', fontWeight: 600, color: t.color }}>
+                <div className="text-muted" style={{ fontSize: 'var(--text-sm)', textTransform: 'uppercase' }}>{t.label}</div>
+                <div className="mono" style={{ fontSize: 'var(--text-lg)', fontWeight: 600, color: t.color }}>
                   {t.value != null ? formatCurrency(t.value) : 'N/A'}
                 </div>
               </div>
             ))}
           </div>
           {priceTargets.current && priceTargets.mean && (
-            <p className="text-muted" style={{ fontSize: '0.75rem', marginTop: '0.5rem', textAlign: 'center' }}>
+            <p className="text-muted" style={{ fontSize: 'var(--text-sm)', marginTop: '0.5rem', textAlign: 'center' }}>
               Upside to mean target:{' '}
               <span className="mono" style={{ color: priceTargets.mean > priceTargets.current ? 'var(--color-success)' : 'var(--color-danger)', fontWeight: 600 }}>
                 {(((priceTargets.mean - priceTargets.current) / priceTargets.current) * 100).toFixed(1)}%

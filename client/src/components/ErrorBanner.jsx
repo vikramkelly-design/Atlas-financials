@@ -1,16 +1,16 @@
 export default function ErrorBanner({ message, onRetry }) {
   return (
-    <div style={{
-      background: '#F5E8E8',
+    <div role="alert" style={{
+      background: 'var(--color-danger-light)',
       border: '1px solid rgba(139, 58, 42, 0.2)',
       borderRadius: 2,
       padding: '0.85rem 1rem',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: '1rem'
+      gap: 'var(--space-md)'
     }}>
-      <span style={{ color: '#8B3A2A', fontSize: '0.82rem' }}>
+      <span style={{ color: 'var(--color-danger)', fontSize: 'var(--text-base)' }}>
         {message || 'Something went wrong.'}
       </span>
       {onRetry && (

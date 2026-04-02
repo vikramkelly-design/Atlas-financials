@@ -14,6 +14,14 @@ export default function ChatBot() {
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
   useEffect(() => { if (open) inputRef.current?.focus() }, [open])
 
+  // ESC keyboard shortcut to close
+  useEffect(() => {
+    if (!open) return
+    const handler = (e) => { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [open])
+
   const send = async (e) => {
     e.preventDefault()
     const text = input.trim()
@@ -27,9 +35,9 @@ export default function ChatBot() {
         message: text,
         history: updated.slice(1).map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', text: m.text })),
       })
-      setMessages(prev => [...prev, { role: 'assistant', text: res.data.data.reply }])
+      setMessages(prev => [...prev, { role: 'assistant', text: res.data.data.reply }].slice(-50))
     } catch {
-      setMessages(prev => [...prev, { role: 'assistant', text: "Connection error. Please try again." }])
+      setMessages(prev => [...prev, { role: 'assistant', text: "Connection error. Please try again." }].slice(-50))
     }
     setLoading(false)
   }
@@ -37,57 +45,57 @@ export default function ChatBot() {
   return (
     <>
       {!open && (
-        <button onClick={() => setOpen(true)} style={{
+        <button onClick={() => setOpen(true)} aria-label="Open AI chat assistant" style={{
           position: 'fixed', bottom: 20, right: 20, width: 44, height: 44,
-          borderRadius: 2, background: '#1B2A4A', border: 'none',
+          borderRadius: 2, background: 'var(--color-primary)', border: 'none',
           cursor: 'pointer', boxShadow: '0 2px 12px rgba(0,0,0,0.15)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           zIndex: 1000,
         }}>
-          <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="#C9A84C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="var(--color-accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
           </svg>
         </button>
       )}
 
       {open && (
-        <div style={{
+        <div className="chatbot-panel" role="dialog" aria-modal="true" aria-label="AI Chat Assistant" style={{
           position: 'fixed', bottom: 20, right: 20, width: 370, height: 500,
-          background: '#FFF8F0', borderRadius: 2, border: '1px solid #E8DDD0',
+          background: 'var(--color-surface)', borderRadius: 2, border: '1px solid var(--color-border)',
           display: 'flex', flexDirection: 'column', zIndex: 1000,
           boxShadow: '0 4px 24px rgba(0,0,0,0.1)',
         }}>
           {/* Header */}
           <div style={{
-            padding: '0.6rem 0.85rem', borderBottom: '1px solid #EDE5DC',
+            padding: '0.6rem 0.85rem', borderBottom: '1px solid var(--color-border)',
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            background: '#1B2A4A', borderRadius: '2px 2px 0 0',
+            background: 'var(--color-primary)', borderRadius: '2px 2px 0 0',
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#C9A84C' }} />
-              <span style={{ color: '#C9A84C', fontFamily: "'Allura', cursive", fontSize: '1.2rem' }}>Atlas</span>
-              <span style={{ color: 'rgba(201, 168, 76, 0.5)', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>AI</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-accent)' }} />
+              <span style={{ color: 'var(--color-accent)', fontFamily: 'var(--font-brand)', fontSize: 'var(--text-xl)' }}>Atlas</span>
+              <span style={{ color: 'var(--color-accent-50)', fontSize: 'var(--text-xs)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>AI</span>
             </div>
-            <button onClick={() => setOpen(false)} style={{
-              background: 'none', border: '1px solid rgba(201, 168, 76, 0.3)', borderRadius: 2,
-              color: '#C9A84C', cursor: 'pointer', fontSize: '0.7rem', padding: '0.1rem 0.4rem',
+            <button onClick={() => setOpen(false)} aria-label="Close chat" style={{
+              background: 'none', border: '1px solid var(--color-accent-30)', borderRadius: 2,
+              color: 'var(--color-accent)', cursor: 'pointer', fontSize: 'var(--text-sm)', padding: '0.1rem 0.4rem',
             }}>ESC</button>
           </div>
 
           {/* Messages */}
-          <div style={{
+          <div aria-live="polite" style={{
             flex: 1, overflowY: 'auto', padding: '0.65rem',
-            display: 'flex', flexDirection: 'column', gap: '0.5rem',
+            display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)',
           }}>
             {messages.map((msg, i) => (
               <div key={i} style={{ alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
                 <div style={{
                   padding: '0.45rem 0.65rem',
                   borderRadius: 2,
-                  background: msg.role === 'user' ? '#1B2A4A' : '#FFFCF5',
-                  color: msg.role === 'user' ? '#C9A84C' : '#8B3A3A',
-                  fontSize: '0.78rem', lineHeight: 1.55,
-                  border: msg.role === 'user' ? 'none' : '1px solid #E8DDD0',
+                  background: msg.role === 'user' ? 'var(--color-primary)' : 'var(--color-bg)',
+                  color: msg.role === 'user' ? 'var(--color-accent)' : 'var(--color-text-muted)',
+                  fontSize: 'var(--text-sm)', lineHeight: 1.55,
+                  border: msg.role === 'user' ? 'none' : '1px solid var(--color-border)',
                 }}>
                   {msg.text}
                 </div>
@@ -97,8 +105,8 @@ export default function ChatBot() {
               <div style={{ alignSelf: 'flex-start', maxWidth: '85%' }}>
                 <div style={{
                   padding: '0.45rem 0.65rem', borderRadius: 2,
-                  background: '#FFFCF5', border: '1px solid #E8DDD0',
-                  color: '#B89090', fontSize: '0.78rem',
+                  background: 'var(--color-bg)', border: '1px solid var(--color-border)',
+                  color: 'var(--color-text-faint)', fontSize: 'var(--text-sm)',
                 }}>
                   <span style={{ animation: 'pulse 1s ease-in-out infinite' }}>Processing...</span>
                 </div>
@@ -109,20 +117,20 @@ export default function ChatBot() {
 
           {/* Input */}
           <form onSubmit={send} style={{
-            padding: '0.5rem', borderTop: '1px solid #EDE5DC',
+            padding: 'var(--space-sm)', borderTop: '1px solid var(--color-border)',
             display: 'flex', gap: '0.4rem',
           }}>
             <input ref={inputRef} value={input} onChange={e => setInput(e.target.value)}
               placeholder="Ask about IV, P/E, portfolio..." disabled={loading}
               style={{
                 flex: 1, padding: '0.45rem 0.65rem', borderRadius: 2,
-                border: '1px solid #E8DDD0', background: '#FFFCF5', color: '#6B1A1A',
-                fontSize: '0.78rem', outline: 'none',
+                border: '1px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text)',
+                fontSize: 'var(--text-sm)', outline: 'none',
               }} />
             <button type="submit" disabled={loading || !input.trim()} style={{
-              padding: '0.45rem 0.65rem', borderRadius: 2, border: '1px solid #1B2A4A',
-              background: 'transparent', color: '#1B2A4A', cursor: 'pointer',
-              opacity: loading || !input.trim() ? 0.3 : 1, fontSize: '0.7rem',
+              padding: '0.45rem 0.65rem', borderRadius: 2, border: '1px solid var(--color-primary)',
+              background: 'transparent', color: 'var(--color-primary)', cursor: 'pointer',
+              opacity: loading || !input.trim() ? 0.3 : 1, fontSize: 'var(--text-sm)',
               textTransform: 'uppercase', letterSpacing: '0.04em',
             }}>
               Send

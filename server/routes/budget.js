@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const { categorizeTransactions, generateBudgetSummary, generateSpendingAnalysis } = require('../services/claude');
+const { sendError } = require('../utils/errors');
 
 // POST /api/budget/import
 router.post('/import', async (req, res) => {
@@ -29,8 +30,7 @@ router.post('/import', async (req, res) => {
 
     res.json({ success: true, data: { imported: categorized.length, transactions: categorized } });
   } catch (err) {
-    console.error('Budget import error:', err);
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -46,8 +46,7 @@ router.get('/transactions', (req, res) => {
     }
     res.json({ success: true, data: rows });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -68,8 +67,7 @@ router.patch('/transaction/:id', (req, res) => {
     const updated = db.prepare('SELECT * FROM transactions WHERE id = ? AND user_id = ?').get(id, req.userId);
     res.json({ success: true, data: updated });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -88,8 +86,7 @@ router.get('/summary/:month', async (req, res) => {
     const summary = await generateBudgetSummary(month, spendingData);
     res.json({ success: true, data: { summary, spending: spendingData } });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -113,8 +110,7 @@ router.post('/goals', (req, res) => {
     const all = db.prepare('SELECT * FROM budget_goals WHERE user_id = ?').all(req.userId);
     res.json({ success: true, data: all });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -124,8 +120,35 @@ router.get('/goals', (req, res) => {
     const goals = db.prepare('SELECT * FROM budget_goals WHERE user_id = ?').all(req.userId);
     res.json({ success: true, data: goals });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
+  }
+});
+
+// POST /api/budget/transaction — add a single manual transaction
+router.post('/transaction', (req, res) => {
+  try {
+    const { date, description, amount, category } = req.body;
+    if (!date || !description || amount === undefined) {
+      return res.status(400).json({ success: false, error: 'Date, description, and amount are required' });
+    }
+    const month = date.substring(0, 7);
+    const result = db.prepare(
+      'INSERT INTO transactions (user_id, date, description, amount, category, month) VALUES (?, ?, ?, ?, ?, ?)'
+    ).run(req.userId, date, description, parseFloat(amount), category || 'Other', month);
+    const row = db.prepare('SELECT * FROM transactions WHERE id = ?').get(result.lastInsertRowid);
+    res.json({ success: true, data: row });
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
+// DELETE /api/budget/transaction/:id
+router.delete('/transaction/:id', (req, res) => {
+  try {
+    db.prepare('DELETE FROM transactions WHERE id = ? AND user_id = ?').run(req.params.id, req.userId);
+    res.json({ success: true });
+  } catch (err) {
+    sendError(res, err);
   }
 });
 
@@ -143,8 +166,7 @@ router.post('/analyze', async (req, res) => {
     const analysis = await generateSpendingAnalysis(transactions, goalsMap);
     res.json({ success: true, data: { analysis } });
   } catch (err) {
-    console.error('Budget analyze error:', err);
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 

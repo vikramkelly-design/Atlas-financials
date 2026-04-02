@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import useApi, { api } from '../hooks/useApi'
 import usePrices from '../hooks/usePrices'
 import { formatCurrency, numColor } from '../components/NumberDisplay'
+import { gradeColor } from '../utils/grades'
 import LoadingSpinner from '../components/LoadingSpinner'
 import ErrorBanner from '../components/ErrorBanner'
+import ConfirmDialog from '../components/ConfirmDialog'
 
 export default function Dashboard() {
   const navigate = useNavigate()
@@ -16,15 +18,14 @@ export default function Dashboard() {
   const [currentGoal, setCurrentGoal] = useState(null)
   const [insights, setInsights] = useState([])
   const [healthScore, setHealthScore] = useState(null)
-  const [pulse, setPulse] = useState(null)
-  const [challenges, setChallenges] = useState([])
-  const [myChallenges, setMyChallenges] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
   // Net worth form
   const [assetForm, setAssetForm] = useState({ name: '', value: '', type: 'Cash' })
   const [liabilityForm, setLiabilityForm] = useState({ name: '', value: '' })
+  const [confirmDialog, setConfirmDialog] = useState({ open: false, title: '', message: '', onConfirm: null, danger: false })
+  const [budgetLimit, setBudgetLimit] = useState(0)
 
   const tickers = positions.map(p => p.ticker)
   const { prices } = usePrices(tickers)
@@ -51,20 +52,21 @@ export default function Dashboard() {
         setCurrentGoal(null)
       }
 
-      // Fetch health score, insights, pulse, and challenges
+      // Fetch health score and insights
       try {
-        const [hsRes, insRes, pulseRes, chalRes, myChalRes] = await Promise.all([
+        const [hsRes, insRes] = await Promise.all([
           get('/api/insights/health-score'),
           get('/api/insights/dashboard'),
-          get('/api/pulse/latest').catch(() => ({ data: null })),
-          get('/api/challenges').catch(() => ({ data: [] })),
-          get('/api/challenges/mine').catch(() => ({ data: [] })),
         ])
         if (hsRes.data) setHealthScore(hsRes.data)
         if (insRes.data) setInsights(insRes.data)
-        if (pulseRes.data) setPulse(pulseRes.data)
-        if (chalRes.data) setChallenges(chalRes.data)
-        if (myChalRes.data) setMyChallenges(myChalRes.data)
+      } catch {}
+
+      // Fetch budget goals for dynamic limit
+      try {
+        const goalsRes = await get('/api/budget/goals')
+        const totalLimit = goalsRes.data.reduce((s, g) => s + (g.monthly_limit || 0), 0)
+        setBudgetLimit(totalLimit)
       } catch {}
 
       // Get current month transactions
@@ -120,6 +122,24 @@ export default function Dashboard() {
     } catch (err) { console.error(err) }
   }
 
+  const confirmDeleteAsset = (id, name) => {
+    setConfirmDialog({
+      open: true, danger: true,
+      title: 'Delete Asset',
+      message: `Are you sure you want to remove "${name}" from your assets?`,
+      onConfirm: () => { deleteAsset(id); setConfirmDialog(d => ({ ...d, open: false })) }
+    })
+  }
+
+  const confirmDeleteLiability = (id, name) => {
+    setConfirmDialog({
+      open: true, danger: true,
+      title: 'Delete Liability',
+      message: `Are you sure you want to remove "${name}" from your liabilities?`,
+      onConfirm: () => { deleteLiability(id); setConfirmDialog(d => ({ ...d, open: false })) }
+    })
+  }
+
   // Portfolio value
   const portfolioValue = positions.reduce((sum, p) => {
     const price = prices[p.ticker]?.price || 0
@@ -135,153 +155,134 @@ export default function Dashboard() {
   if (loading) return <LoadingSpinner height={200} />
   if (error) return <ErrorBanner message={error} onRetry={fetchAll} />
 
-  const gradeColor = (grade) => {
-    if (grade === 'A' || grade === 'B+') return '#2A5C3A'
-    if (grade === 'B' || grade === 'C+') return '#8B6A2A'
-    return '#8B3A2A'
-  }
-
   return (
     <div>
-      <h1 style={{ fontSize: '1.75rem', marginBottom: '1.5rem' }}>Dashboard</h1>
+      <h1 style={{ fontSize: 'var(--text-3xl)', marginBottom: '1.5rem' }}>Dashboard</h1>
 
-      {/* Weekly Pulse */}
-      {pulse && (
-        <div className="card" style={{ marginBottom: '1rem', background: '#1B2A4A', color: '#C9A84C', border: '1px solid rgba(201, 168, 76, 0.2)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-            <h3 style={{ color: '#C9A84C', fontSize: '0.8rem', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}>This Week's Pulse</h3>
-            <span style={{ fontSize: '0.65rem', color: 'rgba(201, 168, 76, 0.5)' }}>Week of {pulse.week_start}</span>
-          </div>
-          <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
-            {pulse.score_change !== 0 && (
-              <div>
-                <span style={{ fontSize: '0.65rem', color: 'rgba(201, 168, 76, 0.6)', textTransform: 'uppercase' }}>Score</span>
-                <div style={{ fontSize: '1.25rem', fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>
-                  <span style={{ color: pulse.score_change > 0 ? '#4ADE80' : '#F87171' }}>
-                    {pulse.score_change > 0 ? '+' : ''}{pulse.score_change}
-                  </span>
+      {/* Top Section: Health Score + Net Worth side by side */}
+      <div className="grid-2" style={{ marginBottom: '1rem', alignItems: 'stretch' }}>
+        {/* Financial Health Score */}
+        {healthScore ? (
+          <div className="card" style={{ borderLeft: `3px solid ${healthScore.score >= 70 ? 'var(--color-success)' : healthScore.score >= 50 ? 'var(--color-accent)' : 'var(--color-danger)'}` }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+              <h3 style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-base)', fontFamily: 'var(--font-body)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Financial Health</h3>
+              <span style={{ fontSize: 'var(--text-xl)', fontWeight: 700, color: gradeColor(healthScore.grade), padding: '0.15rem 0.5rem', border: `1px solid ${gradeColor(healthScore.grade)}`, borderRadius: 2 }}>
+                {healthScore.grade}
+              </span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem', marginBottom: '0.5rem' }}>
+              <span className="mono" style={{ fontSize: 'var(--text-4xl)', fontWeight: 700, color: 'var(--color-primary)' }}>{healthScore.score}</span>
+              <span className="text-faint" style={{ fontSize: 'var(--text-lg)' }}>/ 100</span>
+            </div>
+            <div className="progress-bar" style={{ marginBottom: '0.75rem', height: 8 }}>
+              <div className="progress-bar-fill" style={{
+                width: `${healthScore.score}%`,
+                background: healthScore.score >= 70 ? 'var(--color-success)' : healthScore.score >= 50 ? 'var(--color-accent)' : 'var(--color-danger)',
+              }} />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              {healthScore.categories?.map(cat => (
+                <div key={cat.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.25rem 0' }}>
+                  <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>{cat.name}</span>
+                  <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: gradeColor(cat.grade), minWidth: 28, textAlign: 'right' }}>{cat.grade}</span>
                 </div>
-              </div>
+              ))}
+            </div>
+            {healthScore.aiSummary && (
+              <p className="text-muted" style={{ fontSize: 'var(--text-sm)', marginTop: '0.5rem', lineHeight: 1.5, borderTop: '1px solid var(--color-border)', paddingTop: '0.5rem' }}>{healthScore.aiSummary}</p>
             )}
-            <div>
-              <span style={{ fontSize: '0.65rem', color: 'rgba(201, 168, 76, 0.6)', textTransform: 'uppercase' }}>Spent</span>
-              <div style={{ fontSize: '1.25rem', fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>
-                {formatCurrency(pulse.spending_total || 0)}
-              </div>
-            </div>
           </div>
-          {pulse.ai_tip && (
-            <p style={{ fontSize: '0.82rem', color: 'rgba(201, 168, 76, 0.8)', lineHeight: 1.5, borderTop: '1px solid rgba(201, 168, 76, 0.15)', paddingTop: '0.65rem' }}>
-              {pulse.ai_tip}
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* Financial Health Score */}
-      {healthScore && (
-        <div className="card" style={{ marginBottom: '1rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-            <h3 style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', fontFamily: 'var(--font-body)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Financial Health Score</h3>
-            <span style={{ fontSize: '1.1rem', fontWeight: 700, color: gradeColor(healthScore.grade), padding: '0.15rem 0.5rem', border: `1px solid ${gradeColor(healthScore.grade)}`, borderRadius: 2 }}>
-              {healthScore.grade}
-            </span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem', marginBottom: '0.5rem' }}>
-            <span className="mono" style={{ fontSize: '2.5rem', fontWeight: 700, color: '#1B2A4A' }}>{healthScore.score}</span>
-            <span className="text-faint" style={{ fontSize: '1rem' }}>/ 100</span>
-          </div>
-          <div className="progress-bar" style={{ marginBottom: '1rem', height: 8 }}>
-            <div className="progress-bar-fill" style={{
-              width: `${healthScore.score}%`,
-              background: healthScore.score >= 70 ? '#2A5C3A' : healthScore.score >= 50 ? '#C9A84C' : '#8B3A2A',
-            }} />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-            {healthScore.categories?.map(cat => (
-              <div key={cat.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.35rem 0', borderBottom: '1px solid var(--color-border)' }}>
-                <div>
-                  <span style={{ fontSize: '0.8rem', color: '#6B1A1A' }}>{cat.name}</span>
-                  {cat.summary && <span className="text-faint" style={{ fontSize: '0.72rem', marginLeft: '0.5rem' }}>{cat.summary}</span>}
-                </div>
-                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: gradeColor(cat.grade), minWidth: 28, textAlign: 'right' }}>{cat.grade}</span>
-              </div>
-            ))}
-          </div>
-          {healthScore.aiSummary && (
-            <p className="text-muted" style={{ fontSize: '0.8rem', marginTop: '0.75rem', lineHeight: 1.5 }}>{healthScore.aiSummary}</p>
-          )}
-        </div>
-      )}
-
-      {/* Net Worth Card */}
-      <div className="card" style={{ marginBottom: '1rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <div>
-            <h3 style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', marginBottom: '0.25rem', fontFamily: 'var(--font-body)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Net Worth</h3>
-            <span className="mono" style={{ fontSize: '2rem', color: numColor(netWorth?.netWorth || 0) }}>
-              {formatCurrency(netWorth?.netWorth || 0)}
-            </span>
-            <p className="text-muted" style={{ fontSize: '0.8rem', marginTop: '0.25rem' }}>
-              Last updated {new Date().toLocaleDateString()}
-            </p>
-          </div>
-        </div>
-        {netWorth && (netWorth.totalAssets > 0 || netWorth.totalLiabilities > 0) && (
-          <div style={{ marginTop: '1rem' }}>
-            <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.8rem', marginBottom: '0.35rem' }}>
-              <span className="text-success mono">{formatCurrency(netWorth.totalAssets)} assets</span>
-              <span className="text-muted">|</span>
-              <span className="text-danger mono">{formatCurrency(netWorth.totalLiabilities)} liabilities</span>
-            </div>
-            <div style={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', background: 'var(--color-surface-2)' }}>
-              <div style={{
-                width: `${(netWorth.totalAssets / (netWorth.totalAssets + netWorth.totalLiabilities)) * 100}%`,
-                background: 'var(--color-success)',
-                borderRadius: '4px 0 0 4px'
-              }} />
-              <div style={{
-                width: `${(netWorth.totalLiabilities / (netWorth.totalAssets + netWorth.totalLiabilities)) * 100}%`,
-                background: 'var(--color-danger)',
-                borderRadius: '0 4px 4px 0'
-              }} />
-            </div>
+        ) : (
+          <div className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <p className="text-faint" style={{ fontSize: 'var(--text-base)' }}>Complete onboarding to see your health score</p>
           </div>
         )}
+
+        {/* Net Worth Card */}
+        <div className="card">
+          <h3 style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-base)', marginBottom: '0.25rem', fontFamily: 'var(--font-body)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Net Worth</h3>
+          <span className="mono" style={{ fontSize: '2rem', color: numColor(netWorth?.netWorth || 0) }}>
+            {formatCurrency(netWorth?.netWorth || 0)}
+          </span>
+          <p className="text-faint" style={{ fontSize: 'var(--text-sm)', marginTop: '0.25rem' }}>
+            Last updated {new Date().toLocaleDateString()}
+          </p>
+          {netWorth && (netWorth.totalAssets > 0 || netWorth.totalLiabilities > 0) && (
+            <div style={{ marginTop: '1rem' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', fontSize: 'var(--text-sm)', marginBottom: '0.35rem' }}>
+                <span className="text-success mono">{formatCurrency(netWorth.totalAssets)} assets</span>
+                <span className="text-muted">|</span>
+                <span className="text-danger mono">{formatCurrency(netWorth.totalLiabilities)} liabilities</span>
+              </div>
+              <div style={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', background: 'var(--color-surface-2)' }}>
+                <div style={{
+                  width: `${(netWorth.totalAssets / (netWorth.totalAssets + netWorth.totalLiabilities)) * 100}%`,
+                  background: 'var(--color-success)',
+                  borderRadius: '4px 0 0 4px'
+                }} />
+                <div style={{
+                  width: `${(netWorth.totalLiabilities / (netWorth.totalAssets + netWorth.totalLiabilities)) * 100}%`,
+                  background: 'var(--color-danger)',
+                  borderRadius: '0 4px 4px 0'
+                }} />
+              </div>
+            </div>
+          )}
+
+          {/* Inline asset/liability summary */}
+          {netWorth && (
+            <div style={{ marginTop: '1rem', borderTop: '1px solid var(--color-border)', paddingTop: '0.75rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 500 }}>Top Assets</span>
+                <span className="text-faint" style={{ fontSize: 'var(--text-sm)', cursor: 'pointer' }} onClick={() => { document.getElementById('nw-tracker')?.scrollIntoView({ behavior: 'smooth' }) }}>Manage ↓</span>
+              </div>
+              {netWorth.assets?.slice(0, 3).map(a => (
+                <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.2rem 0', fontSize: 'var(--text-sm)' }}>
+                  <span>{a.name}</span>
+                  <span className="mono text-success">{formatCurrency(a.value)}</span>
+                </div>
+              ))}
+              {(!netWorth.assets || netWorth.assets.length === 0) && (
+                <p className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>No assets yet</p>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Three summary cards */}
+      {/* Quick Stats Row */}
+      <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600, marginBottom: '0.5rem' }}>Quick Stats</p>
       <div className="grid-3" style={{ marginBottom: '1.5rem' }}>
-        <div className="card" onClick={() => navigate('/budget')} style={{ cursor: 'pointer' }}>
-          <h3 style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', fontFamily: 'var(--font-body)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>This Month's Spending</h3>
-          <span className="mono" style={{ fontSize: '1.5rem', color: 'var(--color-danger)' }}>
+        <div className="card card-clickable" onClick={() => navigate('/budget')}>
+          <h3 style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', fontFamily: 'var(--font-body)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>This Month's Spending</h3>
+          <span className="mono" style={{ fontSize: 'var(--text-2xl)', color: 'var(--color-danger)' }}>
             {formatCurrency(Math.abs(budget?.totalSpent || 0))}
           </span>
           <div className="progress-bar" style={{ marginTop: '0.75rem' }}>
             <div className="progress-bar-fill" style={{
-              width: `${Math.min(100, ((Math.abs(budget?.totalSpent || 0)) / 5000) * 100)}%`,
-              background: Math.abs(budget?.totalSpent || 0) > 5000 ? '#8B3A2A' : '#1B2A4A'
+              width: `${Math.min(100, ((Math.abs(budget?.totalSpent || 0)) / (budgetLimit || 5000)) * 100)}%`,
+              background: Math.abs(budget?.totalSpent || 0) > (budgetLimit || 5000) ? 'var(--color-danger)' : 'var(--color-primary)'
             }} />
           </div>
-          <p className="text-faint" style={{ fontSize: '0.75rem', marginTop: '0.35rem' }}>{budget?.count || 0} transactions</p>
+          <p className="text-faint" style={{ fontSize: 'var(--text-sm)', marginTop: '0.35rem' }}>{budget?.count || 0} transactions</p>
         </div>
 
-        <div className="card" onClick={() => navigate('/portfolio')} style={{ cursor: 'pointer' }}>
-          <h3 style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', fontFamily: 'var(--font-body)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Portfolio</h3>
-          <span className="mono" style={{ fontSize: '1.5rem' }}>
+        <div className="card card-clickable" onClick={() => navigate('/portfolio')}>
+          <h3 style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', fontFamily: 'var(--font-body)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Portfolio</h3>
+          <span className="mono" style={{ fontSize: 'var(--text-2xl)' }}>
             {formatCurrency(portfolioValue)}
           </span>
           {portfolioCost > 0 && (
-            <p className="mono" style={{ fontSize: '0.85rem', color: numColor(portfolioGain), marginTop: '0.25rem' }}>
+            <p className="mono" style={{ fontSize: 'var(--text-base)', color: numColor(portfolioGain), marginTop: '0.25rem' }}>
               {portfolioGain >= 0 ? '+' : ''}{portfolioGain.toFixed(2)}%
             </p>
           )}
         </div>
 
-        <div className="card" onClick={() => navigate('/markets')} style={{ cursor: 'pointer' }}>
-          <h3 style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', fontFamily: 'var(--font-body)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Watchlist</h3>
-          <span className="mono" style={{ fontSize: '1.5rem' }}>{watchlist.length}</span>
-          <p style={{ fontSize: '0.8rem', marginTop: '0.25rem' }}>
+        <div className="card card-clickable" onClick={() => navigate('/markets')}>
+          <h3 style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', fontFamily: 'var(--font-body)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Watchlist</h3>
+          <span className="mono" style={{ fontSize: 'var(--text-2xl)' }}>{watchlist.length}</span>
+          <p style={{ fontSize: 'var(--text-sm)', marginTop: '0.25rem' }}>
             <span className="text-success">{wlUp} up</span>
             <span className="text-muted"> / </span>
             <span className="text-danger">{wlDown} down</span>
@@ -289,48 +290,79 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Current Goal */}
-      {currentGoal && (() => {
-        const pct = currentGoal.target_amount > 0 ? Math.min(100, (currentGoal.current_amount / currentGoal.target_amount) * 100) : 0
-        const deadline = new Date(currentGoal.deadline + 'T00:00:00')
-        const now = new Date(); now.setHours(0,0,0,0)
-        const daysLeft = Math.max(0, Math.ceil((deadline - now) / (1000 * 60 * 60 * 24)))
-        return (
-          <div className="card" onClick={() => navigate('/atlas')} style={{ cursor: 'pointer', marginBottom: '1.5rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-              <h3 style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', fontFamily: 'var(--font-body)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Current Goal</h3>
-              <span className="text-faint" style={{ fontSize: '0.7rem' }}>View Atlas →</span>
+      {/* Goal + Insights side by side */}
+      <div className="grid-2" style={{ marginBottom: '1.5rem', alignItems: 'start' }}>
+        {/* Current Goal */}
+        {currentGoal ? (() => {
+          const pct = currentGoal.target_amount > 0 ? Math.min(100, (currentGoal.current_amount / currentGoal.target_amount) * 100) : 0
+          const deadline = new Date(currentGoal.deadline + 'T00:00:00')
+          const now = new Date(); now.setHours(0,0,0,0)
+          const daysLeft = Math.max(0, Math.ceil((deadline - now) / (1000 * 60 * 60 * 24)))
+          return (
+            <div className="card" onClick={() => navigate('/atlas')} style={{ cursor: 'pointer' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <h3 style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', fontFamily: 'var(--font-body)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Current Goal</h3>
+                <span className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>View Atlas →</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                <span style={{ fontSize: 'var(--text-lg)', fontWeight: 500 }}>{currentGoal.name}</span>
+                <span style={{
+                  fontSize: 'var(--text-sm)', padding: '0.15rem 0.5rem', borderRadius: 4,
+                  background: daysLeft <= 7 ? 'var(--color-danger-light)' : daysLeft <= 30 ? 'var(--color-accent-15)' : 'var(--color-surface-2)',
+                  color: daysLeft <= 7 ? 'var(--color-danger)' : daysLeft <= 30 ? 'var(--color-warning)' : 'var(--color-primary)',
+                }}>
+                  {daysLeft === 0 ? 'Due today' : `${daysLeft}d left`}
+                </span>
+              </div>
+              {currentGoal.ultimate_name && (
+                <p className="text-faint" style={{ fontSize: 'var(--text-sm)', marginBottom: '0.5rem' }}>Toward: {currentGoal.ultimate_name}</p>
+              )}
+              <div className="progress-bar" style={{ marginBottom: '0.25rem' }}>
+                <div className="progress-bar-fill" style={{ width: `${pct}%`, background: 'var(--color-primary)' }} />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-sm)' }}>
+                <span className="mono text-muted">{formatCurrency(currentGoal.current_amount)} / {formatCurrency(currentGoal.target_amount)}</span>
+                <span className="text-faint">{pct.toFixed(0)}%</span>
+              </div>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-              <span style={{ fontSize: '1rem', fontWeight: 500 }}>{currentGoal.name}</span>
-              <span style={{
-                fontSize: '0.7rem', padding: '0.15rem 0.5rem', borderRadius: 4,
-                background: daysLeft <= 7 ? '#F5E8E8' : daysLeft <= 30 ? '#FFF3E0' : '#E8EDF5',
-                color: daysLeft <= 7 ? '#8B3A2A' : daysLeft <= 30 ? '#8B6A2A' : '#1B2A4A',
-              }}>
-                {daysLeft === 0 ? 'Due today' : `${daysLeft}d left`}
-              </span>
-            </div>
-            {currentGoal.ultimate_name && (
-              <p className="text-faint" style={{ fontSize: '0.72rem', marginBottom: '0.5rem' }}>Toward: {currentGoal.ultimate_name}</p>
-            )}
-            <div className="progress-bar" style={{ marginBottom: '0.25rem' }}>
-              <div className="progress-bar-fill" style={{ width: `${pct}%`, background: '#1B2A4A' }} />
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
-              <span className="mono text-muted">{formatCurrency(currentGoal.current_amount)} / {formatCurrency(currentGoal.target_amount)}</span>
-              <span className="text-faint">{pct.toFixed(0)}%</span>
-            </div>
+          )
+        })() : (
+          <div className="card" onClick={() => navigate('/atlas')} style={{ cursor: 'pointer' }}>
+            <h3 style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', fontFamily: 'var(--font-body)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Current Goal</h3>
+            <p className="text-faint" style={{ fontSize: 'var(--text-base)' }}>Set a goal in Atlas to track it here →</p>
           </div>
-        )
-      })()}
+        )}
+
+        {/* Recent Insights */}
+        <div className="card">
+          <h3 style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', fontFamily: 'var(--font-body)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem' }}>Recent Insights</h3>
+          {insights.length === 0 ? (
+            <p className="text-faint" style={{ fontSize: 'var(--text-base)' }}>
+              Import a CSV or add portfolio positions to generate insights.
+            </p>
+          ) : (
+            insights.slice(0, 3).map((insight, i) => (
+              <div key={i} style={{ display: 'flex', gap: '0.75rem', padding: '0.4rem 0', borderBottom: i < 2 ? '1px solid var(--color-border)' : 'none' }}>
+                <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-accent)', marginTop: '0.45rem', flexShrink: 0 }} />
+                <div>
+                  <p style={{ fontSize: 'var(--text-base)', lineHeight: 1.4 }}>{insight.content}</p>
+                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.2rem' }}>
+                    <span className="badge badge-gold">{insight.type}</span>
+                    <span className="text-faint" style={{ fontSize: 'var(--text-xs)' }}>{new Date(insight.created_at).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
 
       {/* Net Worth Tracker */}
-      <div className="card" style={{ marginBottom: '1.5rem' }}>
-        <h2 style={{ fontSize: '1.25rem', marginBottom: '1rem' }}>Net Worth Tracker</h2>
+      <div className="card" id="nw-tracker">
+        <h2 style={{ fontSize: 'var(--text-xl)', marginBottom: '1rem' }}>Net Worth Tracker</h2>
         <div className="grid-2">
           <div>
-            <h4 style={{ fontSize: '0.9rem', marginBottom: '0.75rem', color: 'var(--color-text-muted)' }}>Assets</h4>
+            <h4 style={{ fontSize: 'var(--text-base)', marginBottom: '0.75rem', color: 'var(--color-text-muted)' }}>Assets</h4>
             <form onSubmit={addAsset} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
               <input className="input" placeholder="Name" value={assetForm.name} onChange={e => setAssetForm(p => ({ ...p, name: e.target.value }))} style={{ flex: 1, minWidth: 100 }} />
               <input className="input" type="number" step="0.01" placeholder="Value" value={assetForm.value} onChange={e => setAssetForm(p => ({ ...p, value: e.target.value }))} style={{ width: 100 }} />
@@ -345,21 +377,21 @@ export default function Dashboard() {
             {netWorth?.assets?.map(a => (
               <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem 0', borderBottom: '1px solid var(--color-border)' }}>
                 <div>
-                  <span style={{ fontSize: '0.85rem' }}>{a.name}</span>
+                  <span style={{ fontSize: 'var(--text-base)' }}>{a.name}</span>
                   <span className="badge badge-neutral" style={{ marginLeft: '0.5rem' }}>{a.type}</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span className="mono text-success" style={{ fontSize: '0.85rem' }}>{formatCurrency(a.value)}</span>
-                  <button onClick={() => deleteAsset(a.id)} style={{ background: 'none', border: 'none', color: 'var(--color-text-faint)', cursor: 'pointer', fontSize: '1rem' }}>x</button>
+                  <span className="mono text-success" style={{ fontSize: 'var(--text-base)' }}>{formatCurrency(a.value)}</span>
+                  <button onClick={() => confirmDeleteAsset(a.id, a.name)} aria-label={`Remove ${a.name}`} style={{ background: 'none', border: 'none', color: 'var(--color-text-faint)', cursor: 'pointer', fontSize: 'var(--text-lg)' }}>x</button>
                 </div>
               </div>
             ))}
             {(!netWorth?.assets || netWorth.assets.length === 0) && (
-              <p className="text-faint" style={{ fontSize: '0.85rem' }}>No assets added yet.</p>
+              <p className="text-faint" style={{ fontSize: 'var(--text-base)' }}>No assets added yet.</p>
             )}
           </div>
           <div>
-            <h4 style={{ fontSize: '0.9rem', marginBottom: '0.75rem', color: 'var(--color-text-muted)' }}>Liabilities</h4>
+            <h4 style={{ fontSize: 'var(--text-base)', marginBottom: '0.75rem', color: 'var(--color-text-muted)' }}>Liabilities</h4>
             <form onSubmit={addLiability} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
               <input className="input" placeholder="Name" value={liabilityForm.name} onChange={e => setLiabilityForm(p => ({ ...p, name: e.target.value }))} style={{ flex: 1 }} />
               <input className="input" type="number" step="0.01" placeholder="Value" value={liabilityForm.value} onChange={e => setLiabilityForm(p => ({ ...p, value: e.target.value }))} style={{ width: 100 }} />
@@ -367,101 +399,20 @@ export default function Dashboard() {
             </form>
             {netWorth?.liabilities?.map(l => (
               <div key={l.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem 0', borderBottom: '1px solid var(--color-border)' }}>
-                <span style={{ fontSize: '0.85rem' }}>{l.name}</span>
+                <span style={{ fontSize: 'var(--text-base)' }}>{l.name}</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span className="mono text-danger" style={{ fontSize: '0.85rem' }}>{formatCurrency(l.value)}</span>
-                  <button onClick={() => deleteLiability(l.id)} style={{ background: 'none', border: 'none', color: 'var(--color-text-faint)', cursor: 'pointer', fontSize: '1rem' }}>x</button>
+                  <span className="mono text-danger" style={{ fontSize: 'var(--text-base)' }}>{formatCurrency(l.value)}</span>
+                  <button onClick={() => confirmDeleteLiability(l.id, l.name)} aria-label={`Remove ${l.name}`} style={{ background: 'none', border: 'none', color: 'var(--color-text-faint)', cursor: 'pointer', fontSize: 'var(--text-lg)' }}>x</button>
                 </div>
               </div>
             ))}
             {(!netWorth?.liabilities || netWorth.liabilities.length === 0) && (
-              <p className="text-faint" style={{ fontSize: '0.85rem' }}>No liabilities added yet.</p>
+              <p className="text-faint" style={{ fontSize: 'var(--text-base)' }}>No liabilities added yet.</p>
             )}
           </div>
         </div>
       </div>
-
-      {/* Challenges */}
-      {challenges.length > 0 && (
-        <div className="card" style={{ marginBottom: '1.5rem' }}>
-          <h2 style={{ fontSize: '1.25rem', marginBottom: '1rem' }}>Monthly Challenges</h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {challenges.map(c => {
-              const myChallenge = myChallenges.find(mc => mc.id === c.id)
-              const isJoined = c.joined || !!myChallenge
-              const progress = myChallenge?.progress || c.progress || 0
-              const status = myChallenge?.user_status || c.status
-              return (
-                <div key={c.id} style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '0.75rem', background: '#FFFCF5', border: '1px solid #E8DDD0', borderRadius: 2,
-                }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                      <span style={{ fontSize: '0.9rem', fontWeight: 500, color: '#6B1A1A' }}>{c.name}</span>
-                      {status === 'completed' && <span className="badge badge-success">Done</span>}
-                    </div>
-                    <p style={{ fontSize: '0.75rem', color: '#B89090', marginBottom: isJoined ? '0.35rem' : 0 }}>{c.description}</p>
-                    {isJoined && (
-                      <div className="progress-bar" style={{ maxWidth: 200, height: 6 }}>
-                        <div className="progress-bar-fill" style={{
-                          width: `${progress}%`,
-                          background: status === 'completed' ? '#2A5C3A' : '#1B2A4A',
-                        }} />
-                      </div>
-                    )}
-                  </div>
-                  {!isJoined && (
-                    <button
-                      className="btn btn-ghost"
-                      style={{ fontSize: '0.7rem', padding: '0.3rem 0.75rem' }}
-                      onClick={async () => {
-                        try {
-                          await api.post(`/api/challenges/join/${c.id}`)
-                          const [chalRes, myChalRes] = await Promise.all([
-                            get('/api/challenges'),
-                            get('/api/challenges/mine'),
-                          ])
-                          if (chalRes.data) setChallenges(chalRes.data)
-                          if (myChalRes.data) setMyChallenges(myChalRes.data)
-                        } catch {}
-                      }}
-                    >
-                      Join
-                    </button>
-                  )}
-                  {isJoined && status !== 'completed' && (
-                    <span className="mono text-faint" style={{ fontSize: '0.75rem', marginLeft: '0.5rem' }}>{progress}%</span>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Recent Insights */}
-      <div className="card">
-        <h2 style={{ fontSize: '1.25rem', marginBottom: '1rem' }}>Recent Insights</h2>
-        {insights.length === 0 ? (
-          <p className="text-muted" style={{ fontSize: '0.9rem' }}>
-            Import a CSV or add portfolio positions to generate your first insight.
-          </p>
-        ) : (
-          insights.slice(0, 3).map((insight, i) => (
-            <div key={i} style={{ display: 'flex', gap: '0.75rem', padding: '0.5rem 0', borderBottom: i < 2 ? '1px solid var(--color-border)' : 'none' }}>
-              <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--color-accent)', marginTop: '0.45rem', flexShrink: 0 }} />
-              <div>
-                <p style={{ fontSize: '0.85rem' }}>{insight.content}</p>
-                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
-                  <span className="badge badge-gold">{insight.type}</span>
-                  <span className="text-faint" style={{ fontSize: '0.7rem' }}>{new Date(insight.created_at).toLocaleDateString()}</span>
-                </div>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
+      <ConfirmDialog {...confirmDialog} onCancel={() => setConfirmDialog(d => ({ ...d, open: false }))} />
     </div>
   )
 }

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const { sendError } = require('../utils/errors');
 
 // GET /api/share/score/:token — PUBLIC, no auth
 router.get('/score/:token', (req, res) => {
@@ -49,7 +50,7 @@ router.get('/score/:token', (req, res) => {
       }
     });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 

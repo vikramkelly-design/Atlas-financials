@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { api } from '../hooks/useApi'
 
 export default function ForgotPassword() {
@@ -11,8 +12,8 @@ export default function ForgotPassword() {
 
   const inputStyle = {
     width: '100%', padding: '0.6rem 0.75rem', borderRadius: 2,
-    border: '1px solid #E8DDD0', background: '#FFF8F0', color: '#6B1A1A',
-    fontSize: '0.85rem', outline: 'none',
+    border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)',
+    fontSize: 'var(--text-base)', outline: 'none',
   }
 
   const requestReset = async (e) => {
@@ -44,26 +45,26 @@ export default function ForgotPassword() {
 
   return (
     <div style={{
-      minHeight: '100vh', background: '#FFFCF5',
+      minHeight: '100vh', background: 'var(--color-bg)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
     }}>
       <div style={{ width: '100%', maxWidth: 380, padding: '2rem' }}>
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <h1 style={{ fontFamily: "'Allura', cursive", fontSize: 42, color: '#C9A84C', marginBottom: '0.15rem' }}>Atlas</h1>
+          <h1 style={{ fontFamily: 'var(--font-brand)', fontSize: 42, color: 'var(--color-accent)', marginBottom: '0.15rem' }}>Atlas</h1>
         </div>
 
         {step === 'email' && (
           <>
-            <h2 style={{ fontSize: '1.1rem', marginBottom: '0.5rem', textAlign: 'center' }}>Reset Password</h2>
-            <p style={{ color: '#B89090', fontSize: '0.8rem', marginBottom: '1.5rem', textAlign: 'center' }}>
+            <h2 style={{ fontSize: 'var(--text-lg)', marginBottom: '0.5rem', textAlign: 'center' }}>Reset Password</h2>
+            <p style={{ color: 'var(--color-text-faint)', fontSize: 'var(--text-sm)', marginBottom: '1.5rem', textAlign: 'center' }}>
               Enter your email and we'll send you a reset code.
             </p>
             <form onSubmit={requestReset}>
               <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', color: '#B89090', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Email</label>
+                <label className="form-label">Email</label>
                 <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" style={inputStyle} autoFocus />
               </div>
-              {error && <div style={{ background: '#F5E8E8', border: '1px solid rgba(139, 58, 42, 0.2)', borderRadius: 2, padding: '0.45rem 0.65rem', marginBottom: '0.85rem', color: '#8B3A2A', fontSize: '0.78rem' }}>{error}</div>}
+              {error && <div style={{ background: 'var(--color-danger-light)', border: '1px solid rgba(139, 58, 42, 0.2)', borderRadius: 2, padding: '0.45rem 0.65rem', marginBottom: '0.85rem', color: 'var(--color-danger)', fontSize: 'var(--text-sm)' }}>{error}</div>}
               <button type="submit" disabled={loading} className="btn btn-primary" style={{ width: '100%' }}>
                 {loading ? 'Sending...' : 'Send Reset Code'}
               </button>
@@ -73,20 +74,20 @@ export default function ForgotPassword() {
 
         {step === 'reset' && (
           <>
-            <h2 style={{ fontSize: '1.1rem', marginBottom: '0.5rem', textAlign: 'center' }}>Enter Reset Code</h2>
-            <p style={{ color: '#B89090', fontSize: '0.8rem', marginBottom: '1.5rem', textAlign: 'center' }}>
+            <h2 style={{ fontSize: 'var(--text-lg)', marginBottom: '0.5rem', textAlign: 'center' }}>Enter Reset Code</h2>
+            <p style={{ color: 'var(--color-text-faint)', fontSize: 'var(--text-sm)', marginBottom: '1.5rem', textAlign: 'center' }}>
               Check your email for the reset code.
             </p>
             <form onSubmit={resetPassword}>
               <div style={{ marginBottom: '0.85rem' }}>
-                <label style={{ display: 'block', color: '#B89090', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Reset Code</label>
+                <label className="form-label">Reset Code</label>
                 <input type="text" value={token} onChange={e => setToken(e.target.value)} placeholder="Paste code from email" style={inputStyle} autoFocus />
               </div>
               <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', color: '#B89090', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>New Password</label>
+                <label className="form-label">New Password</label>
                 <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Min 6 characters" style={inputStyle} />
               </div>
-              {error && <div style={{ background: '#F5E8E8', border: '1px solid rgba(139, 58, 42, 0.2)', borderRadius: 2, padding: '0.45rem 0.65rem', marginBottom: '0.85rem', color: '#8B3A2A', fontSize: '0.78rem' }}>{error}</div>}
+              {error && <div style={{ background: 'var(--color-danger-light)', border: '1px solid rgba(139, 58, 42, 0.2)', borderRadius: 2, padding: '0.45rem 0.65rem', marginBottom: '0.85rem', color: 'var(--color-danger)', fontSize: 'var(--text-sm)' }}>{error}</div>}
               <button type="submit" disabled={loading} className="btn btn-primary" style={{ width: '100%' }}>
                 {loading ? 'Resetting...' : 'Reset Password'}
               </button>
@@ -96,14 +97,14 @@ export default function ForgotPassword() {
 
         {step === 'done' && (
           <div style={{ textAlign: 'center' }}>
-            <p style={{ color: '#2A5C3A', fontSize: '1rem', marginBottom: '1rem' }}>Password reset successful!</p>
-            <a href="/" style={{ color: '#C9A84C', fontSize: '0.85rem' }}>Back to Login</a>
+            <p style={{ color: 'var(--color-success)', fontSize: 'var(--text-lg)', marginBottom: '1rem' }}>Password reset successful!</p>
+            <Link to="/" style={{ color: 'var(--color-accent)', fontSize: 'var(--text-base)' }}>Back to Login</Link>
           </div>
         )}
 
         {step !== 'done' && (
           <p style={{ textAlign: 'center', marginTop: '1.5rem' }}>
-            <a href="/" style={{ color: '#C9A84C', fontSize: '0.8rem' }}>Back to Login</a>
+            <Link to="/" style={{ color: 'var(--color-accent)', fontSize: 'var(--text-sm)' }}>Back to Login</Link>
           </p>
         )}
       </div>

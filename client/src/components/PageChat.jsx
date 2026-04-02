@@ -44,13 +44,13 @@ export default function PageChat({ context }) {
     <div className="card" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 180px)', minHeight: 400 }}>
       {/* Header */}
       <div style={{
-        padding: '0.6rem 0.85rem', borderBottom: '1px solid #EDE5DC',
+        padding: '0.6rem 0.85rem', borderBottom: '1px solid var(--color-border)',
         display: 'flex', alignItems: 'center', gap: '0.5rem',
-        background: '#1B2A4A', borderRadius: '6px 6px 0 0', margin: '-1.25rem -1.25rem 0',
+        background: 'var(--color-primary)', borderRadius: '6px 6px 0 0', margin: '-1.25rem -1.25rem 0',
       }}>
-        <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#C9A84C' }} />
-        <span style={{ color: '#C9A84C', fontFamily: "'Allura', cursive", fontSize: '1.2rem' }}>Atlas</span>
-        <span style={{ color: 'rgba(201, 168, 76, 0.5)', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+        <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-accent)' }} />
+        <span style={{ color: 'var(--color-accent)', fontFamily: 'var(--font-brand)', fontSize: 'var(--text-xl)' }}>Atlas</span>
+        <span style={{ color: 'var(--color-accent-50)', fontSize: 'var(--text-xs)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
           Personal Coach
         </span>
       </div>
@@ -64,10 +64,10 @@ export default function PageChat({ context }) {
           <div key={i} style={{ alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
             <div style={{
               padding: '0.5rem 0.75rem', borderRadius: 4,
-              background: msg.role === 'user' ? '#1B2A4A' : '#FFFCF5',
-              color: msg.role === 'user' ? '#C9A84C' : '#8B3A3A',
-              fontSize: '0.82rem', lineHeight: 1.6,
-              border: msg.role === 'user' ? 'none' : '1px solid #E8DDD0',
+              background: msg.role === 'user' ? 'var(--color-primary)' : 'var(--color-bg)',
+              color: msg.role === 'user' ? 'var(--color-accent)' : 'var(--color-text-muted)',
+              fontSize: 'var(--text-base)', lineHeight: 1.6,
+              border: msg.role === 'user' ? 'none' : '1px solid var(--color-border)',
               whiteSpace: 'pre-wrap',
             }}>
               {msg.text}
@@ -78,8 +78,8 @@ export default function PageChat({ context }) {
           <div style={{ alignSelf: 'flex-start', maxWidth: '85%' }}>
             <div style={{
               padding: '0.5rem 0.75rem', borderRadius: 4,
-              background: '#FFFCF5', border: '1px solid #E8DDD0',
-              color: '#B89090', fontSize: '0.82rem',
+              background: 'var(--color-bg)', border: '1px solid var(--color-border)',
+              color: 'var(--color-text-faint)', fontSize: 'var(--text-base)',
             }}>
               <span style={{ animation: 'pulse 1s ease-in-out infinite' }}>Thinking...</span>
             </div>
@@ -90,20 +90,20 @@ export default function PageChat({ context }) {
 
       {/* Input */}
       <form onSubmit={send} style={{
-        padding: '0.65rem 0 0', borderTop: '1px solid #EDE5DC',
+        padding: '0.65rem 0 0', borderTop: '1px solid var(--color-border)',
         display: 'flex', gap: '0.4rem',
       }}>
         <input ref={inputRef} value={input} onChange={e => setInput(e.target.value)}
           placeholder={`Ask about your ${context}...`} disabled={loading}
           style={{
             flex: 1, padding: '0.5rem 0.75rem', borderRadius: 4,
-            border: '1px solid #E8DDD0', background: '#FFFCF5', color: '#6B1A1A',
-            fontSize: '0.82rem', outline: 'none',
+            border: '1px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text)',
+            fontSize: 'var(--text-base)', outline: 'none',
           }} />
         <button type="submit" disabled={loading || !input.trim()} style={{
-          padding: '0.5rem 0.75rem', borderRadius: 4, border: '1px solid #1B2A4A',
-          background: 'transparent', color: '#1B2A4A', cursor: 'pointer',
-          opacity: loading || !input.trim() ? 0.3 : 1, fontSize: '0.72rem',
+          padding: '0.5rem 0.75rem', borderRadius: 4, border: '1px solid var(--color-primary)',
+          background: 'transparent', color: 'var(--color-primary)', cursor: 'pointer',
+          opacity: loading || !input.trim() ? 0.3 : 1, fontSize: 'var(--text-sm)',
           textTransform: 'uppercase', letterSpacing: '0.04em',
         }}>
           Send

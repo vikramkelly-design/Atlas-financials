@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const { callAI } = require('../services/claude');
+const { sendError } = require('../utils/errors');
 
 // GET /api/debt — list all debts for user
 router.get('/', (req, res) => {
@@ -9,23 +10,25 @@ router.get('/', (req, res) => {
     const debts = db.prepare('SELECT * FROM debts WHERE user_id = ? ORDER BY interest_rate DESC').all(req.userId);
     res.json({ success: true, data: debts });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 
 // POST /api/debt — add a debt
 router.post('/', (req, res) => {
   try {
-    const { name, balance, interest_rate, min_payment } = req.body;
-    if (!name || !balance || interest_rate === undefined || !min_payment) {
-      return res.status(400).json({ success: false, error: 'Name, balance, interest rate, and minimum payment are required' });
-    }
+    const { validateString, validatePositiveAmount, validateRate } = require('../utils/validate');
+    const name = validateString(req.body.name, 'Name', 100);
+    const balance = validatePositiveAmount(req.body.balance, 'Balance');
+    const interest_rate = validateRate(req.body.interest_rate, 'Interest rate', 0, 100);
+    const min_payment = validatePositiveAmount(req.body.min_payment, 'Minimum payment');
     const result = db.prepare(
       'INSERT INTO debts (user_id, name, balance, interest_rate, min_payment) VALUES (?, ?, ?, ?, ?)'
     ).run(req.userId, name, balance, interest_rate, min_payment);
     res.json({ success: true, data: { id: result.lastInsertRowid } });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    if (err.status === 400) return res.status(400).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -35,7 +38,7 @@ router.delete('/:id', (req, res) => {
     db.prepare('DELETE FROM debts WHERE id = ? AND user_id = ?').run(req.params.id, req.userId);
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -84,15 +87,15 @@ router.post('/plan', async (req, res) => {
       for (const d of debtState) {
         if (d.paidOff) continue;
 
-        // Apply interest
-        const interest = d.balance * d.rate;
-        d.balance += interest;
+        // Apply interest (round to avoid floating point drift)
+        const interest = Math.round(d.balance * d.rate * 100) / 100;
+        d.balance = Math.round((d.balance + interest) * 100) / 100;
         d.totalInterest += interest;
         totalInterest += interest;
 
         // Apply minimum payment
         const payment = Math.min(d.balance, d.minPayment);
-        d.balance -= payment;
+        d.balance = Math.round((d.balance - payment) * 100) / 100;
 
         if (d.balance <= 0.01) {
           d.paidOff = true;
@@ -141,11 +144,11 @@ router.post('/plan', async (req, res) => {
         monthsNoExtra++;
         for (const d of noExtraState) {
           if (d.paidOff) continue;
-          const interest = d.balance * d.rate;
-          d.balance += interest;
+          const interest = Math.round(d.balance * d.rate * 100) / 100;
+          d.balance = Math.round((d.balance + interest) * 100) / 100;
           totalInterestNoExtra += interest;
           const payment = Math.min(d.balance, d.minPayment);
-          d.balance -= payment;
+          d.balance = Math.round((d.balance - payment) * 100) / 100;
           if (d.balance <= 0.01) { d.paidOff = true; d.balance = 0; }
         }
       }
@@ -173,6 +176,7 @@ router.post('/plan', async (req, res) => {
       success: true,
       data: {
         debts: debtState.map((d, i) => ({
+          id: d.id,
           order: i + 1,
           name: d.name,
           originalBalance: d.originalBalance,
@@ -192,8 +196,7 @@ router.post('/plan', async (req, res) => {
       }
     });
   } catch (err) {
-    console.error('[DebtPlan]', err.message);
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 

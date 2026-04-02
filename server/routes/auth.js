@@ -2,9 +2,10 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('../db');
+const { sendError } = require('../utils/errors');
 
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'ledger-secret-key-change-in-prod';
+const { JWT_SECRET } = require('../config');
 
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
@@ -28,12 +29,11 @@ router.post('/register', async (req, res) => {
     );
 
     const user = { id: result.lastInsertRowid, name: name.trim(), email: email.toLowerCase().trim() };
-    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
+    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
 
     res.status(201).json({ success: true, data: { token, user } });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -55,11 +55,10 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ success: false, error: 'Invalid email or password' });
     }
 
-    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
+    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
     res.json({ success: true, data: { token, user: { id: user.id, name: user.name, email: user.email } } });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -86,8 +85,7 @@ router.post('/forgot-password', async (req, res) => {
 
     res.json({ success: true, data: { message: 'If that email exists, a reset code has been sent.' } });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -112,8 +110,7 @@ router.post('/reset-password', async (req, res) => {
 
     res.json({ success: true, data: { message: 'Password reset successfully' } });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, error: err.message });
+    sendError(res, err);
   }
 });
 

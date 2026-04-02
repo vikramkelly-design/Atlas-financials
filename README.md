@@ -1,6 +1,6 @@
-# FinWise
+# Atlas
 
-AI-powered personal finance app with budget tracking, portfolio management, and market intelligence.
+AI-powered personal finance terminal with budget tracking, portfolio management, and market intelligence.
 
 ## Setup
 

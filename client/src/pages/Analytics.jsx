@@ -85,7 +85,7 @@ export default function Analytics() {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <h1 style={{ fontSize: '1.75rem' }}>Analytics</h1>
+        <h1 style={{ fontSize: 'var(--text-3xl)' }}>Analytics</h1>
       </div>
 
       <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '1.5rem', borderBottom: '2px solid var(--color-border)' }}>
@@ -97,7 +97,7 @@ export default function Analytics() {
             padding: '0.6rem 1.25rem', border: 'none', borderBottom: tab === t.key ? '2px solid var(--color-accent)' : '2px solid transparent',
             background: 'none', cursor: 'pointer', fontWeight: tab === t.key ? 600 : 400,
             color: tab === t.key ? 'var(--color-accent)' : 'var(--color-text-muted)',
-            fontSize: '0.9rem', marginBottom: '-2px', transition: 'all 0.15s ease',
+            fontSize: 'var(--text-base)', marginBottom: '-2px', transition: 'all 0.15s ease',
           }}>
             {t.label}
           </button>
@@ -111,10 +111,10 @@ export default function Analytics() {
         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
           {portfolios.map(p => (
             <div key={p.id} onClick={() => setActiveId(p.id)} style={{
-              padding: '0.4rem 0.75rem', borderRadius: 4, cursor: 'pointer', fontSize: '0.85rem',
-              background: p.id === activeId ? '#1B2A4A' : 'var(--color-surface)',
-              color: p.id === activeId ? '#C9A84C' : 'var(--color-text)',
-              border: '1px solid ' + (p.id === activeId ? '#1B2A4A' : 'var(--color-border)'),
+              padding: '0.4rem 0.75rem', borderRadius: 4, cursor: 'pointer', fontSize: 'var(--text-base)',
+              background: p.id === activeId ? 'var(--color-primary)' : 'var(--color-surface)',
+              color: p.id === activeId ? 'var(--color-accent)' : 'var(--color-text)',
+              border: '1px solid ' + (p.id === activeId ? 'var(--color-primary)' : 'var(--color-border)'),
             }}>
               {p.name}
             </div>
@@ -167,7 +167,7 @@ function PieChart({ enriched, totalValue }) {
 
   return (
     <div className="card" style={{ padding: '1.25rem' }}>
-      <h2 style={{ fontSize: '1rem', marginBottom: '1rem' }}>Holdings Allocation</h2>
+      <h2 style={{ fontSize: 'var(--text-lg)', marginBottom: '1rem' }}>Holdings Allocation</h2>
       <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
         <svg viewBox="0 0 120 120" width="140" height="140" style={{ flexShrink: 0 }}>
           {segments.map(seg => (
@@ -180,13 +180,13 @@ function PieChart({ enriched, totalValue }) {
           </text>
           <text x="60" y="68" textAnchor="middle" fill="var(--color-text-muted)" fontSize="7">Total Value</text>
         </svg>
-        <div style={{ fontSize: '0.78rem', flex: 1 }}>
+        <div style={{ fontSize: 'var(--text-sm)', flex: 1 }}>
           {segments.map(seg => (
             <div key={seg.ticker} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
               <span style={{ width: 10, height: 10, borderRadius: 2, background: seg.color, flexShrink: 0 }} />
               <span className="mono" style={{ fontWeight: 600, minWidth: 48 }}>{seg.ticker}</span>
               <span className="text-muted">{(seg.pct * 100).toFixed(1)}%</span>
-              <span className="mono text-muted" style={{ marginLeft: 'auto', fontSize: '0.72rem' }}>{formatCurrency(seg.currentValue || 0)}</span>
+              <span className="mono text-muted" style={{ marginLeft: 'auto', fontSize: 'var(--text-sm)' }}>{formatCurrency(seg.currentValue || 0)}</span>
             </div>
           ))}
         </div>
@@ -213,14 +213,14 @@ function NetWorthCard({ networth, portfolioValue }) {
 
   return (
     <div className="card" style={{ padding: '1.25rem' }}>
-      <h2 style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>Net Worth</h2>
-      <p className="mono" style={{ fontSize: '1.5rem', fontWeight: 700, color: numColor(totalNetWorth), marginBottom: '1rem' }}>
+      <h2 style={{ fontSize: 'var(--text-lg)', marginBottom: '0.5rem' }}>Net Worth</h2>
+      <p className="mono" style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: numColor(totalNetWorth), marginBottom: '1rem' }}>
         {formatCurrency(totalNetWorth)}
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
         {items.map(item => (
           <div key={item.label}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', marginBottom: '0.15rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-sm)', marginBottom: '0.15rem' }}>
               <span>{item.label}</span>
               <span className="mono" style={{ color: item.color, fontWeight: 600 }}>
                 {item.value < 0 ? '-' : ''}{formatCurrency(Math.abs(item.value))}
@@ -358,17 +358,17 @@ function PerformanceChart({ history, period, setPeriod, loading }) {
   return (
     <div className="card" style={{ marginBottom: '1rem', padding: '1.25rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-        <h2 style={{ fontSize: '1rem' }}>Performance vs S&P 500</h2>
+        <h2 style={{ fontSize: 'var(--text-lg)' }}>Performance vs S&P 500</h2>
         <div style={{ display: 'flex', gap: '0.25rem' }}>
           {PERIODS.map(p => (
             <button key={p.key} onClick={() => setPeriod(p.key)} className={`btn ${period === p.key ? 'btn-primary' : 'btn-ghost'}`}
-              style={{ fontSize: '0.72rem', padding: '0.2rem 0.55rem' }}>{p.label}</button>
+              style={{ fontSize: 'var(--text-sm)', padding: '0.2rem 0.55rem' }}>{p.label}</button>
           ))}
         </div>
       </div>
 
       {/* Legend */}
-      <div style={{ display: 'flex', gap: '1.25rem', fontSize: '0.78rem', marginBottom: '0.5rem' }}>
+      <div style={{ display: 'flex', gap: '1.25rem', fontSize: 'var(--text-sm)', marginBottom: '0.5rem' }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
           <span style={{ width: 14, height: 3, background: 'var(--color-accent)', borderRadius: 2 }} />
           Portfolio {pFinal != null && <span className="mono" style={{ color: numColor(pFinal), fontWeight: 600 }}>{pFinal >= 0 ? '+' : ''}{pFinal.toFixed(2)}%</span>}
@@ -383,7 +383,7 @@ function PerformanceChart({ history, period, setPeriod, loading }) {
         <div style={{ height: H, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><LoadingSpinner height={40} /></div>
       ) : pNorm.length < 2 && sNorm.length < 2 ? (
         <div style={{ height: H, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <p className="text-muted" style={{ fontSize: '0.85rem' }}>Not enough data for this period.</p>
+          <p className="text-muted" style={{ fontSize: 'var(--text-base)' }}>Not enough data for this period.</p>
         </div>
       ) : (
         <div style={{ position: 'relative' }}>
@@ -444,14 +444,14 @@ function PerformanceChart({ history, period, setPeriod, loading }) {
           {/* Tooltip (HTML overlay for crisp text) */}
           {hoverP && (
             <ChartTooltip svgRef={svgRef} W={W} idx={hoverIdx} dataLen={pNorm.length} pad={PAD} cw={cw}>
-              <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginBottom: 3 }}>{fmtDateFull(hoverP.date)}</div>
-              <div style={{ fontSize: '0.78rem' }}>
+              <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', marginBottom: 3 }}>{fmtDateFull(hoverP.date)}</div>
+              <div style={{ fontSize: 'var(--text-sm)' }}>
                 <span style={{ color: 'var(--color-accent)', fontWeight: 600 }}>Portfolio:</span>{' '}
                 <span className="mono" style={{ color: numColor(hoverP.pct), fontWeight: 600 }}>{hoverP.pct >= 0 ? '+' : ''}{hoverP.pct.toFixed(2)}%</span>
-                <span className="mono text-muted" style={{ marginLeft: 4, fontSize: '0.7rem' }}>({formatCurrency(hoverP.value)})</span>
+                <span className="mono text-muted" style={{ marginLeft: 4, fontSize: 'var(--text-sm)' }}>({formatCurrency(hoverP.value)})</span>
               </div>
               {hoverS && (
-                <div style={{ fontSize: '0.78rem' }}>
+                <div style={{ fontSize: 'var(--text-sm)' }}>
                   <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>S&P 500:</span>{' '}
                   <span className="mono" style={{ color: numColor(hoverS.pct), fontWeight: 600 }}>{hoverS.pct >= 0 ? '+' : ''}{hoverS.pct.toFixed(2)}%</span>
                 </div>
@@ -541,9 +541,9 @@ function ValueChart({ history, period, loading }) {
     <div className="card" style={{ padding: '1.25rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
         <div>
-          <h2 style={{ fontSize: '1rem', marginBottom: '0.15rem' }}>Portfolio Value</h2>
+          <h2 style={{ fontSize: 'var(--text-lg)', marginBottom: '0.15rem' }}>Portfolio Value</h2>
           {portfolio.length >= 2 && (
-            <span className="mono" style={{ fontSize: '0.8rem', color: numColor(changePct) }}>
+            <span className="mono" style={{ fontSize: 'var(--text-sm)', color: numColor(changePct) }}>
               {formatCurrency(endVal)} ({changePct >= 0 ? '+' : ''}{changePct.toFixed(2)}%)
             </span>
           )}
@@ -554,7 +554,7 @@ function ValueChart({ history, period, loading }) {
         <div style={{ height: H, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><LoadingSpinner height={40} /></div>
       ) : portfolio.length < 2 ? (
         <div style={{ height: H, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <p className="text-muted" style={{ fontSize: '0.85rem' }}>Not enough data for this period.</p>
+          <p className="text-muted" style={{ fontSize: 'var(--text-base)' }}>Not enough data for this period.</p>
         </div>
       ) : (
         <div style={{ position: 'relative' }}>
@@ -595,12 +595,12 @@ function ValueChart({ history, period, loading }) {
           {/* Tooltip */}
           {hoverD && (
             <ChartTooltip svgRef={svgRef} W={W} idx={hoverIdx} dataLen={portfolio.length} pad={PAD} cw={cw}>
-              <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginBottom: 3 }}>{fmtDateFull(hoverD.date)}</div>
-              <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+              <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', marginBottom: 3 }}>{fmtDateFull(hoverD.date)}</div>
+              <div style={{ fontSize: 'var(--text-base)', fontWeight: 600 }}>
                 <span className="mono" style={{ color: 'var(--color-accent)' }}>{formatCurrency(hoverD.value)}</span>
               </div>
               {startVal > 0 && (
-                <div className="mono" style={{ fontSize: '0.72rem', color: numColor(hoverD.value - startVal) }}>
+                <div className="mono" style={{ fontSize: 'var(--text-sm)', color: numColor(hoverD.value - startVal) }}>
                   {hoverD.value >= startVal ? '+' : ''}{formatCurrency(hoverD.value - startVal)} ({((hoverD.value - startVal) / startVal * 100).toFixed(2)}%)
                 </div>
               )}
