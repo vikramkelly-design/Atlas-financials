@@ -291,6 +291,16 @@ for (const sql of migrate3) {
   try { db.exec(sql); } catch {}
 }
 
+// Add user flag columns for track record
+const migrate4 = [
+  'ALTER TABLE users ADD COLUMN has_viewed_dcf INTEGER DEFAULT 0',
+  'ALTER TABLE users ADD COLUMN first_dcf_date DATETIME',
+  'ALTER TABLE users ADD COLUMN has_bought_undervalued INTEGER DEFAULT 0',
+];
+for (const sql of migrate4) {
+  try { db.exec(sql); } catch {}
+}
+
 // Performance indexes on user_id and foreign key columns
 const indexes = [
   'CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON transactions(user_id)',

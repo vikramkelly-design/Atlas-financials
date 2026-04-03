@@ -55,6 +55,11 @@ export default function StockDetail() {
           const explainRes = await api.get(`/api/markets/explain/${ticker}`)
           setVerdict(explainRes.data.data?.explanation || null)
         } catch {}
+
+        // Track DCF view for track record
+        if (ivRes.status === 'fulfilled') {
+          api.post('/api/settings/track-dcf').catch(() => {})
+        }
       } catch (err) {
         setError(err.message)
       }

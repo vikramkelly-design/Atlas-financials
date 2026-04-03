@@ -90,6 +90,30 @@ router.patch('/preferences', (req, res) => {
   }
 });
 
+// POST /api/settings/track-dcf — mark that user has viewed a DCF breakdown
+router.post('/track-dcf', (req, res) => {
+  try {
+    const user = db.prepare('SELECT has_viewed_dcf FROM users WHERE id = ?').get(req.userId);
+    if (user && !user.has_viewed_dcf) {
+      db.prepare('UPDATE users SET has_viewed_dcf = 1, first_dcf_date = datetime(?) WHERE id = ?')
+        .run(new Date().toISOString(), req.userId);
+    }
+    res.json({ success: true });
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
+// GET /api/settings/flags — get user flags for track record
+router.get('/flags', (req, res) => {
+  try {
+    const user = db.prepare('SELECT has_viewed_dcf, first_dcf_date, has_bought_undervalued FROM users WHERE id = ?').get(req.userId);
+    res.json({ success: true, data: user || {} });
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
 // DELETE /api/settings/account — delete all user data
 router.delete('/account', async (req, res) => {
   try {
