@@ -7,12 +7,24 @@ import { gradeColor } from '../utils/grades'
 import LoadingSpinner from '../components/LoadingSpinner'
 import ErrorBanner from '../components/ErrorBanner'
 import ConfirmDialog from '../components/ConfirmDialog'
+import dailyConcepts from '../data/dailyConcepts'
 
 function getGreeting() {
   const hour = new Date().getHours()
   if (hour < 12) return 'Good morning'
   if (hour < 17) return 'Good afternoon'
   return 'Good evening'
+}
+
+function formatDate(d) {
+  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+}
+
+function getDailyConcept() {
+  const now = new Date()
+  const start = new Date(now.getFullYear(), 0, 0)
+  const dayOfYear = Math.floor((now - start) / (1000 * 60 * 60 * 24))
+  return dailyConcepts[dayOfYear % dailyConcepts.length]
 }
 
 export default function Dashboard() {
@@ -22,18 +34,21 @@ export default function Dashboard() {
   const [netWorth, setNetWorth] = useState(null)
   const [budget, setBudget] = useState(null)
   const [positions, setPositions] = useState([])
+  const [transactions, setTransactions] = useState([])
   const [watchlist, setWatchlist] = useState([])
   const [currentGoal, setCurrentGoal] = useState(null)
-  const [insights, setInsights] = useState([])
   const [healthScore, setHealthScore] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [spyChange, setSpyChange] = useState(null)
+  const [screenerData, setScreenerData] = useState([])
+  const [budgetLimit, setBudgetLimit] = useState(0)
+  const [learnExpanded, setLearnExpanded] = useState(false)
 
   // Net worth form
   const [assetForm, setAssetForm] = useState({ name: '', value: '', type: 'Cash' })
   const [liabilityForm, setLiabilityForm] = useState({ name: '', value: '' })
   const [confirmDialog, setConfirmDialog] = useState({ open: false, title: '', message: '', onConfirm: null, danger: false })
-  const [budgetLimit, setBudgetLimit] = useState(0)
 
   const tickers = positions.map(p => p.ticker)
   const { prices } = usePrices(tickers)
@@ -52,37 +67,46 @@ export default function Dashboard() {
       setPositions(posRes.data)
       setWatchlist(wlRes.data)
 
-      // Fetch current goal separately so it doesn't break the dashboard if atlas table is empty
+      const allTxns = txRes.data || []
+      setTransactions(allTxns)
+
+      // Current month budget
+      const now = new Date()
+      const curMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+      const monthTxns = allTxns.filter(t => t.month === curMonth)
+      const totalSpent = monthTxns.filter(t => t.amount < 0).reduce((s, t) => s + t.amount, 0)
+      setBudget({ totalSpent, count: monthTxns.length })
+
+      // Fetch goal
       try {
         const goalRes = await get('/api/atlas/current')
         setCurrentGoal(goalRes.data || null)
-      } catch {
-        setCurrentGoal(null)
-      }
+      } catch { setCurrentGoal(null) }
 
-      // Fetch health score and insights
+      // Fetch health score
       try {
-        const [hsRes, insRes] = await Promise.all([
-          get('/api/insights/health-score'),
-          get('/api/insights/dashboard'),
-        ])
+        const hsRes = await get('/api/insights/health-score')
         if (hsRes.data) setHealthScore(hsRes.data)
-        if (insRes.data) setInsights(insRes.data)
       } catch {}
 
-      // Fetch budget goals for dynamic limit
+      // Fetch budget goals for limit
       try {
         const goalsRes = await get('/api/budget/goals')
         const totalLimit = goalsRes.data.reduce((s, g) => s + (g.monthly_limit || 0), 0)
         setBudgetLimit(totalLimit)
       } catch {}
 
-      // Get current month transactions
-      const now = new Date()
-      const curMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-      const monthTxns = txRes.data.filter(t => t.month === curMonth)
-      const totalSpent = monthTxns.filter(t => t.amount < 0).reduce((s, t) => s + t.amount, 0)
-      setBudget({ totalSpent, count: monthTxns.length })
+      // Fetch S&P 500 change
+      try {
+        const spyRes = await get('/api/quote/%5EGSPC')
+        if (spyRes.data) setSpyChange(spyRes.data.changePercent || 0)
+      } catch { setSpyChange(null) }
+
+      // Fetch screener data for top alert
+      try {
+        const scrRes = await get('/api/screener')
+        setScreenerData(scrRes.data || [])
+      } catch { setScreenerData([]) }
     } catch (err) {
       setError(err.message)
     } finally {
@@ -156,290 +180,252 @@ export default function Dashboard() {
   const portfolioCost = positions.reduce((sum, p) => sum + (p.avg_cost || 0) * p.shares, 0)
   const portfolioGain = portfolioCost > 0 ? ((portfolioValue - portfolioCost) / portfolioCost) * 100 : 0
 
-  // Watchlist stats
-  const wlUp = watchlist.filter(w => (prices[w.ticker]?.changePercent || 0) > 0).length
-  const wlDown = watchlist.length - wlUp
+  // Empty state
+  const isEmptyState = positions.length === 0 && transactions.length === 0
 
-  // Empty state detection
-  const hasPositions = positions.length > 0
-  const hasTransactions = (budget?.count || 0) > 0
-  const hasWatchlist = watchlist.length > 0
-  const hasAssets = (netWorth?.assets?.length || 0) > 0 || (netWorth?.liabilities?.length || 0) > 0
-  const isNewUser = !hasPositions && !hasTransactions && !hasWatchlist && !hasAssets
-  const hasRealData = hasPositions || hasTransactions || !!currentGoal
-  const showHealthScore = healthScore && hasRealData
+  // Top screener alert
+  const undervalued = screenerData.filter(s => s.verdict === 'undervalued')
+  const topAlert = undervalued.sort((a, b) => (b.upsidePercent || 0) - (a.upsidePercent || 0))[0]
 
-  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+  // Budget remaining
+  const budgetRemaining = budgetLimit > 0 ? budgetLimit - Math.abs(budget?.totalSpent || 0) : null
+
+  // Daily concept
+  const concept = getDailyConcept()
+
+  const firstName = user.name ? user.name.split(' ')[0] : ''
 
   if (loading) return <LoadingSpinner height={200} />
   if (error) return <ErrorBanner message={error} onRetry={fetchAll} />
 
+  // EMPTY STATE
+  if (isEmptyState) {
+    return (
+      <div>
+        <div style={{ marginBottom: 'var(--space-lg)' }}>
+          <h1 style={{ fontSize: 'var(--text-3xl)', marginBottom: '0.15rem' }}>
+            {getGreeting()}{firstName ? `, ${firstName}` : ''}.
+          </h1>
+          <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>{formatDate(new Date())}</p>
+        </div>
+
+        <div className="card" style={{ marginBottom: 'var(--space-lg)', borderLeft: '3px solid var(--color-gold)' }}>
+          <p style={{ fontSize: 'var(--text-lg)', color: 'var(--color-text-primary)', marginBottom: 'var(--space-md)' }}>
+            Welcome to Atlas. Let's build your financial picture.
+          </p>
+          <div style={{ display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap' }}>
+            <button className="btn btn-primary" onClick={() => navigate('/portfolio')}>Add a holding</button>
+            <button className="btn btn-ghost" onClick={() => navigate('/markets')}>Search a stock</button>
+            <button className="btn btn-ghost" onClick={() => navigate('/plan')}>Set a goal</button>
+          </div>
+        </div>
+
+        <div className="grid-3">
+          <div className="card">
+            <span className="label-caps">Net Worth</span>
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-base)', marginTop: 'var(--space-sm)' }}>
+              Add your first asset to calculate net worth.
+            </p>
+            <button className="btn btn-ghost" style={{ marginTop: 'var(--space-md)' }} onClick={() => navigate('/portfolio')}>+ Add holding</button>
+          </div>
+          <div className="card">
+            <span className="label-caps">Portfolio</span>
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-base)', marginTop: 'var(--space-sm)' }}>
+              No holdings yet.
+            </p>
+            <button className="btn btn-ghost" style={{ marginTop: 'var(--space-md)' }} onClick={() => navigate('/portfolio')}>+ Add holding</button>
+          </div>
+          <div className="card">
+            <span className="label-caps">Watchlist</span>
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-base)', marginTop: 'var(--space-sm)' }}>
+              No stocks tracked.
+            </p>
+            <button className="btn btn-ghost" style={{ marginTop: 'var(--space-md)' }} onClick={() => navigate('/markets')}>+ Add stocks</button>
+          </div>
+        </div>
+
+        <ConfirmDialog {...confirmDialog} onCancel={() => setConfirmDialog(d => ({ ...d, open: false }))} />
+      </div>
+    )
+  }
+
+  // POPULATED STATE — 6 cards in 2-col grid
   return (
     <div>
-      <div style={{ marginBottom: '1.5rem' }}>
+      {/* Card 1 — Greeting + Market Pulse (full width) */}
+      <div style={{ marginBottom: 'var(--space-lg)' }}>
         <h1 style={{ fontSize: 'var(--text-3xl)', marginBottom: '0.15rem' }}>
-          {getGreeting()}{user.name ? `, ${user.name.split(' ')[0]}` : ''}.
+          {getGreeting()}{firstName ? `, ${firstName}` : ''}
+          {spyChange !== null && (
+            <span style={{ fontSize: 'var(--text-base)', fontWeight: 400, marginLeft: 'var(--space-sm)' }}>
+              <span style={{ color: 'var(--color-text-muted)' }}> · S&P 500 </span>
+              <span style={{ color: spyChange >= 0 ? 'var(--color-positive)' : 'var(--color-negative)', fontFamily: 'var(--font-mono)' }}>
+                {spyChange >= 0 ? '▲' : '▼'} {Math.abs(spyChange).toFixed(1)}% today
+              </span>
+            </span>
+          )}
         </h1>
-        <p className="label-caps">{today}</p>
+        <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>{formatDate(new Date())}</p>
       </div>
 
-      {/* Welcome banner for new users */}
-      {isNewUser && (
-        <div className="card" style={{ marginBottom: '1.5rem', borderLeft: '3px solid var(--color-gold)' }}>
-          <h2 style={{ fontSize: 'var(--text-2xl)', marginBottom: '0.5rem' }}>
-            Welcome to Atlas{user.name ? `, ${user.name.split(' ')[0]}` : ''}.
-          </h2>
-          <p className="text-muted" style={{ marginBottom: '1rem', fontSize: 'var(--text-base)' }}>
-            Start building your financial picture. Here are three ways to get started:
-          </p>
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-            <button className="btn btn-primary" onClick={() => navigate('/budget')}>Import a bank CSV</button>
-            <button className="btn btn-ghost" onClick={() => navigate('/portfolio')}>Add a stock holding</button>
-            <button className="btn btn-ghost" onClick={() => { document.getElementById('nw-tracker')?.scrollIntoView({ behavior: 'smooth' }) }}>Track your net worth</button>
-          </div>
-        </div>
-      )}
-
-      {/* Top Section: Health Score + Net Worth side by side */}
-      <div className="grid-2" style={{ marginBottom: '1rem', alignItems: 'stretch' }}>
-        {/* Financial Health Score */}
-        {showHealthScore ? (
-          <div className="card" style={{ borderLeft: `3px solid ${healthScore.score >= 70 ? 'var(--color-positive)' : healthScore.score >= 50 ? 'var(--color-gold)' : 'var(--color-negative)'}` }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-              <span className="label-caps" style={{ color: 'var(--color-text-secondary)' }}>Financial Health</span>
-              <span style={{ fontSize: 'var(--text-xl)', fontWeight: 700, color: gradeColor(healthScore.grade), padding: '0.15rem 0.5rem', border: `1px solid ${gradeColor(healthScore.grade)}`, borderRadius: 2 }}>
-                {healthScore.grade}
-              </span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem', marginBottom: '0.5rem' }}>
-              <span className="mono" style={{ fontSize: 'var(--text-4xl)', fontWeight: 700, color: 'var(--color-navy)' }}>{healthScore.score}</span>
-              <span className="text-faint" style={{ fontSize: 'var(--text-lg)' }}>/ 100</span>
-            </div>
-            <div className="progress-bar" style={{ marginBottom: '0.75rem', height: 8 }}>
-              <div className="progress-bar-fill" style={{
-                width: `${healthScore.score}%`,
-                background: healthScore.score >= 70 ? 'var(--color-positive)' : healthScore.score >= 50 ? 'var(--color-gold)' : 'var(--color-negative)',
-              }} />
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-              {healthScore.categories?.map(cat => (
-                <div key={cat.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.25rem 0' }}>
-                  <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-primary)' }}>{cat.name}</span>
-                  <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: gradeColor(cat.grade), minWidth: 28, textAlign: 'right' }}>{cat.grade}</span>
-                </div>
-              ))}
-            </div>
-            {healthScore.aiSummary && (
-              <p className="text-muted" style={{ fontSize: 'var(--text-sm)', marginTop: '0.5rem', lineHeight: 1.5, borderTop: '1px solid var(--color-border)', paddingTop: '0.5rem' }}>{healthScore.aiSummary}</p>
-            )}
-            <p className="text-faint" style={{ fontSize: 'var(--text-xs)', marginTop: '0.5rem' }}>
-              Calculated from your spending habits, savings rate, portfolio diversification, and goal progress.
-            </p>
-          </div>
-        ) : (
-          <div className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: '0.75rem', padding: '2rem var(--space-lg)' }}>
-            <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-secondary)' }}>
-              Your financial health score appears after you add your first data.
-            </p>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button className="btn btn-primary" onClick={() => navigate('/portfolio')}>Add a holding</button>
-              <button className="btn btn-ghost" onClick={() => navigate('/budget')}>Import spending</button>
-            </div>
-          </div>
-        )}
-
-        {/* Net Worth Card */}
-        <div className="card">
-          <span className="label-caps" style={{ color: 'var(--color-text-secondary)', marginBottom: '0.25rem', display: 'block' }}>Net Worth</span>
-          {hasAssets ? (
+      <div className="grid-2" style={{ marginBottom: 'var(--space-lg)', alignItems: 'stretch' }}>
+        {/* Card 2 — My Plan Progress */}
+        <div className="card card-clickable" onClick={() => navigate('/plan')}>
+          <span className="label-caps" style={{ marginBottom: 'var(--space-sm)', display: 'block' }}>My Plan</span>
+          {currentGoal ? (
             <>
-              <span className="mono" style={{ fontSize: '2rem', color: numColor(netWorth?.netWorth || 0) }}>
-                {formatCurrency(netWorth?.netWorth || 0)}
-              </span>
-              <p className="text-faint" style={{ fontSize: 'var(--text-sm)', marginTop: '0.25rem' }}>
-                Last updated {new Date().toLocaleDateString()}
+              <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-primary)' }}>
+                You're <span className="mono" style={{ fontWeight: 500 }}>
+                  {Math.min(100, Math.round((currentGoal.current_amount / currentGoal.target_amount) * 100))}%
+                </span> toward <span className="mono" style={{ fontWeight: 500 }}>{formatCurrency(currentGoal.target_amount)}</span>
               </p>
+              <div className="progress-bar" style={{ marginTop: 'var(--space-sm)', height: 6 }}>
+                <div className="progress-bar-fill" style={{
+                  width: `${Math.min(100, (currentGoal.current_amount / currentGoal.target_amount) * 100)}%`,
+                  background: 'var(--color-navy)',
+                }} />
+              </div>
             </>
           ) : (
-            <p className="text-muted" style={{ fontSize: 'var(--text-base)', marginTop: '0.5rem' }}>
-              Add your assets and liabilities below to see your net worth.
+            <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-secondary)' }}>
+              Set your financial goal →
             </p>
           )}
-          {netWorth && (netWorth.totalAssets > 0 || netWorth.totalLiabilities > 0) && (
-            <div style={{ marginTop: '1rem' }}>
-              <div style={{ display: 'flex', gap: '0.5rem', fontSize: 'var(--text-sm)', marginBottom: '0.35rem' }}>
-                <span className="text-success mono">{formatCurrency(netWorth.totalAssets)} assets</span>
-                <span className="text-muted">|</span>
-                <span className="text-danger mono">{formatCurrency(netWorth.totalLiabilities)} liabilities</span>
-              </div>
-              <div style={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', background: 'var(--color-surface-2)' }}>
-                <div style={{
-                  width: `${(netWorth.totalAssets / (netWorth.totalAssets + netWorth.totalLiabilities)) * 100}%`,
-                  background: 'var(--color-positive)',
-                  borderRadius: '4px 0 0 4px'
-                }} />
-                <div style={{
-                  width: `${(netWorth.totalLiabilities / (netWorth.totalAssets + netWorth.totalLiabilities)) * 100}%`,
-                  background: 'var(--color-negative)',
-                  borderRadius: '0 4px 4px 0'
-                }} />
-              </div>
-            </div>
-          )}
-
-          {/* Inline asset/liability summary */}
-          {netWorth && (
-            <div style={{ marginTop: '1rem', borderTop: '1px solid var(--color-border)', paddingTop: '0.75rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 500 }}>Top Assets</span>
-                <span className="text-faint" style={{ fontSize: 'var(--text-sm)', cursor: 'pointer' }} onClick={() => { document.getElementById('nw-tracker')?.scrollIntoView({ behavior: 'smooth' }) }}>Manage ↓</span>
-              </div>
-              {netWorth.assets?.slice(0, 3).map(a => (
-                <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.2rem 0', fontSize: 'var(--text-sm)' }}>
-                  <span>{a.name}</span>
-                  <span className="mono text-success">{formatCurrency(a.value)}</span>
-                </div>
-              ))}
-              {(!netWorth.assets || netWorth.assets.length === 0) && (
-                <p className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>No assets yet</p>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Quick Stats Row */}
-      <p className="label-caps" style={{ marginBottom: '0.5rem' }}>Quick Stats</p>
-      <div className="grid-3" style={{ marginBottom: '1.5rem' }}>
-        <div className="card card-clickable" onClick={() => navigate('/budget')}>
-          <span className="label-caps" style={{ color: 'var(--color-text-secondary)', marginBottom: '0.5rem', display: 'block' }}>This Month's Spending</span>
-          {hasTransactions ? (
-            <>
-              <span className="mono" style={{ fontSize: 'var(--text-2xl)', color: 'var(--color-negative)' }}>
-                {formatCurrency(Math.abs(budget?.totalSpent || 0))}
-              </span>
-              <div className="progress-bar" style={{ marginTop: '0.75rem' }}>
-                <div className="progress-bar-fill" style={{
-                  width: `${Math.min(100, ((Math.abs(budget?.totalSpent || 0)) / (budgetLimit || 5000)) * 100)}%`,
-                  background: Math.abs(budget?.totalSpent || 0) > (budgetLimit || 5000) ? 'var(--color-negative)' : 'var(--color-navy)'
-                }} />
-              </div>
-              <p className="text-faint" style={{ fontSize: 'var(--text-sm)', marginTop: '0.35rem' }}>{budget?.count || 0} transactions</p>
-            </>
-          ) : (
-            <p className="text-muted" style={{ fontSize: 'var(--text-sm)', marginTop: '0.25rem' }}>No spending tracked yet</p>
-          )}
         </div>
 
+        {/* Card 3 — Portfolio Value */}
         <div className="card card-clickable" onClick={() => navigate('/portfolio')}>
-          <span className="label-caps" style={{ color: 'var(--color-text-secondary)', marginBottom: '0.5rem', display: 'block' }}>Portfolio</span>
-          {hasPositions ? (
+          <span className="label-caps" style={{ marginBottom: 'var(--space-sm)', display: 'block' }}>Portfolio</span>
+          {positions.length > 0 ? (
             <>
-              <span className="mono" style={{ fontSize: 'var(--text-2xl)' }}>
+              <span className="mono" style={{ fontSize: 'var(--text-2xl)', color: 'var(--color-text-primary)' }}>
                 {formatCurrency(portfolioValue)}
               </span>
               {portfolioCost > 0 && (
-                <p className="mono" style={{ fontSize: 'var(--text-base)', color: numColor(portfolioGain), marginTop: '0.25rem' }}>
-                  {portfolioGain >= 0 ? '+' : ''}{portfolioGain.toFixed(2)}%
+                <p className="mono" style={{ fontSize: 'var(--text-base)', color: numColor(portfolioGain), marginTop: 'var(--space-xs)' }}>
+                  {portfolioGain >= 0 ? '+' : ''}{portfolioGain.toFixed(2)}% all time
                 </p>
               )}
             </>
           ) : (
-            <p className="text-muted" style={{ fontSize: 'var(--text-sm)', marginTop: '0.25rem' }}>No holdings yet</p>
-          )}
-        </div>
-
-        <div className="card card-clickable" onClick={() => navigate('/markets')}>
-          <span className="label-caps" style={{ color: 'var(--color-text-secondary)', marginBottom: '0.5rem', display: 'block' }}>Watchlist</span>
-          {hasWatchlist ? (
-            <>
-              <span className="mono" style={{ fontSize: 'var(--text-2xl)' }}>{watchlist.length}</span>
-              <p style={{ fontSize: 'var(--text-sm)', marginTop: '0.25rem' }}>
-                <span className="text-success">{wlUp} up</span>
-                <span className="text-muted"> / </span>
-                <span className="text-danger">{wlDown} down</span>
-              </p>
-            </>
-          ) : (
-            <p className="text-muted" style={{ fontSize: 'var(--text-sm)', marginTop: '0.25rem' }}>Watchlist empty</p>
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-base)' }}>No holdings yet.</p>
           )}
         </div>
       </div>
 
-      {/* Goal + Insights side by side */}
-      <div className="grid-2" style={{ marginBottom: '1.5rem', alignItems: 'start' }}>
-        {/* Current Goal */}
-        {currentGoal ? (() => {
-          const pct = currentGoal.target_amount > 0 ? Math.min(100, (currentGoal.current_amount / currentGoal.target_amount) * 100) : 0
-          const deadline = new Date(currentGoal.deadline + 'T00:00:00')
-          const now = new Date(); now.setHours(0,0,0,0)
-          const daysLeft = Math.max(0, Math.ceil((deadline - now) / (1000 * 60 * 60 * 24)))
-          return (
-            <div className="card" onClick={() => navigate('/atlas')} style={{ cursor: 'pointer' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                <span className="label-caps" style={{ color: 'var(--color-text-secondary)' }}>Current Goal</span>
-                <span className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>View Atlas →</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-                <span style={{ fontSize: 'var(--text-lg)', fontWeight: 500 }}>{currentGoal.name}</span>
-                <span style={{
-                  fontSize: 'var(--text-sm)', padding: '0.15rem 0.5rem', borderRadius: 4,
-                  background: daysLeft <= 7 ? 'var(--color-negative-light)' : daysLeft <= 30 ? 'var(--color-gold-15)' : 'var(--color-surface-2)',
-                  color: daysLeft <= 7 ? 'var(--color-negative)' : daysLeft <= 30 ? 'var(--color-gold)' : 'var(--color-navy)',
-                }}>
-                  {daysLeft === 0 ? 'Due today' : `${daysLeft}d left`}
-                </span>
-              </div>
-              {currentGoal.ultimate_name && (
-                <p className="text-faint" style={{ fontSize: 'var(--text-sm)', marginBottom: '0.5rem' }}>Toward: {currentGoal.ultimate_name}</p>
-              )}
-              <div className="progress-bar" style={{ marginBottom: '0.25rem' }}>
-                <div className="progress-bar-fill" style={{ width: `${pct}%`, background: 'var(--color-navy)' }} />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-sm)' }}>
-                <span className="mono text-muted">{formatCurrency(currentGoal.current_amount)} / {formatCurrency(currentGoal.target_amount)}</span>
-                <span className="text-faint">{pct.toFixed(0)}%</span>
-              </div>
-            </div>
-          )
-        })() : (
-          <div className="card" onClick={() => navigate('/atlas')} style={{ cursor: 'pointer' }}>
-            <span className="label-caps" style={{ color: 'var(--color-text-secondary)', marginBottom: '0.5rem' }}>Current Goal</span>
-            <p className="text-faint" style={{ fontSize: 'var(--text-base)' }}>Set a goal in Atlas to track it here →</p>
-          </div>
-        )}
-
-        {/* Recent Insights */}
-        <div className="card">
-          <span className="label-caps" style={{ color: 'var(--color-text-secondary)', marginBottom: '0.75rem' }}>Recent Insights</span>
-          {insights.length === 0 ? (
-            <p className="text-faint" style={{ fontSize: 'var(--text-base)' }}>
-              Import a CSV or add portfolio positions to generate insights.
+      <div className="grid-2" style={{ marginBottom: 'var(--space-lg)', alignItems: 'stretch' }}>
+        {/* Card 4 — Top Screener Alert */}
+        <div className="card card-clickable" onClick={() => navigate('/markets')}>
+          <span className="label-caps" style={{ marginBottom: 'var(--space-sm)', display: 'block' }}>Screener Alert</span>
+          {topAlert ? (
+            <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-primary)' }}>
+              <span style={{ fontWeight: 500 }}>{topAlert.ticker}</span> is trading{' '}
+              <span className="mono" style={{ color: 'var(--color-positive)', fontWeight: 500 }}>
+                {Math.abs(topAlert.upsidePercent || 0).toFixed(0)}%
+              </span>{' '}
+              below intrinsic value
+              <span style={{ color: 'var(--color-gold)', marginLeft: 'var(--space-xs)' }}>View →</span>
             </p>
           ) : (
-            insights.slice(0, 3).map((insight, i) => (
-              <div key={i} style={{ display: 'flex', gap: '0.75rem', padding: '0.4rem 0', borderBottom: i < 2 ? '1px solid var(--color-border)' : 'none' }}>
-                <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-gold)', marginTop: '0.45rem', flexShrink: 0 }} />
-                <div>
-                  <p style={{ fontSize: 'var(--text-base)', lineHeight: 1.4 }}>{insight.content}</p>
-                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.2rem' }}>
-                    <span className="badge badge-gold">{insight.type}</span>
-                    <span className="text-faint" style={{ fontSize: 'var(--text-xs)' }}>{new Date(insight.created_at).toLocaleDateString()}</span>
-                  </div>
-                </div>
-              </div>
-            ))
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-base)' }}>
+              No undervalued stocks in the screener right now.
+            </p>
+          )}
+        </div>
+
+        {/* Card 5 — Budget Remaining */}
+        <div className="card card-clickable" onClick={() => navigate('/budget')}>
+          <span className="label-caps" style={{ marginBottom: 'var(--space-sm)', display: 'block' }}>Budget</span>
+          {budgetRemaining !== null ? (
+            <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-primary)' }}>
+              <span className="mono" style={{ fontSize: 'var(--text-2xl)', color: budgetRemaining >= 0 ? 'var(--color-positive)' : 'var(--color-negative)' }}>
+                {formatCurrency(Math.abs(budgetRemaining))}
+              </span>
+              <br />
+              <span style={{ color: 'var(--color-text-secondary)' }}>
+                {budgetRemaining >= 0 ? 'available to invest this month' : 'over budget this month'}
+              </span>
+            </p>
+          ) : budget && budget.count > 0 ? (
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-base)' }}>
+              <span className="mono" style={{ color: 'var(--color-negative)' }}>{formatCurrency(Math.abs(budget.totalSpent))}</span> spent this month
+            </p>
+          ) : (
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-base)' }}>
+              Set budget limits to track spending →
+            </p>
           )}
         </div>
       </div>
+
+      {/* Card 6 — Daily Learning Card */}
+      <div className="card" style={{ marginBottom: 'var(--space-lg)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-sm)' }}>
+          <span className="label-caps">Daily Concept</span>
+          <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>
+            {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          </span>
+        </div>
+        <h3 style={{ fontSize: 'var(--text-lg)', marginBottom: 'var(--space-xs)' }}>{concept.title}</h3>
+        <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-base)', lineHeight: 1.5 }}>{concept.short}</p>
+        {learnExpanded && (
+          <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-base)', lineHeight: 1.6, marginTop: 'var(--space-sm)', borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-sm)' }}>
+            {concept.full}
+          </p>
+        )}
+        <button
+          onClick={() => setLearnExpanded(!learnExpanded)}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            color: 'var(--color-gold)', fontSize: 'var(--text-sm)',
+            marginTop: 'var(--space-sm)', padding: 0,
+          }}
+        >
+          {learnExpanded ? 'Show less' : 'Learn more'}
+        </button>
+      </div>
+
+      {/* Health Score (only if real data) */}
+      {healthScore && (positions.length > 0 || transactions.length > 0 || !!currentGoal) && (
+        <div className="card" style={{
+          marginBottom: 'var(--space-lg)',
+          borderLeft: `3px solid ${healthScore.score >= 70 ? 'var(--color-positive)' : healthScore.score >= 50 ? 'var(--color-gold)' : 'var(--color-negative)'}`,
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-sm)' }}>
+            <span className="label-caps">Financial Health</span>
+            <span style={{ fontSize: 'var(--text-xl)', fontWeight: 700, color: gradeColor(healthScore.grade), padding: '0.15rem 0.5rem', border: `1px solid ${gradeColor(healthScore.grade)}`, borderRadius: 2 }}>
+              {healthScore.grade}
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem', marginBottom: 'var(--space-sm)' }}>
+            <span className="mono" style={{ fontSize: 'var(--text-4xl)', fontWeight: 700, color: 'var(--color-navy)' }}>{healthScore.score}</span>
+            <span style={{ fontSize: 'var(--text-lg)', color: 'var(--color-text-muted)' }}>/ 100</span>
+          </div>
+          <div className="progress-bar" style={{ marginBottom: 'var(--space-sm)', height: 8 }}>
+            <div className="progress-bar-fill" style={{
+              width: `${healthScore.score}%`,
+              background: healthScore.score >= 70 ? 'var(--color-positive)' : healthScore.score >= 50 ? 'var(--color-gold)' : 'var(--color-negative)',
+            }} />
+          </div>
+          {healthScore.categories?.map(cat => (
+            <div key={cat.name} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.25rem 0' }}>
+              <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-primary)' }}>{cat.name}</span>
+              <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: gradeColor(cat.grade) }}>{cat.grade}</span>
+            </div>
+          ))}
+          <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 'var(--space-sm)' }}>
+            Calculated from your savings rate, portfolio health, budget adherence, debt load, and goal progress.
+          </p>
+        </div>
+      )}
 
       {/* Net Worth Tracker */}
       <div className="card" id="nw-tracker">
-        <h2 style={{ fontSize: 'var(--text-xl)', marginBottom: '1rem' }}>Net Worth Tracker</h2>
+        <h2 style={{ fontSize: 'var(--text-xl)', marginBottom: 'var(--space-md)' }}>Net Worth Tracker</h2>
         <div className="grid-2">
           <div>
-            <h4 style={{ fontSize: 'var(--text-base)', marginBottom: '0.75rem', color: 'var(--color-text-secondary)' }}>Assets</h4>
-            <form onSubmit={addAsset} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+            <h4 style={{ fontSize: 'var(--text-base)', marginBottom: 'var(--space-sm)', color: 'var(--color-text-secondary)' }}>Assets</h4>
+            <form onSubmit={addAsset} style={{ display: 'flex', gap: 'var(--space-sm)', marginBottom: 'var(--space-sm)', flexWrap: 'wrap' }}>
               <input className="input" placeholder="Name" value={assetForm.name} onChange={e => setAssetForm(p => ({ ...p, name: e.target.value }))} style={{ flex: 1, minWidth: 100 }} />
               <input className="input" type="number" step="0.01" placeholder="Value" value={assetForm.value} onChange={e => setAssetForm(p => ({ ...p, value: e.target.value }))} style={{ width: 100 }} />
               <select className="select" value={assetForm.type} onChange={e => setAssetForm(p => ({ ...p, type: e.target.value }))}>
@@ -454,21 +440,21 @@ export default function Dashboard() {
               <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem 0', borderBottom: '1px solid var(--color-border)' }}>
                 <div>
                   <span style={{ fontSize: 'var(--text-base)' }}>{a.name}</span>
-                  <span className="badge badge-neutral" style={{ marginLeft: '0.5rem' }}>{a.type}</span>
+                  <span className="badge badge-neutral" style={{ marginLeft: 'var(--space-sm)' }}>{a.type}</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
                   <span className="mono text-success" style={{ fontSize: 'var(--text-base)' }}>{formatCurrency(a.value)}</span>
                   <button onClick={() => confirmDeleteAsset(a.id, a.name)} aria-label={`Remove ${a.name}`} style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: 'var(--text-lg)' }}>x</button>
                 </div>
               </div>
             ))}
             {(!netWorth?.assets || netWorth.assets.length === 0) && (
-              <p className="text-faint" style={{ fontSize: 'var(--text-base)' }}>No assets added yet.</p>
+              <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-muted)' }}>No assets added yet.</p>
             )}
           </div>
           <div>
-            <h4 style={{ fontSize: 'var(--text-base)', marginBottom: '0.75rem', color: 'var(--color-text-secondary)' }}>Liabilities</h4>
-            <form onSubmit={addLiability} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
+            <h4 style={{ fontSize: 'var(--text-base)', marginBottom: 'var(--space-sm)', color: 'var(--color-text-secondary)' }}>Liabilities</h4>
+            <form onSubmit={addLiability} style={{ display: 'flex', gap: 'var(--space-sm)', marginBottom: 'var(--space-sm)' }}>
               <input className="input" placeholder="Name" value={liabilityForm.name} onChange={e => setLiabilityForm(p => ({ ...p, name: e.target.value }))} style={{ flex: 1 }} />
               <input className="input" type="number" step="0.01" placeholder="Value" value={liabilityForm.value} onChange={e => setLiabilityForm(p => ({ ...p, value: e.target.value }))} style={{ width: 100 }} />
               <button className="btn btn-primary" type="submit">Add</button>
@@ -476,14 +462,14 @@ export default function Dashboard() {
             {netWorth?.liabilities?.map(l => (
               <div key={l.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem 0', borderBottom: '1px solid var(--color-border)' }}>
                 <span style={{ fontSize: 'var(--text-base)' }}>{l.name}</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
                   <span className="mono text-danger" style={{ fontSize: 'var(--text-base)' }}>{formatCurrency(l.value)}</span>
                   <button onClick={() => confirmDeleteLiability(l.id, l.name)} aria-label={`Remove ${l.name}`} style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: 'var(--text-lg)' }}>x</button>
                 </div>
               </div>
             ))}
             {(!netWorth?.liabilities || netWorth.liabilities.length === 0) && (
-              <p className="text-faint" style={{ fontSize: 'var(--text-base)' }}>No liabilities added yet.</p>
+              <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-muted)' }}>No liabilities added yet.</p>
             )}
           </div>
         </div>
