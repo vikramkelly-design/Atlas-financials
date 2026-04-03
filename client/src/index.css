@@ -366,6 +366,30 @@ tbody tr {
   }
 }
 
+/* Verdict badges */
+.verdict-badge {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  padding: 3px 10px;
+  border-radius: var(--radius-sm);
+  display: inline-block;
+  white-space: nowrap;
+}
+.verdict-undervalued {
+  background: var(--color-undervalued-bg);
+  color: var(--color-undervalued-text);
+}
+.verdict-fairly {
+  background: var(--color-fairly-valued-bg);
+  color: var(--color-fairly-valued-text);
+}
+.verdict-overvalued {
+  background: var(--color-overvalued-bg);
+  color: var(--color-overvalued-text);
+}
+
 /* Label caps utility */
 .label-caps {
   font-family: var(--font-sans);

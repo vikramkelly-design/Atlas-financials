@@ -15,6 +15,7 @@ import ShareCard from './pages/ShareCard'
 import ForgotPassword from './pages/ForgotPassword'
 import Onboarding from './pages/Onboarding'
 import Plan from './pages/Plan'
+import StockDetail from './pages/StockDetail'
 import NotFound from './pages/NotFound'
 import SplashScreen from './components/SplashScreen'
 import BadgePopup from './components/BadgePopup'
@@ -107,6 +108,7 @@ export default function App() {
             <Route path="/plan" element={<Plan />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/markets" element={<Markets />} />
+            <Route path="/markets/:ticker" element={<StockDetail />} />
             <Route path="/atlas" element={<Atlas />} />
             <Route path="/badges" element={<Badges />} />
             <Route path="/score" element={<MyScore />} />

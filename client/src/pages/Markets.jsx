@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import useApi, { api } from '../hooks/useApi'
 import usePrices from '../hooks/usePrices'
 import { formatCurrency, formatPercent, formatMarketCap, numColor } from '../components/NumberDisplay'
@@ -20,9 +21,9 @@ function fmtLarge(n) {
 
 function verdictBadge(v) {
   if (!v || v === 'N/A') return <span className="badge badge-neutral">N/A</span>
-  if (v === 'UNDERVALUED') return <span className="badge badge-success-strong">{v}</span>
-  if (v === 'FAIRLY VALUED') return <span className="badge badge-gold-strong">{v}</span>
-  return <span className="badge badge-danger-strong">{v}</span>
+  if (v === 'UNDERVALUED') return <span className="verdict-badge verdict-undervalued">{v}</span>
+  if (v === 'FAIRLY VALUED') return <span className="verdict-badge verdict-fairly">{v}</span>
+  return <span className="verdict-badge verdict-overvalued">{v}</span>
 }
 
 function ratingBadge(r) {
@@ -419,6 +420,7 @@ function WatchlistTab() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function ScreenerTab() {
+  const navigate = useNavigate()
   const [tickers, setTickers] = useState(DEFAULT_TICKERS)
   const [inputTicker, setInputTicker] = useState('')
   const [discountRate, setDiscountRate] = useState(0.10)
@@ -496,9 +498,12 @@ function ScreenerTab() {
   const fair = stocks.filter(s => s.verdict === 'FAIRLY VALUED').length
   const over = stocks.filter(s => s.verdict === 'OVERVALUED').length
 
-  // Persist undervalued count for sidebar badge
+  // Persist screener timestamp for sidebar live dot
   useEffect(() => {
-    if (stocks.length > 0) localStorage.setItem('atlas_undervalued_count', String(undervalued))
+    if (stocks.length > 0) {
+      localStorage.setItem('atlas_undervalued_count', String(undervalued))
+      localStorage.setItem('atlas_screener_ts', String(Date.now()))
+    }
   }, [undervalued, stocks.length])
 
   return (
@@ -645,7 +650,8 @@ function ScreenerTab() {
               </tr>
             ) : (
               filteredSorted.map(stock => (
-                <tr key={stock.ticker} style={{
+                <tr key={stock.ticker} onClick={() => navigate(`/markets/${stock.ticker}`)} style={{
+                  cursor: 'pointer',
                   background: stock.verdict === 'UNDERVALUED' ? 'color-mix(in srgb, var(--color-positive) 4%, transparent)' : stock.verdict === 'OVERVALUED' ? 'color-mix(in srgb, var(--color-negative) 4%, transparent)' : undefined
                 }}>
                   {COLUMNS.map(col => (
