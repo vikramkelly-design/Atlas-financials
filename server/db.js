@@ -236,6 +236,18 @@ db.exec(`
     debt_strategy TEXT DEFAULT 'avalanche',
     created_at TEXT DEFAULT (datetime('now'))
   );
+
+  CREATE TABLE IF NOT EXISTS plans (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    goal_amount REAL NOT NULL,
+    target_age INTEGER NOT NULL,
+    current_age INTEGER NOT NULL,
+    monthly_investment REAL NOT NULL,
+    risk_tolerance TEXT NOT NULL DEFAULT 'moderate',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
 `);
 
 // Add user_id columns to existing tables if they don't exist yet

@@ -51,6 +51,7 @@ app.use('/api/debt', auth, require('./routes/debt'));
 app.use('/api/pulse', auth, require('./routes/pulse'));
 app.use('/api/badges', auth, require('./routes/badges'));
 app.use('/api/settings', auth, require('./routes/settings'));
+app.use('/api/plan', auth, require('./routes/plan'));
 
 // Health check
 app.get('/api/health', (req, res) => {
