@@ -18,10 +18,8 @@ app.use(helmet({
 }));
 
 // Rate limiting
-const globalLimiter = rateLimit({ windowMs: 60000, max: 300, standardHeaders: true, legacyHeaders: false });
-const authLimiter = rateLimit({ windowMs: 60000, max: 5, message: { success: false, error: 'Too many attempts. Try again in a minute.' } });
-const aiLimiter = rateLimit({ windowMs: 60000, max: 10, message: { success: false, error: 'Too many AI requests. Try again in a minute.' } });
-app.use(globalLimiter);
+const authLimiter = rateLimit({ windowMs: 60000, max: 20, message: { success: false, error: 'Too many attempts. Try again in a minute.' } });
+const aiLimiter = rateLimit({ windowMs: 60000, max: 30, message: { success: false, error: 'Too many AI requests. Try again in a minute.' } });
 
 // Middleware
 app.use(cors({
