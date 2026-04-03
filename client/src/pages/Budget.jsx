@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Papa from 'papaparse'
 import useApi, { api } from '../hooks/useApi'
 import { formatCurrency } from '../components/NumberDisplay'
@@ -64,6 +65,18 @@ function dateStr(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+const getCategoryIcon = (name) => ({
+  'Food & Dining': '\u{1F374}',
+  'Transport': '\u{1F697}',
+  'Shopping': '\u{1F6CD}',
+  'Subscriptions': '\u{1F4F1}',
+  'Health': '\u{1F48A}',
+  'Entertainment': '\u{1F3AC}',
+  'Income': '\u{1F4B5}',
+  'Transfer': '\u{1F504}',
+  'Other': '\u{1F4E6}',
+})[name] || '\u{1F4B0}'
+
 function BudgetCategoryCard({ cat, spent, limit, goalValue, onGoalChange, color }) {
   const [editing, setEditing] = useState(false)
   const pct = limit > 0 ? Math.min(100, (spent / limit) * 100) : 0
@@ -74,7 +87,7 @@ function BudgetCategoryCard({ cat, spent, limit, goalValue, onGoalChange, color 
     <div className="budget-category-card">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
+          <span style={{ fontSize: 14 }}>{getCategoryIcon(cat)}</span>
           <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600 }}>{cat}</span>
         </div>
         <button
@@ -131,6 +144,7 @@ function BudgetCategoryCard({ cat, spent, limit, goalValue, onGoalChange, color 
 }
 
 export default function Budget() {
+  const navigate = useNavigate()
   const { get, post, patch, del } = useApi()
   const { toast } = useToast()
   const fileRef = useRef()
@@ -289,6 +303,7 @@ export default function Budget() {
   })
   const totalSpent = Object.values(spendingByCategory).reduce((s, v) => s + v, 0)
   const totalBudget = Object.values(goals).reduce((s, v) => s + (parseFloat(v) || 0), 0)
+  const availableToInvest = totalBudget > 0 ? totalBudget - totalSpent : 0
 
   const addTransaction = async () => {
     if (!addForm.date || !addForm.description || !addForm.amount) return
@@ -401,6 +416,24 @@ export default function Budget() {
         <p className="label-caps">{monthLabel}</p>
       </div>
 
+      {/* Available to Invest card */}
+      {totalBudget > 0 && (
+        <div className="card" style={{ marginBottom: 'var(--space-lg)', borderLeft: '3px solid var(--color-gold)', paddingLeft: 'var(--space-md)' }}>
+          <span className="label-caps">Available to Invest This Month</span>
+          <div className="mono" style={{ fontSize: 'var(--text-2xl)', color: availableToInvest >= 0 ? 'var(--color-positive)' : 'var(--color-negative)', marginTop: 'var(--space-xs)' }}>
+            {formatCurrency(Math.abs(availableToInvest))}
+          </div>
+          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', marginTop: 'var(--space-xs)' }}>
+            {availableToInvest >= 0 ? 'After all budgeted expenses' : 'Over budget this month'}
+          </p>
+          {availableToInvest > 0 && (
+            <button className="btn btn-ghost" style={{ marginTop: 'var(--space-sm)', fontSize: 'var(--text-sm)' }} onClick={() => navigate('/plan')}>
+              Put this toward my plan →
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Tabs */}
       <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '1.5rem', borderBottom: '2px solid var(--color-border)' }}>
         {[
@@ -422,7 +455,13 @@ export default function Budget() {
       </div>
 
       {/* AI Chat Tab */}
-      {tab === 'chat' && <PageChat context="budget" />}
+      {tab === 'chat' && (
+        <PageChat
+          context="budget"
+          systemPrompt={`You are Atlas, a financial coach helping a young investor understand their spending.\nThe user's budget data for ${monthLabel}:\n${CATEGORIES.filter(c => c !== 'Income' && c !== 'Transfer').map(c => `- ${c}: spent $${(spendingByCategory[c] || 0).toFixed(2)} of $${(goals[c] || 0)} budget (${goals[c] ? Math.round(((spendingByCategory[c] || 0) / goals[c]) * 100) : 0}%)`).join('\n')}\nTotal available to invest: $${availableToInvest.toFixed(2)}\nBe direct, specific, and encouraging. Reference their actual numbers. Keep responses under 4 sentences.`}
+          suggestedPrompts={['Where am I overspending this month?', 'How can I free up more to invest?', 'Is my budget realistic?']}
+        />
+      )}
 
       {/* Debt Tab */}
       {tab === 'debt' && (

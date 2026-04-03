@@ -7,7 +7,7 @@ const WELCOME = {
   analytics: "I'm your analytics assistant. Ask me about your charts, performance metrics, or how to interpret your portfolio data.",
 }
 
-export default function PageChat({ context }) {
+export default function PageChat({ context, systemPrompt, suggestedPrompts }) {
   const [messages, setMessages] = useState([
     { role: 'assistant', text: WELCOME[context] || "How can I help?" }
   ])
@@ -31,6 +31,7 @@ export default function PageChat({ context }) {
       const res = await api.post('/api/chat', {
         message: text,
         context,
+        systemPrompt,
         history: updated.slice(1).map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', text: m.text })),
       })
       setMessages(prev => [...prev, { role: 'assistant', text: res.data.data.reply }])
@@ -87,6 +88,20 @@ export default function PageChat({ context }) {
         )}
         <div ref={bottomRef} />
       </div>
+
+      {/* Suggested prompts */}
+      {suggestedPrompts && messages.length <= 1 && (
+        <div style={{ display: 'flex', gap: 'var(--space-xs)', flexWrap: 'wrap', paddingBottom: 'var(--space-xs)' }}>
+          {suggestedPrompts.map((p, i) => (
+            <button key={i} onClick={() => { setInput(p); inputRef.current?.focus() }} style={{
+              background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-sm)', padding: '0.3rem 0.6rem',
+              fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)',
+              cursor: 'pointer',
+            }}>{p}</button>
+          ))}
+        </div>
+      )}
 
       {/* Input */}
       <form onSubmit={send} style={{
