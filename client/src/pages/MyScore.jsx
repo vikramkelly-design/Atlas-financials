@@ -1,15 +1,17 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import useApi, { api } from '../hooks/useApi'
 import { gradeColor, gradeBg } from '../utils/grades'
 import LoadingSpinner from '../components/LoadingSpinner'
 import ErrorBanner from '../components/ErrorBanner'
 import { useToast } from '../components/Toast'
-import EmptyState from '../components/EmptyState'
 
 export default function MyScore() {
   const { get } = useApi()
   const { toast } = useToast()
+  const navigate = useNavigate()
   const [score, setScore] = useState(null)
+  const [hasRealData, setHasRealData] = useState(false)
   const [loading, setLoading] = useState(true)
   const [recalculating, setRecalculating] = useState(false)
   const [error, setError] = useState(null)
@@ -20,8 +22,17 @@ export default function MyScore() {
     else setLoading(true)
     setError(null)
     try {
-      const res = await get(`/api/insights/health-score${force ? '?force=true' : ''}`)
-      setScore(res.data)
+      const [scoreRes, posRes, txRes, goalRes] = await Promise.all([
+        get(`/api/insights/health-score${force ? '?force=true' : ''}`),
+        get('/api/portfolio/positions'),
+        get('/api/budget/transactions'),
+        get('/api/atlas/current').catch(() => ({ data: null })),
+      ])
+      setScore(scoreRes.data)
+      const positions = posRes.data || []
+      const transactions = txRes.data || []
+      const goals = goalRes.data ? [goalRes.data] : []
+      setHasRealData(positions.length > 0 || transactions.length > 0 || goals.length > 0)
     } catch (err) {
       setError(err.message)
     }
@@ -34,17 +45,35 @@ export default function MyScore() {
   if (loading) return <LoadingSpinner height={200} />
   if (error) return <ErrorBanner message={error} onRetry={() => fetchScore()} />
 
+  if (!hasRealData) {
+    return (
+      <div>
+        <h1 style={{ fontSize: 'var(--text-3xl)', marginBottom: 'var(--space-lg)' }}>My Score</h1>
+        <div className="card" style={{ textAlign: 'center', padding: 'var(--space-2xl)' }}>
+          <p style={{ fontFamily: 'var(--font-serif)', fontSize: 18 }}>
+            Your financial health score appears once you add your first data.
+          </p>
+          <p style={{ color: 'var(--color-text-muted)', fontSize: 14, marginTop: 'var(--space-sm)' }}>
+            Takes about 2 minutes to set up.
+          </p>
+          <button className="btn btn-primary" style={{ marginTop: 'var(--space-md)' }} onClick={() => navigate('/portfolio')}>
+            Add your first holding →
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   if (!score) {
     return (
       <div>
-        <h1 style={{ fontSize: 'var(--text-3xl)', marginBottom: '1.5rem' }}>My Score</h1>
-        <EmptyState
-          icon="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-          title="No Score Yet"
-          description="Complete the onboarding quiz to get your financial health score."
-          actionLabel="Take the Quiz"
-          onAction={() => window.location.href = '/onboarding'}
-        />
+        <h1 style={{ fontSize: 'var(--text-3xl)', marginBottom: 'var(--space-lg)' }}>My Score</h1>
+        <div className="card" style={{ textAlign: 'center', padding: 'var(--space-2xl)' }}>
+          <p style={{ color: 'var(--color-text-secondary)' }}>Score is being calculated. Try recalculating.</p>
+          <button className="btn btn-primary" style={{ marginTop: 'var(--space-md)' }} onClick={() => fetchScore(true)}>
+            Calculate Score
+          </button>
+        </div>
       </div>
     )
   }
@@ -163,6 +192,9 @@ export default function MyScore() {
         }}>
           {score.grade}
         </span>
+        <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 'var(--space-md)' }}>
+          Calculated from your savings rate, portfolio health, budget adherence, debt load, and goal progress.
+        </p>
       </div>
 
       {/* Category Breakdown */}
