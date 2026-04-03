@@ -183,13 +183,15 @@ export default function Budget() {
 
   const fetchData = async () => {
     try {
-      const [txRes, goalsRes] = await Promise.all([
+      const [txRes, goalsRes] = await Promise.allSettled([
         get(`/api/budget/transactions?month=${monthKey}`),
         get('/api/budget/goals'),
       ])
-      setTransactions(txRes.data)
+      setTransactions(txRes.status === 'fulfilled' ? txRes.value.data || [] : [])
       const goalsMap = {}
-      goalsRes.data.forEach(g => { goalsMap[g.category] = g.monthly_limit })
+      if (goalsRes.status === 'fulfilled') {
+        (goalsRes.value.data || []).forEach(g => { goalsMap[g.category] = g.monthly_limit })
+      }
       setGoals(goalsMap)
     } catch (err) { toast(err.message || 'Something went wrong', 'error') }
   }

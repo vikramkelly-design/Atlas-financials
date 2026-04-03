@@ -58,17 +58,24 @@ export default function Dashboard() {
     setLoading(true)
     setError(null)
     try {
-      const [nw, txRes, posRes, wlRes] = await Promise.all([
+      const [nw, txRes, posRes, wlRes, goalRes, hsRes, goalsRes, spyRes, scrRes, digestRes] = await Promise.allSettled([
         get('/api/networth'),
         get('/api/budget/transactions'),
         get('/api/portfolio/positions'),
         get('/api/watchlist'),
+        get('/api/atlas/current'),
+        get('/api/insights/health-score'),
+        get('/api/budget/goals'),
+        get('/api/quote/%5EGSPC'),
+        api.post('/api/screener', {}),
+        new Date().getDay() === 1 ? get('/api/digest') : Promise.resolve(null),
       ])
-      setNetWorth(nw.data)
-      setPositions(posRes.data)
-      setWatchlist(wlRes.data)
 
-      const allTxns = txRes.data || []
+      if (nw.status === 'fulfilled') setNetWorth(nw.value.data)
+      if (posRes.status === 'fulfilled') setPositions(posRes.value.data || [])
+      if (wlRes.status === 'fulfilled') setWatchlist(wlRes.value.data || [])
+
+      const allTxns = txRes.status === 'fulfilled' ? (txRes.value.data || []) : []
       setTransactions(allTxns)
 
       // Current month budget
@@ -78,44 +85,15 @@ export default function Dashboard() {
       const totalSpent = monthTxns.filter(t => t.amount < 0).reduce((s, t) => s + t.amount, 0)
       setBudget({ totalSpent, count: monthTxns.length })
 
-      // Fetch goal
-      try {
-        const goalRes = await get('/api/atlas/current')
-        setCurrentGoal(goalRes.data || null)
-      } catch { setCurrentGoal(null) }
-
-      // Fetch health score
-      try {
-        const hsRes = await get('/api/insights/health-score')
-        if (hsRes.data) setHealthScore(hsRes.data)
-      } catch {}
-
-      // Fetch budget goals for limit
-      try {
-        const goalsRes = await get('/api/budget/goals')
-        const totalLimit = goalsRes.data.reduce((s, g) => s + (g.monthly_limit || 0), 0)
+      if (goalRes.status === 'fulfilled') setCurrentGoal(goalRes.value.data || null)
+      if (hsRes.status === 'fulfilled' && hsRes.value.data) setHealthScore(hsRes.value.data)
+      if (goalsRes.status === 'fulfilled') {
+        const totalLimit = (goalsRes.value.data || []).reduce((s, g) => s + (g.monthly_limit || 0), 0)
         setBudgetLimit(totalLimit)
-      } catch {}
-
-      // Fetch S&P 500 change
-      try {
-        const spyRes = await get('/api/quote/%5EGSPC')
-        if (spyRes.data) setSpyChange(spyRes.data.changePercent || 0)
-      } catch { setSpyChange(null) }
-
-      // Fetch screener data for top alert
-      try {
-        const scrRes = await api.post('/api/screener', {})
-        setScreenerData(scrRes.data?.stocks || [])
-      } catch { setScreenerData([]) }
-
-      // Fetch digest on Mondays
-      if (new Date().getDay() === 1) {
-        try {
-          const digestRes = await get('/api/digest')
-          setDigest(digestRes.data || null)
-        } catch {}
       }
+      if (spyRes.status === 'fulfilled' && spyRes.value.data) setSpyChange(spyRes.value.data.changePercent || 0)
+      if (scrRes.status === 'fulfilled') setScreenerData(scrRes.value.data?.stocks || [])
+      if (digestRes.status === 'fulfilled' && digestRes.value) setDigest(digestRes.value.data || null)
     } catch (err) {
       setError(err.message)
     } finally {

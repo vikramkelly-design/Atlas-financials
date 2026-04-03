@@ -29,13 +29,15 @@ export default function Analytics() {
   useEffect(() => {
     (async () => {
       try {
-        const [pRes, nRes] = await Promise.all([
+        const [pRes, nRes] = await Promise.allSettled([
           api.get('/api/portfolio'),
           api.get('/api/networth'),
         ])
-        setPortfolios(pRes.data.data)
-        setNetworth(nRes.data.data)
-        if (pRes.data.data.length > 0) setActiveId(pRes.data.data[0].id)
+        const portfolioData = pRes.status === 'fulfilled' ? pRes.value.data.data || [] : []
+        const networthData = nRes.status === 'fulfilled' ? nRes.value.data.data : { assets: [], liabilities: [], netWorth: 0 }
+        setPortfolios(portfolioData)
+        setNetworth(networthData)
+        if (portfolioData.length > 0) setActiveId(portfolioData[0].id)
       } catch (err) { setError(err.message) }
       setLoading(false)
     })()

@@ -39,9 +39,9 @@ export default function MyScore() {
     setError(null)
     try {
       const [scoreRes, posRes, txRes, goalRes, flagsRes, planRes, watchlistRes] = await Promise.all([
-        get(`/api/insights/health-score${force ? '?force=true' : ''}`),
-        get('/api/portfolio/positions'),
-        get('/api/budget/transactions'),
+        get(`/api/insights/health-score${force ? '?force=true' : ''}`).catch(() => ({ data: null })),
+        get('/api/portfolio/positions').catch(() => ({ data: [] })),
+        get('/api/budget/transactions').catch(() => ({ data: [] })),
         get('/api/atlas/current').catch(() => ({ data: null })),
         get('/api/settings/flags').catch(() => ({ data: {} })),
         get('/api/plan').catch(() => ({ data: null })),
