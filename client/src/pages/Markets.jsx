@@ -5,6 +5,18 @@ import usePrices from '../hooks/usePrices'
 import { formatCurrency, formatPercent, formatMarketCap, numColor } from '../components/NumberDisplay'
 import LoadingSpinner from '../components/LoadingSpinner'
 import ErrorBanner from '../components/ErrorBanner'
+import LearnTooltip from '../components/LearnTooltip'
+
+const LEARN_TERMS = {
+  buyBelowPrice: 'Buy Below',
+  upside: 'Upside %',
+  peRatio: 'P/E Ratio',
+  forwardPE: 'Forward P/E',
+  pegRatio: 'PEG Ratio',
+  eps: 'EPS',
+  freeCashFlow: 'Free Cash Flow',
+  verdict: 'Intrinsic Value',
+}
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -630,7 +642,7 @@ function ScreenerTab() {
                   <span onClick={() => handleSort(col.key)} style={{ cursor: 'pointer' }}>
                     {col.label} {sortKey === col.key ? (sortDir === 'asc' ? '↑' : '↓') : <span style={{ opacity: 0.3 }}>↕</span>}
                   </span>
-                  {col.tip && <InfoTip text={col.tip} />}
+                  {LEARN_TERMS[col.key] ? <LearnTooltip term={LEARN_TERMS[col.key]} /> : col.tip ? <InfoTip text={col.tip} /> : null}
                 </th>
               ))}
             </tr>
