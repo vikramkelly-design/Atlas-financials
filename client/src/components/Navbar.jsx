@@ -49,10 +49,9 @@ export default function Navbar({ onMenuToggle, subtitle }) {
         </span>
         {subtitle && (
           <span className="nav-subtitle" style={{
-            fontSize: 'var(--text-xs)',
-            color: 'var(--color-gold-40)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
+            fontSize: 11,
+            color: 'var(--color-text-muted)',
+            letterSpacing: '0.04em',
             borderLeft: '1px solid var(--color-gold-20)',
             paddingLeft: '0.75rem',
           }}>
@@ -64,7 +63,13 @@ export default function Navbar({ onMenuToggle, subtitle }) {
         <span className="nav-username" style={{ color: 'var(--color-gold-60)', fontSize: 'var(--text-sm)', fontFamily: "var(--font-mono)" }}>
           {user.name || user.email || 'Guest'}
         </span>
-        <button onClick={handleLogout} className="btn-nav-logout" aria-label="Log out">
+        <button onClick={handleLogout} aria-label="Log out" style={{
+          background: 'none', border: 'none', cursor: 'pointer',
+          color: 'var(--color-text-sidebar)', fontSize: 'var(--text-xs)',
+          textTransform: 'uppercase', letterSpacing: '0.06em',
+          transition: 'color 0.15s',
+        }} onMouseEnter={e => e.target.style.color = 'var(--color-gold)'}
+           onMouseLeave={e => e.target.style.color = 'var(--color-text-sidebar)'}>
           Logout
         </button>
       </div>

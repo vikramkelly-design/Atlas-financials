@@ -11,9 +11,22 @@ const PAGE_TITLES = {
   '/analytics': 'Analytics',
   '/markets': 'Markets',
   '/atlas': 'Ask Atlas',
+  '/plan': 'My Plan',
   '/badges': 'Progress',
   '/score': 'My Score',
   '/settings': 'Settings',
+}
+
+const PAGE_SUBTITLES = {
+  '/': 'Your financial picture',
+  '/markets': 'What\'s worth buying',
+  '/portfolio': 'What you own',
+  '/budget': 'Your monthly fuel',
+  '/analytics': 'How you\'re doing',
+  '/plan': 'Your road to the number',
+  '/atlas': 'Ask anything',
+  '/score': 'Your track record',
+  '/settings': 'Preferences',
 }
 
 export default function Layout() {
@@ -28,7 +41,7 @@ export default function Layout() {
   return (
     <div>
       <a href="#main-content" className="skip-link">Skip to content</a>
-      <Navbar subtitle={PAGE_TITLES[location.pathname]} onMenuToggle={() => setSidebarOpen(o => !o)} />
+      <Navbar subtitle={PAGE_SUBTITLES[location.pathname]} onMenuToggle={() => setSidebarOpen(o => !o)} />
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <main id="main-content" className="main-content" style={{ minHeight: 'calc(100vh - 48px)' }}>
         <Outlet />
