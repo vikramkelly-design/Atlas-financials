@@ -14,6 +14,7 @@ import Landing from './pages/Landing'
 import ShareCard from './pages/ShareCard'
 import ForgotPassword from './pages/ForgotPassword'
 import Onboarding from './pages/Onboarding'
+import Plan from './pages/Plan'
 import NotFound from './pages/NotFound'
 import SplashScreen from './components/SplashScreen'
 import BadgePopup from './components/BadgePopup'
@@ -103,6 +104,7 @@ export default function App() {
             <Route path="/budget" element={<Budget />} />
             <Route path="/debt" element={<Navigate to="/budget" replace />} />
             <Route path="/portfolio" element={<Portfolio />} />
+            <Route path="/plan" element={<Plan />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/markets" element={<Markets />} />
             <Route path="/atlas" element={<Atlas />} />
