@@ -105,8 +105,8 @@ export default function Dashboard() {
 
       // Fetch screener data for top alert
       try {
-        const scrRes = await get('/api/screener')
-        setScreenerData(scrRes.data || [])
+        const scrRes = await api.post('/api/screener', {})
+        setScreenerData(scrRes.data?.stocks || [])
       } catch { setScreenerData([]) }
 
       // Fetch digest on Mondays
@@ -193,8 +193,8 @@ export default function Dashboard() {
   const isEmptyState = positions.length === 0 && transactions.length === 0
 
   // Top screener alert
-  const undervalued = screenerData.filter(s => s.verdict === 'undervalued')
-  const topAlert = undervalued.sort((a, b) => (b.upsidePercent || 0) - (a.upsidePercent || 0))[0]
+  const undervalued = screenerData.filter(s => s.verdict === 'UNDERVALUED')
+  const topAlert = undervalued.sort((a, b) => (b.upside || 0) - (a.upside || 0))[0]
 
   // Budget remaining
   const budgetRemaining = budgetLimit > 0 ? budgetLimit - Math.abs(budget?.totalSpent || 0) : null
@@ -369,7 +369,7 @@ export default function Dashboard() {
             <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-primary)' }}>
               <span style={{ fontWeight: 500 }}>{topAlert.ticker}</span> is trading{' '}
               <span className="mono" style={{ color: 'var(--color-positive)', fontWeight: 500 }}>
-                {Math.abs(topAlert.upsidePercent || 0).toFixed(0)}%
+                {Math.abs(topAlert.upside || 0).toFixed(0)}%
               </span>{' '}
               below intrinsic value
               <span style={{ color: 'var(--color-gold)', marginLeft: 'var(--space-xs)' }}>View →</span>
