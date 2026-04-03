@@ -44,6 +44,7 @@ export default function Dashboard() {
   const [screenerData, setScreenerData] = useState([])
   const [budgetLimit, setBudgetLimit] = useState(0)
   const [learnExpanded, setLearnExpanded] = useState(false)
+  const [digest, setDigest] = useState(null)
 
   // Net worth form
   const [assetForm, setAssetForm] = useState({ name: '', value: '', type: 'Cash' })
@@ -107,6 +108,14 @@ export default function Dashboard() {
         const scrRes = await get('/api/screener')
         setScreenerData(scrRes.data || [])
       } catch { setScreenerData([]) }
+
+      // Fetch digest on Mondays
+      if (new Date().getDay() === 1) {
+        try {
+          const digestRes = await get('/api/digest')
+          setDigest(digestRes.data || null)
+        } catch {}
+      }
     } catch (err) {
       setError(err.message)
     } finally {
@@ -267,6 +276,45 @@ export default function Dashboard() {
         </h1>
         <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>{formatDate(new Date())}</p>
       </div>
+
+      {/* This Week digest card — Mondays only */}
+      {digest && (
+        <div className="card" style={{ marginBottom: 'var(--space-lg)', borderLeft: '3px solid var(--color-gold)' }}>
+          <span className="label-caps" style={{ display: 'block', marginBottom: 'var(--space-sm)' }}>This Week</span>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-lg)' }}>
+            {digest.portfolioHoldingsCount > 0 && (
+              <div>
+                <span className="mono" style={{ fontSize: 'var(--text-xl)', color: 'var(--color-text-primary)' }}>{digest.portfolioHoldingsCount}</span>
+                <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginLeft: 'var(--space-xs)' }}>holdings</span>
+              </div>
+            )}
+            {digest.budgetStatus !== 'no_budget' && (
+              <div>
+                <span className="mono" style={{ fontSize: 'var(--text-xl)', color: digest.budgetStatus === 'on_track' ? 'var(--color-positive)' : 'var(--color-negative)' }}>
+                  {digest.budgetPct}%
+                </span>
+                <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginLeft: 'var(--space-xs)' }}>of budget used</span>
+              </div>
+            )}
+            {digest.plan && (
+              <div>
+                <span className="mono" style={{ fontSize: 'var(--text-xl)', color: 'var(--color-text-primary)' }}>{formatCurrency(digest.plan.monthlyInvestment)}</span>
+                <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginLeft: 'var(--space-xs)' }}>/mo target</span>
+              </div>
+            )}
+          </div>
+          {digest.weeklyConcept && (
+            <div style={{ marginTop: 'var(--space-md)', paddingTop: 'var(--space-sm)', borderTop: '1px solid var(--color-border)' }}>
+              <span style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text-primary)' }}>
+                Concept of the week: {digest.weeklyConcept.term}
+              </span>
+              <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginTop: 2 }}>
+                {digest.weeklyConcept.short}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="grid-2" style={{ marginBottom: 'var(--space-lg)', alignItems: 'stretch' }}>
         {/* Card 2 — My Plan Progress */}
