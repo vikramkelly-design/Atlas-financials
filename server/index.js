@@ -10,11 +10,14 @@ const auth = require('./middleware/auth');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Security headers
-app.use(helmet());
+// Security headers — relaxed for cross-origin API access
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  contentSecurityPolicy: false,
+}));
 
 // Rate limiting
-const globalLimiter = rateLimit({ windowMs: 60000, max: 100, standardHeaders: true, legacyHeaders: false });
+const globalLimiter = rateLimit({ windowMs: 60000, max: 300, standardHeaders: true, legacyHeaders: false });
 const authLimiter = rateLimit({ windowMs: 60000, max: 5, message: { success: false, error: 'Too many attempts. Try again in a minute.' } });
 const aiLimiter = rateLimit({ windowMs: 60000, max: 10, message: { success: false, error: 'Too many AI requests. Try again in a minute.' } });
 app.use(globalLimiter);
