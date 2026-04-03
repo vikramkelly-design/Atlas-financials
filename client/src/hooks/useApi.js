@@ -1,9 +1,7 @@
 import { useState, useCallback } from 'react'
 import axios from 'axios'
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3001'
-
-export const api = axios.create({ baseURL: API })
+export const api = axios.create()
 
 // Attach auth token to every request
 api.interceptors.request.use((config) => {
