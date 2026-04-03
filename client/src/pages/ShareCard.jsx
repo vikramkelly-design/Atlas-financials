@@ -19,7 +19,7 @@ export default function ShareCard() {
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <p style={{ color: 'var(--color-text-faint)', fontSize: 'var(--text-base)' }}>Loading...</p>
+        <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-base)' }}>Loading...</p>
       </div>
     )
   }
@@ -28,8 +28,8 @@ export default function ShareCard() {
     return (
       <div style={{ minHeight: '100vh', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ textAlign: 'center' }}>
-          <p style={{ color: 'var(--color-danger)', fontSize: 'var(--text-lg)', marginBottom: '1rem' }}>{error || 'Score not found.'}</p>
-          <a href="/" style={{ color: 'var(--color-accent)', fontSize: 'var(--text-base)' }}>Go to Atlas</a>
+          <p style={{ color: 'var(--color-negative)', fontSize: 'var(--text-lg)', marginBottom: '1rem' }}>{error || 'Score not found.'}</p>
+          <a href="/" style={{ color: 'var(--color-gold)', fontSize: 'var(--text-base)' }}>Go to Atlas</a>
         </div>
       </div>
     )
@@ -39,8 +39,8 @@ export default function ShareCard() {
     <div style={{ minHeight: '100vh', background: 'var(--color-bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
       {/* Logo */}
       <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-        <span style={{ fontFamily: 'var(--font-brand)', fontSize: 42, color: 'var(--color-accent)' }}>Atlas</span>
-        <p style={{ color: 'var(--color-text-faint)', fontSize: 'var(--text-xs)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Financial Health Score</p>
+        <span style={{ fontFamily: 'var(--font-serif)', fontSize: 42, color: 'var(--color-gold)' }}>Atlas</span>
+        <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-xs)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Financial Health Score</p>
       </div>
 
       {/* Score Card */}
@@ -50,8 +50,8 @@ export default function ShareCard() {
       }}>
         {/* Big Score */}
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: '0.35rem', marginBottom: '0.75rem' }}>
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '4rem', fontWeight: 700, color: 'var(--color-primary)' }}>{data.score}</span>
-          <span style={{ fontSize: 'var(--text-2xl)', color: 'var(--color-text-faint)' }}>/ 100</span>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '4rem', fontWeight: 700, color: 'var(--color-navy)' }}>{data.score}</span>
+          <span style={{ fontSize: 'var(--text-2xl)', color: 'var(--color-text-muted)' }}>/ 100</span>
         </div>
 
         {/* Progress bar */}
@@ -59,7 +59,7 @@ export default function ShareCard() {
           <div style={{ height: 12, borderRadius: 6, background: 'var(--color-border)', overflow: 'hidden' }}>
             <div style={{
               width: `${data.score}%`, height: '100%', borderRadius: 6,
-              background: data.score >= 70 ? 'var(--color-success)' : data.score >= 50 ? 'var(--color-accent)' : 'var(--color-danger)',
+              background: data.score >= 70 ? 'var(--color-positive)' : data.score >= 50 ? 'var(--color-gold)' : 'var(--color-negative)',
               transition: 'width 0.5s',
             }} />
           </div>
@@ -83,7 +83,7 @@ export default function ShareCard() {
               borderBottom: i < data.categories.length - 1 ? '1px solid var(--color-border)' : 'none',
             }}>
               <div style={{ flex: 1 }}>
-                <span style={{ fontSize: 'var(--text-base)', color: 'var(--color-text)' }}>{cat.name}</span>
+                <span style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-primary)' }}>{cat.name}</span>
                 <div style={{ height: 4, borderRadius: 2, background: 'var(--color-border)', overflow: 'hidden', marginTop: '0.25rem', maxWidth: 150 }}>
                   <div style={{
                     width: `${(cat.score / cat.maxScore) * 100}%`, height: '100%', borderRadius: 2,
@@ -101,14 +101,14 @@ export default function ShareCard() {
 
       {/* CTA */}
       <div style={{ textAlign: 'center', marginTop: '2rem' }}>
-        <h2 style={{ fontSize: 'var(--text-xl)', marginBottom: '0.5rem', color: 'var(--color-primary)' }}>
+        <h2 style={{ fontSize: 'var(--text-xl)', marginBottom: '0.5rem', color: 'var(--color-navy)' }}>
           Check Your Financial Health
         </h2>
-        <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-muted)', marginBottom: '1rem' }}>
+        <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-secondary)', marginBottom: '1rem' }}>
           Take the free quiz and get your personalized score.
         </p>
         <a href="/" style={{
-          display: 'inline-block', padding: '0.75rem 2rem', background: 'var(--color-primary)', color: 'var(--color-accent)',
+          display: 'inline-block', padding: '0.75rem 2rem', background: 'var(--color-navy)', color: 'var(--color-gold)',
           borderRadius: 2, fontSize: 'var(--text-base)', fontWeight: 600, textDecoration: 'none',
           textTransform: 'uppercase', letterSpacing: '0.06em',
         }}>

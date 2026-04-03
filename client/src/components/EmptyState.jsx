@@ -7,7 +7,7 @@ export default function EmptyState({ icon, title, description, actionLabel, onAc
           height="40"
           viewBox="0 0 24 24"
           fill="none"
-          stroke="var(--color-accent)"
+          stroke="var(--color-gold)"
           strokeWidth="1.5"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -19,7 +19,7 @@ export default function EmptyState({ icon, title, description, actionLabel, onAc
       <h3
         style={{
           fontSize: 'var(--text-xl)',
-          color: 'var(--color-text)',
+          color: 'var(--color-text-primary)',
           marginBottom: '0.5rem',
         }}
       >
@@ -29,7 +29,7 @@ export default function EmptyState({ icon, title, description, actionLabel, onAc
         <p
           style={{
             fontSize: 'var(--text-base)',
-            color: 'var(--color-text-muted)',
+            color: 'var(--color-text-secondary)',
             maxWidth: '400px',
             margin: '0 auto',
           }}

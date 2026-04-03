@@ -16,14 +16,14 @@ export function formatPercent(n) {
 }
 
 export function numColor(n) {
-  if (n > 0) return 'var(--color-success)'
-  if (n < 0) return 'var(--color-danger)'
-  return 'var(--color-text)'
+  if (n > 0) return 'var(--color-positive)'
+  if (n < 0) return 'var(--color-negative)'
+  return 'var(--color-text-primary)'
 }
 
 export default function NumberDisplay({ value, format = 'currency', size = '1rem', style = {} }) {
   let display
-  let color = 'var(--color-text)'
+  let color = 'var(--color-text-primary)'
 
   if (format === 'currency') {
     display = formatCurrency(value)

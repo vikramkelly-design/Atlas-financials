@@ -66,7 +66,7 @@ function InfoTip({ text }) {
         style={{
           background: 'none', border: '1px solid var(--color-border-dark)', borderRadius: '50%',
           width: 14, height: 14, fontSize: 'var(--text-xs)', lineHeight: '12px', textAlign: 'center',
-          cursor: 'pointer', color: 'var(--color-text-muted)', marginLeft: 3, padding: 0,
+          cursor: 'pointer', color: 'var(--color-text-secondary)', marginLeft: 3, padding: 0,
           fontWeight: 700, verticalAlign: 'middle',
         }}
         title="Click for explanation"
@@ -79,7 +79,7 @@ function InfoTip({ text }) {
             marginTop: 6, width: 260, padding: '0.65rem 0.75rem',
             background: 'var(--color-surface)', border: '1px solid var(--color-border)',
             borderRadius: 6, fontSize: 'var(--text-sm)', lineHeight: 1.5,
-            color: 'var(--color-text)', zIndex: 100,
+            color: 'var(--color-text-primary)', zIndex: 100,
             whiteSpace: 'normal',
           }}>
             {text}
@@ -112,9 +112,9 @@ export default function Markets() {
           { key: 'watchlist', label: 'Watchlist' },
         ].map(t => (
           <button key={t.key} onClick={() => setTab(t.key)} style={{
-            padding: '0.6rem 1.25rem', border: 'none', borderBottom: tab === t.key ? '2px solid var(--color-accent)' : '2px solid transparent',
+            padding: '0.6rem 1.25rem', border: 'none', borderBottom: tab === t.key ? '2px solid var(--color-gold)' : '2px solid transparent',
             background: 'none', cursor: 'pointer', fontWeight: tab === t.key ? 600 : 400,
-            color: tab === t.key ? 'var(--color-accent)' : 'var(--color-text-muted)',
+            color: tab === t.key ? 'var(--color-gold)' : 'var(--color-text-secondary)',
             fontSize: 'var(--text-base)', marginBottom: '-2px', transition: 'all 0.15s ease',
           }}>
             {t.label}
@@ -274,7 +274,7 @@ function WatchlistTab() {
               <div key={w.ticker} className="card" style={{ position: 'relative' }}>
                 <button onClick={() => removeFromWatchlist(w.ticker)} style={{
                   position: 'absolute', top: 8, right: 10, background: 'none', border: 'none',
-                  color: 'var(--color-text-faint)', cursor: 'pointer', fontSize: 'var(--text-lg)'
+                  color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: 'var(--text-lg)'
                 }}>x</button>
 
                 <h3 style={{ fontSize: 'var(--text-xl)', marginBottom: 0 }}>{w.ticker}</h3>
@@ -290,7 +290,7 @@ function WatchlistTab() {
                   </p>
                 )}
 
-                <div style={{ marginTop: '0.75rem', fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>
+                <div style={{ marginTop: '0.75rem', fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }}>
                   {[['52W High', q.high52 ? formatCurrency(q.high52) : '--'],
                     ['52W Low', q.low52 ? formatCurrency(q.low52) : '--'],
                     ['Mkt Cap', formatMarketCap(q.marketCap)]
@@ -303,7 +303,7 @@ function WatchlistTab() {
                 </div>
 
                 {digests[w.ticker] && (
-                  <p style={{ marginTop: '0.75rem', fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', fontStyle: 'italic', lineHeight: 1.4 }}>
+                  <p style={{ marginTop: '0.75rem', fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', fontStyle: 'italic', lineHeight: 1.4 }}>
                     {digests[w.ticker]}
                   </p>
                 )}
@@ -333,7 +333,7 @@ function WatchlistTab() {
           }}>
             <button onClick={() => setDetailModal(null)} style={{
               position: 'absolute', top: 12, right: 16, background: 'none', border: 'none',
-              fontSize: 'var(--text-xl)', cursor: 'pointer', color: 'var(--color-text-muted)'
+              fontSize: 'var(--text-xl)', cursor: 'pointer', color: 'var(--color-text-secondary)'
             }}>x</button>
 
             {detailLoading ? <LoadingSpinner /> : detailData ? (
@@ -355,7 +355,7 @@ function WatchlistTab() {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', fontSize: 'var(--text-sm)' }}>
                       <div>
                         <div className="text-muted">Buy Below (30% MoS)</div>
-                        <div className="mono" style={{ fontWeight: 700, color: 'var(--color-accent)' }}>
+                        <div className="mono" style={{ fontWeight: 700, color: 'var(--color-gold)' }}>
                           {detailData.iv.summary.mosPrice != null ? formatCurrency(detailData.iv.summary.mosPrice) : 'N/A'}
                         </div>
                       </div>
@@ -395,7 +395,7 @@ function WatchlistTab() {
 
                 {/* AI Explainer */}
                 {explanation ? (
-                  <div style={{ padding: '1rem', background: 'var(--color-accent-light)', borderRadius: 8 }}>
+                  <div style={{ padding: '1rem', background: 'var(--color-gold-light)', borderRadius: 8 }}>
                     <p style={{ fontSize: 'var(--text-base)', lineHeight: 1.6 }}>{explanation}</p>
                   </div>
                 ) : (
@@ -538,7 +538,7 @@ function ScreenerTab() {
             }}>
               {t}
               <button onClick={() => removeTicker(t)} style={{
-                background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-faint)',
+                background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)',
                 fontSize: 'var(--text-sm)', lineHeight: 1, padding: 0
               }}>x</button>
             </span>
@@ -646,12 +646,12 @@ function ScreenerTab() {
             ) : (
               filteredSorted.map(stock => (
                 <tr key={stock.ticker} style={{
-                  background: stock.verdict === 'UNDERVALUED' ? 'color-mix(in srgb, var(--color-success) 4%, transparent)' : stock.verdict === 'OVERVALUED' ? 'color-mix(in srgb, var(--color-danger) 4%, transparent)' : undefined
+                  background: stock.verdict === 'UNDERVALUED' ? 'color-mix(in srgb, var(--color-positive) 4%, transparent)' : stock.verdict === 'OVERVALUED' ? 'color-mix(in srgb, var(--color-negative) 4%, transparent)' : undefined
                 }}>
                   {COLUMNS.map(col => (
                     <td key={col.key} style={{ whiteSpace: 'nowrap' }}>
                       {stock.error && col.key !== 'ticker'
-                        ? (col.key === 'currentPrice' ? <span style={{ color: 'var(--color-danger)', fontSize: 'var(--text-sm)' }}>{stock.error}</span> : '—')
+                        ? (col.key === 'currentPrice' ? <span style={{ color: 'var(--color-negative)', fontSize: 'var(--text-sm)' }}>{stock.error}</span> : '—')
                         : <ScreenerCell col={col.key} stock={stock} />
                       }
                     </td>
@@ -686,10 +686,10 @@ function ScreenerCell({ col, stock }) {
     case 'ticker':
       return <div><strong>{stock.ticker}</strong>{stock.companyName && <div className="text-muted" style={{ fontSize: 'var(--text-sm)', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{stock.companyName}</div>}</div>
     case 'currentPrice': return <span className="mono" style={{ fontWeight: 600 }}>{formatCurrency(v)}</span>
-    case 'buyBelowPrice': return <span className="mono" style={{ fontWeight: 700, color: 'var(--color-accent)' }}>{v != null ? formatCurrency(v) : 'N/A'}</span>
+    case 'buyBelowPrice': return <span className="mono" style={{ fontWeight: 700, color: 'var(--color-gold)' }}>{v != null ? formatCurrency(v) : 'N/A'}</span>
     case 'upside':
       if (v == null) return <span className="text-muted">N/A</span>
-      return <span className="mono" style={{ color: v >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>{v >= 0 ? '+' : ''}{v.toFixed(1)}%</span>
+      return <span className="mono" style={{ color: v >= 0 ? 'var(--color-positive)' : 'var(--color-negative)' }}>{v >= 0 ? '+' : ''}{v.toFixed(1)}%</span>
     case 'verdict': return verdictBadge(v)
     case 'peRatio':
     case 'forwardPE': return <span className="mono">{v != null ? fmtNum(v) + 'x' : 'N/A'}</span>
@@ -816,7 +816,7 @@ function AnalyzerTab() {
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', flexWrap: 'wrap' }}>
               <h2 style={{ fontSize: 'var(--text-2xl)' }}>{quoteData.companyName || ticker}</h2>
               <span className="text-muted">{ticker}</span>
-              <span className="mono" style={{ fontSize: 'var(--text-xl)', fontWeight: 700, color: 'var(--color-accent)' }}>
+              <span className="mono" style={{ fontSize: 'var(--text-xl)', fontWeight: 700, color: 'var(--color-gold)' }}>
                 {formatCurrency(quoteData.currentPrice)}
               </span>
               {quoteData.exchange && <span className="badge badge-neutral">{quoteData.exchange}</span>}
@@ -832,7 +832,7 @@ function AnalyzerTab() {
       {(loadingIV || ivData) && <IVSummarySection data={ivData} loading={loadingIV} />}
 
       {/* Key Metrics */}
-      {errorQuote && !loadingQuote && <p style={{ color: 'var(--color-danger)', fontSize: 'var(--text-sm)', marginBottom: '0.75rem' }}>Quote error: {errorQuote}</p>}
+      {errorQuote && !loadingQuote && <p style={{ color: 'var(--color-negative)', fontSize: 'var(--text-sm)', marginBottom: '0.75rem' }}>Quote error: {errorQuote}</p>}
       {(loadingQuote || quoteData) && <QuoteMetricsSection data={quoteData} loading={loadingQuote} />}
 
       {/* DCF Projections */}
@@ -888,7 +888,7 @@ function IVSummarySection({ data, loading }) {
             <div className="text-muted" style={{ fontSize: 'var(--text-sm)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>
               Buy Below (30% Margin of Safety)
             </div>
-            <div className="mono" style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-accent)' }}>
+            <div className="mono" style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-gold)' }}>
               {summary.mosPrice != null ? formatCurrency(summary.mosPrice) : 'N/A'}
             </div>
             <div className="text-muted" style={{ fontSize: 'var(--text-sm)' }}>
@@ -898,7 +898,7 @@ function IVSummarySection({ data, loading }) {
           <div style={{ textAlign: 'right' }}>
             {verdictBadge(summary.verdict)}
             {upside != null && (
-              <div className="mono" style={{ fontSize: 'var(--text-sm)', marginTop: '0.5rem', color: upside >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
+              <div className="mono" style={{ fontSize: 'var(--text-sm)', marginTop: '0.5rem', color: upside >= 0 ? 'var(--color-positive)' : 'var(--color-negative)' }}>
                 {upside >= 0
                   ? `${upside.toFixed(1)}% upside to buy price`
                   : `${Math.abs(upside).toFixed(1)}% above buy price`
@@ -922,7 +922,7 @@ function IVSummarySection({ data, loading }) {
             <div className="text-muted" style={{ fontSize: 'var(--text-sm)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>{m.label}</div>
             <div className="mono" style={{
               fontSize: m.isError ? 'var(--text-sm)' : 'var(--text-lg)', fontWeight: 600,
-              color: m.isError ? 'var(--color-warning)' : m.accent ? 'var(--color-accent)' : 'var(--color-text)'
+              color: m.isError ? 'var(--color-gold)' : m.accent ? 'var(--color-gold)' : 'var(--color-text-primary)'
             }}>{m.value}</div>
           </div>
         ))}
@@ -988,16 +988,16 @@ function DCFBarChart({ projectedFCFs, freeCashFlow }) {
       <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'flex-end', height: 160 }}>
         {/* Base year */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-          <div className="mono" style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>{fmtLarge(freeCashFlow)}</div>
-          <div style={{ width: '80%', background: 'var(--color-accent)', borderRadius: '3px 3px 0 0', height: `${Math.max(4, (Math.abs(freeCashFlow) / maxVal) * 140)}px` }} />
+          <div className="mono" style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)' }}>{fmtLarge(freeCashFlow)}</div>
+          <div style={{ width: '80%', background: 'var(--color-gold)', borderRadius: '3px 3px 0 0', height: `${Math.max(4, (Math.abs(freeCashFlow) / maxVal) * 140)}px` }} />
           <div className="mono" style={{ fontSize: 'var(--text-xs)' }}>Now</div>
         </div>
         {projectedFCFs.map(d => (
           <div key={d.year} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-            <div className="mono" style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>{fmtLarge(d.fcf)}</div>
+            <div className="mono" style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>{fmtLarge(d.fcf)}</div>
             <div style={{ display: 'flex', gap: 1, width: '80%', justifyContent: 'center', alignItems: 'flex-end', height: `${Math.max(4, (Math.abs(d.fcf) / maxVal) * 140)}px` }}>
-              <div style={{ width: '45%', background: 'var(--color-accent)', opacity: 0.7, borderRadius: '2px 2px 0 0', height: '100%' }} />
-              <div style={{ width: '45%', background: 'var(--color-success)', opacity: 0.7, borderRadius: '2px 2px 0 0', height: `${Math.max(4, (Math.abs(d.discountedFCF) / Math.abs(d.fcf)) * 100)}%` }} />
+              <div style={{ width: '45%', background: 'var(--color-gold)', opacity: 0.7, borderRadius: '2px 2px 0 0', height: '100%' }} />
+              <div style={{ width: '45%', background: 'var(--color-positive)', opacity: 0.7, borderRadius: '2px 2px 0 0', height: `${Math.max(4, (Math.abs(d.discountedFCF) / Math.abs(d.fcf)) * 100)}%` }} />
             </div>
             <div className="mono" style={{ fontSize: 'var(--text-xs)' }}>Y{d.year}</div>
           </div>
@@ -1005,10 +1005,10 @@ function DCFBarChart({ projectedFCFs, freeCashFlow }) {
       </div>
       <div style={{ display: 'flex', gap: '1rem', marginTop: '0.75rem', justifyContent: 'center' }}>
         <span style={{ fontSize: 'var(--text-sm)', display: 'flex', alignItems: 'center', gap: 4 }}>
-          <span style={{ width: 10, height: 10, background: 'var(--color-accent)', opacity: 0.7, borderRadius: 2, display: 'inline-block' }} /> Projected FCF
+          <span style={{ width: 10, height: 10, background: 'var(--color-gold)', opacity: 0.7, borderRadius: 2, display: 'inline-block' }} /> Projected FCF
         </span>
         <span style={{ fontSize: 'var(--text-sm)', display: 'flex', alignItems: 'center', gap: 4 }}>
-          <span style={{ width: 10, height: 10, background: 'var(--color-success)', opacity: 0.7, borderRadius: 2, display: 'inline-block' }} /> Discounted FCF
+          <span style={{ width: 10, height: 10, background: 'var(--color-positive)', opacity: 0.7, borderRadius: 2, display: 'inline-block' }} /> Discounted FCF
         </span>
       </div>
     </div>
@@ -1083,11 +1083,11 @@ function AnalystRatingsSection({ data, loading, error }) {
   const { consensusLabel, consensusScore, trend, priceTargets, numberOfAnalystOpinions } = data
 
   function ratingColor(label) {
-    if (!label) return 'var(--color-text-muted)'
+    if (!label) return 'var(--color-text-secondary)'
     const l = label.toLowerCase()
-    if (l.includes('buy')) return 'var(--color-success)'
-    if (l.includes('sell')) return 'var(--color-danger)'
-    return 'var(--color-warning)'
+    if (l.includes('buy')) return 'var(--color-positive)'
+    if (l.includes('sell')) return 'var(--color-negative)'
+    return 'var(--color-gold)'
   }
 
   const bars = trend ? [
@@ -1120,10 +1120,10 @@ function AnalystRatingsSection({ data, loading, error }) {
 
       {/* Consensus meter */}
       <div style={{ position: 'relative', marginBottom: '1.25rem' }}>
-        <div style={{ height: 6, borderRadius: 3, background: 'linear-gradient(to right, var(--color-danger), var(--color-warning), var(--color-success))' }} />
+        <div style={{ height: 6, borderRadius: 3, background: 'linear-gradient(to right, var(--color-negative), var(--color-gold), var(--color-positive))' }} />
         <div style={{
           position: 'absolute', top: -3, width: 12, height: 12, borderRadius: '50%',
-          background: 'var(--color-surface)', border: '2px solid var(--color-accent)',
+          background: 'var(--color-surface)', border: '2px solid var(--color-gold)',
           left: `${Math.max(2, Math.min(98, meterPct))}%`, transform: 'translateX(-50%)'
         }} />
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.35rem' }}>
@@ -1155,9 +1155,9 @@ function AnalystRatingsSection({ data, loading, error }) {
           <h4 style={{ fontSize: 'var(--text-base)', marginBottom: '0.5rem', marginTop: '0.5rem' }}>Price Targets</h4>
           <div className="grid-3">
             {[
-              { label: 'Low', value: priceTargets.low, color: 'var(--color-danger)' },
-              { label: 'Mean', value: priceTargets.mean, color: 'var(--color-accent)' },
-              { label: 'High', value: priceTargets.high, color: 'var(--color-success)' },
+              { label: 'Low', value: priceTargets.low, color: 'var(--color-negative)' },
+              { label: 'Mean', value: priceTargets.mean, color: 'var(--color-gold)' },
+              { label: 'High', value: priceTargets.high, color: 'var(--color-positive)' },
             ].map(t => (
               <div key={t.label} style={{ textAlign: 'center' }}>
                 <div className="text-muted" style={{ fontSize: 'var(--text-sm)', textTransform: 'uppercase' }}>{t.label}</div>
@@ -1170,7 +1170,7 @@ function AnalystRatingsSection({ data, loading, error }) {
           {priceTargets.current && priceTargets.mean && (
             <p className="text-muted" style={{ fontSize: 'var(--text-sm)', marginTop: '0.5rem', textAlign: 'center' }}>
               Upside to mean target:{' '}
-              <span className="mono" style={{ color: priceTargets.mean > priceTargets.current ? 'var(--color-success)' : 'var(--color-danger)', fontWeight: 600 }}>
+              <span className="mono" style={{ color: priceTargets.mean > priceTargets.current ? 'var(--color-positive)' : 'var(--color-negative)', fontWeight: 600 }}>
                 {(((priceTargets.mean - priceTargets.current) / priceTargets.current) * 100).toFixed(1)}%
               </span>
             </p>

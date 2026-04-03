@@ -27,29 +27,29 @@ export default function Landing({ onAuth }) {
         padding: '1rem 2rem', maxWidth: 1100, margin: '0 auto',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span style={{ fontFamily: 'var(--font-brand)', fontSize: 36, color: 'var(--color-accent)' }}>Atlas</span>
-          <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Finance Terminal</span>
+          <span style={{ fontFamily: 'var(--font-serif)', fontSize: 36, color: 'var(--color-gold)' }}>Atlas</span>
+          <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Finance Terminal</span>
         </div>
         <button onClick={() => setShowLogin(true)} className="btn btn-primary">Log In</button>
       </nav>
 
       {/* Hero */}
       <section style={{ textAlign: 'center', padding: '4rem 2rem 3rem', maxWidth: 700, margin: '0 auto' }}>
-        <h1 style={{ fontSize: 'var(--text-4xl)', lineHeight: 1.15, marginBottom: '1rem', color: 'var(--color-primary)' }}>
+        <h1 style={{ fontSize: 'var(--text-4xl)', lineHeight: 1.15, marginBottom: '1rem', color: 'var(--color-navy)' }}>
           Take Control of Your Money
         </h1>
-        <p style={{ fontSize: 'var(--text-xl)', color: 'var(--color-text-muted)', lineHeight: 1.6, marginBottom: '2rem' }}>
+        <p style={{ fontSize: 'var(--text-xl)', color: 'var(--color-text-secondary)', lineHeight: 1.6, marginBottom: '2rem' }}>
           Track spending, grow your portfolio, crush debt, and get a personalized financial health score — all with AI-powered insights that actually make sense.
         </p>
         <button onClick={() => setShowLogin(true)} className="btn btn-primary btn-lg">
           Get Started Free
         </button>
-        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-faint)', marginTop: '0.75rem' }}>No credit card required</p>
+        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', marginTop: '0.75rem' }}>No credit card required</p>
       </section>
 
       {/* Features */}
       <section style={{ maxWidth: 1000, margin: '0 auto', padding: '2rem 2rem 3rem' }}>
-        <h2 style={{ textAlign: 'center', fontSize: 'var(--text-2xl)', marginBottom: '2rem', color: 'var(--color-primary)' }}>Everything You Need</h2>
+        <h2 style={{ textAlign: 'center', fontSize: 'var(--text-2xl)', marginBottom: '2rem', color: 'var(--color-navy)' }}>Everything You Need</h2>
         <div style={{
           display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
           gap: '1rem',
@@ -59,20 +59,20 @@ export default function Landing({ onAuth }) {
               background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 2,
               padding: '1.5rem', transition: 'border-color 0.1s',
             }}>
-              <svg width="24" height="24" fill="none" stroke="var(--color-accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" style={{ marginBottom: '0.75rem' }}>
+              <svg width="24" height="24" fill="none" stroke="var(--color-gold)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" style={{ marginBottom: '0.75rem' }}>
                 <path d={f.icon} />
               </svg>
-              <h3 style={{ fontSize: 'var(--text-lg)', marginBottom: '0.35rem', color: 'var(--color-primary)' }}>{f.title}</h3>
-              <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>{f.desc}</p>
+              <h3 style={{ fontSize: 'var(--text-lg)', marginBottom: '0.35rem', color: 'var(--color-navy)' }}>{f.title}</h3>
+              <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>{f.desc}</p>
             </div>
           ))}
         </div>
       </section>
 
       {/* How It Works */}
-      <section style={{ background: 'var(--color-primary)', padding: '3rem 2rem' }}>
+      <section style={{ background: 'var(--color-navy)', padding: '3rem 2rem' }}>
         <div style={{ maxWidth: 900, margin: '0 auto' }}>
-          <h2 style={{ textAlign: 'center', fontSize: 'var(--text-2xl)', marginBottom: '2rem', color: 'var(--color-accent)' }}>How It Works</h2>
+          <h2 style={{ textAlign: 'center', fontSize: 'var(--text-2xl)', marginBottom: '2rem', color: 'var(--color-gold)' }}>How It Works</h2>
           <div style={{
             display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
             gap: '2rem',
@@ -80,14 +80,14 @@ export default function Landing({ onAuth }) {
             {STEPS.map(s => (
               <div key={s.num} style={{ textAlign: 'center' }}>
                 <div style={{
-                  width: 48, height: 48, borderRadius: '50%', border: '2px solid var(--color-accent)',
+                  width: 48, height: 48, borderRadius: '50%', border: '2px solid var(--color-gold)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  margin: '0 auto 1rem', color: 'var(--color-accent)', fontSize: '1.25rem', fontWeight: 700,
+                  margin: '0 auto 1rem', color: 'var(--color-gold)', fontSize: '1.25rem', fontWeight: 700,
                   fontFamily: "'DM Mono', monospace",
                 }}>
                   {s.num}
                 </div>
-                <h3 style={{ fontSize: 'var(--text-lg)', marginBottom: '0.5rem', color: 'var(--color-accent)' }}>{s.title}</h3>
+                <h3 style={{ fontSize: 'var(--text-lg)', marginBottom: '0.5rem', color: 'var(--color-gold)' }}>{s.title}</h3>
                 <p style={{ fontSize: 'var(--text-base)', color: 'rgba(201, 168, 76, 0.7)', lineHeight: 1.5 }}>{s.desc}</p>
               </div>
             ))}
@@ -97,10 +97,10 @@ export default function Landing({ onAuth }) {
 
       {/* CTA */}
       <section style={{ textAlign: 'center', padding: '3rem 2rem' }}>
-        <h2 style={{ fontSize: 'var(--text-3xl)', marginBottom: '0.75rem', color: 'var(--color-primary)' }}>
+        <h2 style={{ fontSize: 'var(--text-3xl)', marginBottom: '0.75rem', color: 'var(--color-navy)' }}>
           Ready to Get Financially Fit?
         </h2>
-        <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-muted)', marginBottom: '1.5rem' }}>
+        <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-secondary)', marginBottom: '1.5rem' }}>
           Join Atlas and start building real financial habits today.
         </p>
         <button onClick={() => setShowLogin(true)} className="btn btn-primary btn-lg">
@@ -111,7 +111,7 @@ export default function Landing({ onAuth }) {
       {/* Footer */}
       <footer style={{
         borderTop: '1px solid var(--color-border)', padding: '1.5rem 2rem',
-        textAlign: 'center', color: 'var(--color-text-faint)', fontSize: 'var(--text-sm)',
+        textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)',
         textTransform: 'uppercase', letterSpacing: '0.05em',
       }}>
         For informational purposes only. Not financial advice.
@@ -122,7 +122,7 @@ export default function Landing({ onAuth }) {
         <div className="login-overlay" style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'var(--color-bg)' }}>
           <button onClick={() => setShowLogin(false)} aria-label="Close login" style={{
             position: 'absolute', top: 16, right: 20, background: 'none', border: 'none',
-            color: 'var(--color-text-faint)', fontSize: 'var(--text-2xl)', cursor: 'pointer', zIndex: 1,
+            color: 'var(--color-text-muted)', fontSize: 'var(--text-2xl)', cursor: 'pointer', zIndex: 1,
           }}>
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="4" y1="4" x2="16" y2="16" />

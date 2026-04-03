@@ -24,7 +24,7 @@ export default function ConfirmDialog({ open, title, message, onConfirm, onCance
         background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 2,
         padding: 'var(--space-lg)', maxWidth: 380, width: '90%',
       }}>
-        <h3 id="confirm-dialog-title" style={{ fontSize: 'var(--text-lg)', marginBottom: 'var(--space-sm)', color: 'var(--color-text)' }}>{title}</h3>
+        <h3 id="confirm-dialog-title" style={{ fontSize: 'var(--text-lg)', marginBottom: 'var(--space-sm)', color: 'var(--color-text-primary)' }}>{title}</h3>
         <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-muted)', marginBottom: 'var(--space-lg)', lineHeight: 1.5 }}>{message}</p>
         <div style={{ display: 'flex', gap: 'var(--space-sm)', justifyContent: 'flex-end' }}>
           <button ref={cancelRef} className="btn btn-ghost" onClick={onCancel}>Cancel</button>

@@ -61,9 +61,9 @@ export default function MyScore() {
         </div>
 
         <div className="card" style={{ textAlign: 'center', marginBottom: '1rem' }}>
-          <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Baseline Assessment</p>
+          <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Baseline Assessment</p>
           <div style={{ marginBottom: '0.75rem' }}>
-            <span style={{ fontSize: 'var(--text-4xl)', fontWeight: 700, color: 'var(--color-primary)' }}>{score.label}</span>
+            <span style={{ fontSize: 'var(--text-4xl)', fontWeight: 700, color: 'var(--color-navy)' }}>{score.label}</span>
           </div>
           <span style={{
             fontSize: 'var(--text-xl)', fontWeight: 700, color: gradeColor(score.grade),
@@ -74,7 +74,7 @@ export default function MyScore() {
           </span>
         </div>
 
-        <div style={{ background: 'var(--color-accent-15)', border: '1px solid var(--color-accent-30)', borderRadius: 2, padding: '0.65rem 0.85rem', marginBottom: '1rem', fontSize: 'var(--text-sm)', color: 'var(--color-accent)' }}>
+        <div style={{ background: 'var(--color-gold-15)', border: '1px solid var(--color-gold-30)', borderRadius: 2, padding: '0.65rem 0.85rem', marginBottom: '1rem', fontSize: 'var(--text-sm)', color: 'var(--color-gold)' }}>
           This is a baseline score from your quiz answers. Import a bank CSV or add portfolio positions to unlock your full numerical score.
         </div>
 
@@ -87,7 +87,7 @@ export default function MyScore() {
               borderBottom: i < score.categories.length - 1 ? '1px solid var(--color-border)' : 'none',
             }}>
               <div style={{ flex: 1 }}>
-                <span style={{ fontSize: 'var(--text-base)', fontWeight: 500, color: 'var(--color-text)' }}>{cat.name}</span>
+                <span style={{ fontSize: 'var(--text-base)', fontWeight: 500, color: 'var(--color-text-primary)' }}>{cat.name}</span>
                 {cat.summary && <p className="text-faint" style={{ fontSize: 'var(--text-sm)', marginTop: 2 }}>{cat.summary}</p>}
               </div>
               <span style={{ fontSize: 'var(--text-xl)', fontWeight: 700, color: gradeColor(cat.grade), minWidth: 36, textAlign: 'right' }}>
@@ -99,7 +99,7 @@ export default function MyScore() {
 
         {score.aiSummary && (
           <div className="card">
-            <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-muted)', lineHeight: 1.6 }}>{score.aiSummary}</p>
+            <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>{score.aiSummary}</p>
           </div>
         )}
       </div>
@@ -142,16 +142,16 @@ export default function MyScore() {
 
       {/* Big Score */}
       <div className="card" style={{ textAlign: 'center', marginBottom: '1rem' }}>
-        <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Financial Health Score</p>
+        <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Financial Health Score</p>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: '0.35rem', marginBottom: '0.75rem' }}>
-          <span className="mono" style={{ fontSize: 'var(--text-5xl)', fontWeight: 700, color: 'var(--color-primary)' }}>{score.score}</span>
-          <span style={{ fontSize: 'var(--text-2xl)', color: 'var(--color-text-faint)' }}>/ 100</span>
+          <span className="mono" style={{ fontSize: 'var(--text-5xl)', fontWeight: 700, color: 'var(--color-navy)' }}>{score.score}</span>
+          <span style={{ fontSize: 'var(--text-2xl)', color: 'var(--color-text-muted)' }}>/ 100</span>
         </div>
         <div style={{ maxWidth: 350, margin: '0 auto 1rem' }}>
           <div style={{ height: 12, borderRadius: 6, background: 'var(--color-surface-2)', overflow: 'hidden' }}>
             <div style={{
               width: `${score.score}%`, height: '100%', borderRadius: 6,
-              background: score.score >= 70 ? 'var(--color-success)' : score.score >= 50 ? 'var(--color-accent)' : 'var(--color-danger)',
+              background: score.score >= 70 ? 'var(--color-positive)' : score.score >= 50 ? 'var(--color-gold)' : 'var(--color-negative)',
               transition: 'width 0.5s',
             }} />
           </div>
@@ -176,7 +176,7 @@ export default function MyScore() {
           }}>
             <div style={{ flex: 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                <span style={{ fontSize: 'var(--text-base)', fontWeight: 500, color: 'var(--color-text)' }}>{cat.name}</span>
+                <span style={{ fontSize: 'var(--text-base)', fontWeight: 500, color: 'var(--color-text-primary)' }}>{cat.name}</span>
                 <span className="mono text-faint" style={{ fontSize: 'var(--text-sm)' }}>{cat.score}/{cat.maxScore}</span>
               </div>
               {cat.summary && (
@@ -202,7 +202,7 @@ export default function MyScore() {
       {/* AI Summary */}
       {score.aiSummary && (
         <div className="card">
-          <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
+          <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
             {score.aiSummary}
           </p>
         </div>

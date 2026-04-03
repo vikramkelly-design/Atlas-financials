@@ -185,7 +185,7 @@ export default function Dashboard() {
 
       {/* Welcome banner for new users */}
       {isNewUser && (
-        <div className="card" style={{ marginBottom: '1.5rem', borderLeft: '3px solid var(--color-accent)' }}>
+        <div className="card" style={{ marginBottom: '1.5rem', borderLeft: '3px solid var(--color-gold)' }}>
           <h2 style={{ fontSize: 'var(--text-2xl)', marginBottom: '0.5rem' }}>
             Welcome to Atlas{user.name ? `, ${user.name.split(' ')[0]}` : ''}.
           </h2>
@@ -204,27 +204,27 @@ export default function Dashboard() {
       <div className="grid-2" style={{ marginBottom: '1rem', alignItems: 'stretch' }}>
         {/* Financial Health Score */}
         {showHealthScore ? (
-          <div className="card" style={{ borderLeft: `3px solid ${healthScore.score >= 70 ? 'var(--color-success)' : healthScore.score >= 50 ? 'var(--color-accent)' : 'var(--color-danger)'}` }}>
+          <div className="card" style={{ borderLeft: `3px solid ${healthScore.score >= 70 ? 'var(--color-positive)' : healthScore.score >= 50 ? 'var(--color-gold)' : 'var(--color-negative)'}` }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-              <span className="label-caps" style={{ color: 'var(--color-text-muted)' }}>Financial Health</span>
+              <span className="label-caps" style={{ color: 'var(--color-text-secondary)' }}>Financial Health</span>
               <span style={{ fontSize: 'var(--text-xl)', fontWeight: 700, color: gradeColor(healthScore.grade), padding: '0.15rem 0.5rem', border: `1px solid ${gradeColor(healthScore.grade)}`, borderRadius: 2 }}>
                 {healthScore.grade}
               </span>
             </div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem', marginBottom: '0.5rem' }}>
-              <span className="mono" style={{ fontSize: 'var(--text-4xl)', fontWeight: 700, color: 'var(--color-primary)' }}>{healthScore.score}</span>
+              <span className="mono" style={{ fontSize: 'var(--text-4xl)', fontWeight: 700, color: 'var(--color-navy)' }}>{healthScore.score}</span>
               <span className="text-faint" style={{ fontSize: 'var(--text-lg)' }}>/ 100</span>
             </div>
             <div className="progress-bar" style={{ marginBottom: '0.75rem', height: 8 }}>
               <div className="progress-bar-fill" style={{
                 width: `${healthScore.score}%`,
-                background: healthScore.score >= 70 ? 'var(--color-success)' : healthScore.score >= 50 ? 'var(--color-accent)' : 'var(--color-danger)',
+                background: healthScore.score >= 70 ? 'var(--color-positive)' : healthScore.score >= 50 ? 'var(--color-gold)' : 'var(--color-negative)',
               }} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
               {healthScore.categories?.map(cat => (
                 <div key={cat.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.25rem 0' }}>
-                  <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>{cat.name}</span>
+                  <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-primary)' }}>{cat.name}</span>
                   <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: gradeColor(cat.grade), minWidth: 28, textAlign: 'right' }}>{cat.grade}</span>
                 </div>
               ))}
@@ -238,7 +238,7 @@ export default function Dashboard() {
           </div>
         ) : (
           <div className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: '0.75rem', padding: '2rem var(--space-lg)' }}>
-            <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-muted)' }}>
+            <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-secondary)' }}>
               Your financial health score appears after you add your first data.
             </p>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -250,7 +250,7 @@ export default function Dashboard() {
 
         {/* Net Worth Card */}
         <div className="card">
-          <span className="label-caps" style={{ color: 'var(--color-text-muted)', marginBottom: '0.25rem', display: 'block' }}>Net Worth</span>
+          <span className="label-caps" style={{ color: 'var(--color-text-secondary)', marginBottom: '0.25rem', display: 'block' }}>Net Worth</span>
           {hasAssets ? (
             <>
               <span className="mono" style={{ fontSize: '2rem', color: numColor(netWorth?.netWorth || 0) }}>
@@ -275,12 +275,12 @@ export default function Dashboard() {
               <div style={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', background: 'var(--color-surface-2)' }}>
                 <div style={{
                   width: `${(netWorth.totalAssets / (netWorth.totalAssets + netWorth.totalLiabilities)) * 100}%`,
-                  background: 'var(--color-success)',
+                  background: 'var(--color-positive)',
                   borderRadius: '4px 0 0 4px'
                 }} />
                 <div style={{
                   width: `${(netWorth.totalLiabilities / (netWorth.totalAssets + netWorth.totalLiabilities)) * 100}%`,
-                  background: 'var(--color-danger)',
+                  background: 'var(--color-negative)',
                   borderRadius: '0 4px 4px 0'
                 }} />
               </div>
@@ -291,7 +291,7 @@ export default function Dashboard() {
           {netWorth && (
             <div style={{ marginTop: '1rem', borderTop: '1px solid var(--color-border)', paddingTop: '0.75rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 500 }}>Top Assets</span>
+                <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 500 }}>Top Assets</span>
                 <span className="text-faint" style={{ fontSize: 'var(--text-sm)', cursor: 'pointer' }} onClick={() => { document.getElementById('nw-tracker')?.scrollIntoView({ behavior: 'smooth' }) }}>Manage ↓</span>
               </div>
               {netWorth.assets?.slice(0, 3).map(a => (
@@ -312,16 +312,16 @@ export default function Dashboard() {
       <p className="label-caps" style={{ marginBottom: '0.5rem' }}>Quick Stats</p>
       <div className="grid-3" style={{ marginBottom: '1.5rem' }}>
         <div className="card card-clickable" onClick={() => navigate('/budget')}>
-          <span className="label-caps" style={{ color: 'var(--color-text-muted)', marginBottom: '0.5rem', display: 'block' }}>This Month's Spending</span>
+          <span className="label-caps" style={{ color: 'var(--color-text-secondary)', marginBottom: '0.5rem', display: 'block' }}>This Month's Spending</span>
           {hasTransactions ? (
             <>
-              <span className="mono" style={{ fontSize: 'var(--text-2xl)', color: 'var(--color-danger)' }}>
+              <span className="mono" style={{ fontSize: 'var(--text-2xl)', color: 'var(--color-negative)' }}>
                 {formatCurrency(Math.abs(budget?.totalSpent || 0))}
               </span>
               <div className="progress-bar" style={{ marginTop: '0.75rem' }}>
                 <div className="progress-bar-fill" style={{
                   width: `${Math.min(100, ((Math.abs(budget?.totalSpent || 0)) / (budgetLimit || 5000)) * 100)}%`,
-                  background: Math.abs(budget?.totalSpent || 0) > (budgetLimit || 5000) ? 'var(--color-danger)' : 'var(--color-primary)'
+                  background: Math.abs(budget?.totalSpent || 0) > (budgetLimit || 5000) ? 'var(--color-negative)' : 'var(--color-navy)'
                 }} />
               </div>
               <p className="text-faint" style={{ fontSize: 'var(--text-sm)', marginTop: '0.35rem' }}>{budget?.count || 0} transactions</p>
@@ -332,7 +332,7 @@ export default function Dashboard() {
         </div>
 
         <div className="card card-clickable" onClick={() => navigate('/portfolio')}>
-          <span className="label-caps" style={{ color: 'var(--color-text-muted)', marginBottom: '0.5rem', display: 'block' }}>Portfolio</span>
+          <span className="label-caps" style={{ color: 'var(--color-text-secondary)', marginBottom: '0.5rem', display: 'block' }}>Portfolio</span>
           {hasPositions ? (
             <>
               <span className="mono" style={{ fontSize: 'var(--text-2xl)' }}>
@@ -350,7 +350,7 @@ export default function Dashboard() {
         </div>
 
         <div className="card card-clickable" onClick={() => navigate('/markets')}>
-          <span className="label-caps" style={{ color: 'var(--color-text-muted)', marginBottom: '0.5rem', display: 'block' }}>Watchlist</span>
+          <span className="label-caps" style={{ color: 'var(--color-text-secondary)', marginBottom: '0.5rem', display: 'block' }}>Watchlist</span>
           {hasWatchlist ? (
             <>
               <span className="mono" style={{ fontSize: 'var(--text-2xl)' }}>{watchlist.length}</span>
@@ -377,15 +377,15 @@ export default function Dashboard() {
           return (
             <div className="card" onClick={() => navigate('/atlas')} style={{ cursor: 'pointer' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                <span className="label-caps" style={{ color: 'var(--color-text-muted)' }}>Current Goal</span>
+                <span className="label-caps" style={{ color: 'var(--color-text-secondary)' }}>Current Goal</span>
                 <span className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>View Atlas →</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
                 <span style={{ fontSize: 'var(--text-lg)', fontWeight: 500 }}>{currentGoal.name}</span>
                 <span style={{
                   fontSize: 'var(--text-sm)', padding: '0.15rem 0.5rem', borderRadius: 4,
-                  background: daysLeft <= 7 ? 'var(--color-danger-light)' : daysLeft <= 30 ? 'var(--color-accent-15)' : 'var(--color-surface-2)',
-                  color: daysLeft <= 7 ? 'var(--color-danger)' : daysLeft <= 30 ? 'var(--color-warning)' : 'var(--color-primary)',
+                  background: daysLeft <= 7 ? 'var(--color-negative-light)' : daysLeft <= 30 ? 'var(--color-gold-15)' : 'var(--color-surface-2)',
+                  color: daysLeft <= 7 ? 'var(--color-negative)' : daysLeft <= 30 ? 'var(--color-gold)' : 'var(--color-navy)',
                 }}>
                   {daysLeft === 0 ? 'Due today' : `${daysLeft}d left`}
                 </span>
@@ -394,7 +394,7 @@ export default function Dashboard() {
                 <p className="text-faint" style={{ fontSize: 'var(--text-sm)', marginBottom: '0.5rem' }}>Toward: {currentGoal.ultimate_name}</p>
               )}
               <div className="progress-bar" style={{ marginBottom: '0.25rem' }}>
-                <div className="progress-bar-fill" style={{ width: `${pct}%`, background: 'var(--color-primary)' }} />
+                <div className="progress-bar-fill" style={{ width: `${pct}%`, background: 'var(--color-navy)' }} />
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-sm)' }}>
                 <span className="mono text-muted">{formatCurrency(currentGoal.current_amount)} / {formatCurrency(currentGoal.target_amount)}</span>
@@ -404,14 +404,14 @@ export default function Dashboard() {
           )
         })() : (
           <div className="card" onClick={() => navigate('/atlas')} style={{ cursor: 'pointer' }}>
-            <span className="label-caps" style={{ color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>Current Goal</span>
+            <span className="label-caps" style={{ color: 'var(--color-text-secondary)', marginBottom: '0.5rem' }}>Current Goal</span>
             <p className="text-faint" style={{ fontSize: 'var(--text-base)' }}>Set a goal in Atlas to track it here →</p>
           </div>
         )}
 
         {/* Recent Insights */}
         <div className="card">
-          <span className="label-caps" style={{ color: 'var(--color-text-muted)', marginBottom: '0.75rem' }}>Recent Insights</span>
+          <span className="label-caps" style={{ color: 'var(--color-text-secondary)', marginBottom: '0.75rem' }}>Recent Insights</span>
           {insights.length === 0 ? (
             <p className="text-faint" style={{ fontSize: 'var(--text-base)' }}>
               Import a CSV or add portfolio positions to generate insights.
@@ -419,7 +419,7 @@ export default function Dashboard() {
           ) : (
             insights.slice(0, 3).map((insight, i) => (
               <div key={i} style={{ display: 'flex', gap: '0.75rem', padding: '0.4rem 0', borderBottom: i < 2 ? '1px solid var(--color-border)' : 'none' }}>
-                <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-accent)', marginTop: '0.45rem', flexShrink: 0 }} />
+                <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-gold)', marginTop: '0.45rem', flexShrink: 0 }} />
                 <div>
                   <p style={{ fontSize: 'var(--text-base)', lineHeight: 1.4 }}>{insight.content}</p>
                   <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.2rem' }}>
@@ -438,7 +438,7 @@ export default function Dashboard() {
         <h2 style={{ fontSize: 'var(--text-xl)', marginBottom: '1rem' }}>Net Worth Tracker</h2>
         <div className="grid-2">
           <div>
-            <h4 style={{ fontSize: 'var(--text-base)', marginBottom: '0.75rem', color: 'var(--color-text-muted)' }}>Assets</h4>
+            <h4 style={{ fontSize: 'var(--text-base)', marginBottom: '0.75rem', color: 'var(--color-text-secondary)' }}>Assets</h4>
             <form onSubmit={addAsset} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
               <input className="input" placeholder="Name" value={assetForm.name} onChange={e => setAssetForm(p => ({ ...p, name: e.target.value }))} style={{ flex: 1, minWidth: 100 }} />
               <input className="input" type="number" step="0.01" placeholder="Value" value={assetForm.value} onChange={e => setAssetForm(p => ({ ...p, value: e.target.value }))} style={{ width: 100 }} />
@@ -458,7 +458,7 @@ export default function Dashboard() {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <span className="mono text-success" style={{ fontSize: 'var(--text-base)' }}>{formatCurrency(a.value)}</span>
-                  <button onClick={() => confirmDeleteAsset(a.id, a.name)} aria-label={`Remove ${a.name}`} style={{ background: 'none', border: 'none', color: 'var(--color-text-faint)', cursor: 'pointer', fontSize: 'var(--text-lg)' }}>x</button>
+                  <button onClick={() => confirmDeleteAsset(a.id, a.name)} aria-label={`Remove ${a.name}`} style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: 'var(--text-lg)' }}>x</button>
                 </div>
               </div>
             ))}
@@ -467,7 +467,7 @@ export default function Dashboard() {
             )}
           </div>
           <div>
-            <h4 style={{ fontSize: 'var(--text-base)', marginBottom: '0.75rem', color: 'var(--color-text-muted)' }}>Liabilities</h4>
+            <h4 style={{ fontSize: 'var(--text-base)', marginBottom: '0.75rem', color: 'var(--color-text-secondary)' }}>Liabilities</h4>
             <form onSubmit={addLiability} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
               <input className="input" placeholder="Name" value={liabilityForm.name} onChange={e => setLiabilityForm(p => ({ ...p, name: e.target.value }))} style={{ flex: 1 }} />
               <input className="input" type="number" step="0.01" placeholder="Value" value={liabilityForm.value} onChange={e => setLiabilityForm(p => ({ ...p, value: e.target.value }))} style={{ width: 100 }} />
@@ -478,7 +478,7 @@ export default function Dashboard() {
                 <span style={{ fontSize: 'var(--text-base)' }}>{l.name}</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <span className="mono text-danger" style={{ fontSize: 'var(--text-base)' }}>{formatCurrency(l.value)}</span>
-                  <button onClick={() => confirmDeleteLiability(l.id, l.name)} aria-label={`Remove ${l.name}`} style={{ background: 'none', border: 'none', color: 'var(--color-text-faint)', cursor: 'pointer', fontSize: 'var(--text-lg)' }}>x</button>
+                  <button onClick={() => confirmDeleteLiability(l.id, l.name)} aria-label={`Remove ${l.name}`} style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: 'var(--text-lg)' }}>x</button>
                 </div>
               </div>
             ))}

@@ -28,7 +28,7 @@ export default function Sidebar({ open, onClose }) {
       )}
 
       <aside className={`sidebar ${open ? 'sidebar-open' : ''}`} style={{
-        background: 'var(--color-primary)',
+        background: 'var(--color-navy)',
         width: 200,
         position: 'fixed',
         top: 48,
@@ -36,7 +36,7 @@ export default function Sidebar({ open, onClose }) {
         bottom: 0,
         display: 'flex',
         flexDirection: 'column',
-        borderRight: '1px solid var(--color-accent-15)',
+        borderRight: '1px solid var(--color-gold-15)',
         zIndex: 99,
         transition: 'transform 0.2s ease',
       }}>
@@ -54,9 +54,9 @@ export default function Sidebar({ open, onClose }) {
                 gap: '0.65rem',
                 padding: '0.55rem 1rem',
                 margin: '0.1rem 0.5rem',
-                color: isActive ? 'var(--color-accent)' : 'var(--color-accent-60)',
-                background: isActive ? 'var(--color-primary-hover)' : 'transparent',
-                borderLeft: isActive ? '2px solid var(--color-accent)' : '2px solid transparent',
+                color: isActive ? 'var(--color-gold)' : 'var(--color-gold-60)',
+                background: isActive ? 'var(--color-sidebar-hover)' : 'transparent',
+                borderLeft: isActive ? '2px solid var(--color-gold)' : '2px solid transparent',
                 fontSize: 'var(--text-sm)',
                 fontWeight: isActive ? 500 : 400,
                 letterSpacing: '0.03em',
@@ -76,7 +76,7 @@ export default function Sidebar({ open, onClose }) {
                   <span style={{
                     marginLeft: 'auto',
                     fontSize: 'var(--text-xs)',
-                    background: 'var(--color-success)',
+                    background: 'var(--color-positive)',
                     color: '#fff',
                     padding: '0 0.35rem',
                     borderRadius: 2,
@@ -92,10 +92,10 @@ export default function Sidebar({ open, onClose }) {
         </nav>
         <div style={{
           padding: '0.75rem 1rem',
-          color: 'var(--color-accent-40)',
+          color: 'var(--color-gold-40)',
           fontSize: 'var(--text-xs)',
           lineHeight: 1.4,
-          borderTop: '1px solid var(--color-accent-15)',
+          borderTop: '1px solid var(--color-gold-15)',
           textTransform: 'uppercase',
           letterSpacing: '0.05em',
         }}>

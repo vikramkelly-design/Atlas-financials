@@ -11,7 +11,7 @@ const CATEGORIES = ['Food & Dining', 'Transport', 'Shopping', 'Subscriptions', '
 const CATEGORY_COLORS = {
   'Food & Dining': '#8B6914',
   'Transport': '#3B6B3B',
-  'Shopping': 'var(--color-danger)',
+  'Shopping': 'var(--color-negative)',
   'Subscriptions': '#5B4FA0',
   'Health': '#2A6B8B',
   'Entertainment': '#8B5E3A',
@@ -68,7 +68,7 @@ function BudgetCategoryCard({ cat, spent, limit, goalValue, onGoalChange, color 
   const [editing, setEditing] = useState(false)
   const pct = limit > 0 ? Math.min(100, (spent / limit) * 100) : 0
   const over = limit > 0 && spent > limit
-  const barColor = pct > 85 ? 'var(--color-danger)' : pct > 60 ? 'var(--color-accent)' : 'var(--color-success)'
+  const barColor = pct > 85 ? 'var(--color-negative)' : pct > 60 ? 'var(--color-gold)' : 'var(--color-positive)'
 
   return (
     <div className="budget-category-card">
@@ -79,7 +79,7 @@ function BudgetCategoryCard({ cat, spent, limit, goalValue, onGoalChange, color 
         </div>
         <button
           onClick={() => setEditing(e => !e)}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-faint)', padding: '0.15rem' }}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: '0.15rem' }}
           aria-label={`Edit ${cat} budget`}
         >
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -105,10 +105,10 @@ function BudgetCategoryCard({ cat, spent, limit, goalValue, onGoalChange, color 
       {limit > 0 ? (
         <>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.2rem' }}>
-            <span className="mono" style={{ fontSize: 'var(--text-sm)', color: over ? 'var(--color-danger)' : 'var(--color-text-muted)' }}>
+            <span className="mono" style={{ fontSize: 'var(--text-sm)', color: over ? 'var(--color-negative)' : 'var(--color-text-secondary)' }}>
               {formatCurrency(spent)} / {formatCurrency(limit)}
             </span>
-            <span className="mono" style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: over ? 'var(--color-danger)' : 'var(--color-text)' }}>
+            <span className="mono" style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: over ? 'var(--color-negative)' : 'var(--color-text-primary)' }}>
               {pct.toFixed(0)}%
             </span>
           </div>
@@ -388,7 +388,7 @@ export default function Budget() {
     const parts = text.split(/(\*\*[^*]+\*\*)/)
     return parts.map((part, i) => {
       if (part.startsWith('**') && part.endsWith('**')) {
-        return <strong key={i} style={{ color: 'var(--color-text)' }}>{part.slice(2, -2)}</strong>
+        return <strong key={i} style={{ color: 'var(--color-text-primary)' }}>{part.slice(2, -2)}</strong>
       }
       return part
     })
@@ -411,9 +411,9 @@ export default function Budget() {
         ].map(t => (
           <button key={t.key} onClick={() => setTab(t.key)} style={{
             padding: '0.6rem 1.25rem', border: 'none',
-            borderBottom: tab === t.key ? '2px solid var(--color-accent)' : '2px solid transparent',
+            borderBottom: tab === t.key ? '2px solid var(--color-gold)' : '2px solid transparent',
             background: 'none', cursor: 'pointer', fontWeight: tab === t.key ? 600 : 400,
-            color: tab === t.key ? 'var(--color-accent)' : 'var(--color-text-muted)',
+            color: tab === t.key ? 'var(--color-gold)' : 'var(--color-text-secondary)',
             fontSize: 'var(--text-base)', marginBottom: '-2px', transition: 'all 0.15s ease',
           }}>
             {t.label}
@@ -432,19 +432,19 @@ export default function Budget() {
             <h3 style={{ fontSize: 'var(--text-lg)', marginBottom: '0.75rem' }}>Add a Debt</h3>
             <form onSubmit={addDebt} style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
               <div style={{ flex: '1 1 140px' }}>
-                <label style={{ display: 'block', color: 'var(--color-text-faint)', fontSize: 'var(--text-sm)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Name</label>
+                <label style={{ display: 'block', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Name</label>
                 <input className="input" placeholder="e.g. Visa Card" value={debtForm.name} onChange={e => setDebtForm(f => ({ ...f, name: e.target.value }))} />
               </div>
               <div style={{ flex: '0 1 110px' }}>
-                <label style={{ display: 'block', color: 'var(--color-text-faint)', fontSize: 'var(--text-sm)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Balance</label>
+                <label style={{ display: 'block', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Balance</label>
                 <input className="input" type="number" step="0.01" placeholder="$0" value={debtForm.balance} onChange={e => setDebtForm(f => ({ ...f, balance: e.target.value }))} />
               </div>
               <div style={{ flex: '0 1 90px' }}>
-                <label style={{ display: 'block', color: 'var(--color-text-faint)', fontSize: 'var(--text-sm)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.05em' }}>APR %</label>
+                <label style={{ display: 'block', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.05em' }}>APR %</label>
                 <input className="input" type="number" step="0.1" placeholder="0%" value={debtForm.interest_rate} onChange={e => setDebtForm(f => ({ ...f, interest_rate: e.target.value }))} />
               </div>
               <div style={{ flex: '0 1 110px' }}>
-                <label style={{ display: 'block', color: 'var(--color-text-faint)', fontSize: 'var(--text-sm)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Min Payment</label>
+                <label style={{ display: 'block', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Min Payment</label>
                 <input className="input" type="number" step="0.01" placeholder="$0" value={debtForm.min_payment} onChange={e => setDebtForm(f => ({ ...f, min_payment: e.target.value }))} />
               </div>
               <button className="btn btn-primary" type="submit" style={{ height: 36 }}>Add</button>
@@ -456,7 +456,7 @@ export default function Budget() {
             <div className="card" style={{ marginBottom: '1rem' }}>
               <div className="grid-2">
                 <div>
-                  <label style={{ display: 'block', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Payoff Strategy</label>
+                  <label style={{ display: 'block', color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Payoff Strategy</label>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
                     <button
                       onClick={() => setDebtStrategy('avalanche')}
@@ -480,9 +480,9 @@ export default function Budget() {
                   </p>
                 </div>
                 <div>
-                  <label style={{ display: 'block', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Extra Monthly Payment</label>
+                  <label style={{ display: 'block', color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Extra Monthly Payment</label>
                   <div style={{ position: 'relative' }}>
-                    <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-faint)' }}>$</span>
+                    <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }}>$</span>
                     <input
                       className="input"
                       type="number"
@@ -507,25 +507,25 @@ export default function Budget() {
           {debtPlan && !debtPlanLoading && (
             <div className="grid-3" style={{ marginBottom: '1rem' }}>
               <div className="card" style={{ textAlign: 'center' }}>
-                <h4 style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.35rem' }}>Total Interest</h4>
-                <span className="mono" style={{ fontSize: 'var(--text-2xl)', color: 'var(--color-danger)' }}>
+                <h4 style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.35rem' }}>Total Interest</h4>
+                <span className="mono" style={{ fontSize: 'var(--text-2xl)', color: 'var(--color-negative)' }}>
                   {formatCurrency(debtPlan.totalInterest)}
                 </span>
               </div>
               <div className="card" style={{ textAlign: 'center' }}>
-                <h4 style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.35rem' }}>Debt-Free By</h4>
-                <span className="mono" style={{ fontSize: 'var(--text-2xl)', color: 'var(--color-primary)' }}>
+                <h4 style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.35rem' }}>Debt-Free By</h4>
+                <span className="mono" style={{ fontSize: 'var(--text-2xl)', color: 'var(--color-navy)' }}>
                   {formatDebtDate(debtPlan.debtFreeDate)}
                 </span>
                 <p className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>{formatMonths(debtPlan.monthsToFreedom)}</p>
               </div>
               <div className="card" style={{ textAlign: 'center' }}>
-                <h4 style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.35rem' }}>
+                <h4 style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.35rem' }}>
                   {debtPlan.interestSaved > 0 ? 'You Save' : 'Extra Payment'}
                 </h4>
                 {debtPlan.interestSaved > 0 ? (
                   <>
-                    <span className="mono" style={{ fontSize: 'var(--text-2xl)', color: 'var(--color-success)' }}>
+                    <span className="mono" style={{ fontSize: 'var(--text-2xl)', color: 'var(--color-positive)' }}>
                       {formatCurrency(debtPlan.interestSaved)}
                     </span>
                     <p className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>{debtPlan.monthsSaved} months sooner</p>
@@ -542,7 +542,7 @@ export default function Budget() {
             <div className="card" style={{ marginBottom: '1rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                 <h3 style={{ fontSize: 'var(--text-lg)' }}>Your Debts</h3>
-                <span className="mono" style={{ fontSize: 'var(--text-xl)', color: 'var(--color-danger)', fontWeight: 600 }}>
+                <span className="mono" style={{ fontSize: 'var(--text-xl)', color: 'var(--color-negative)', fontWeight: 600 }}>
                   Total: {formatCurrency(totalDebt)}
                 </span>
               </div>
@@ -563,15 +563,15 @@ export default function Budget() {
                         style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}
                       >
                         <span style={{
-                          fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)',
+                          fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)',
                           transform: isExpanded ? 'rotate(90deg)' : 'none',
                           transition: 'transform 0.15s', display: 'inline-block',
                         }}>&#9654;</span>
-                        <span style={{ fontSize: 'var(--text-base)', fontWeight: 500, color: 'var(--color-accent)', textDecoration: 'none' }}>{d.name}</span>
+                        <span style={{ fontSize: 'var(--text-base)', fontWeight: 500, color: 'var(--color-gold)', textDecoration: 'none' }}>{d.name}</span>
                         <span className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>{d.interest_rate}% APR</span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <span className="mono" style={{ fontSize: 'var(--text-base)', color: 'var(--color-danger)' }}>{formatCurrency(d.balance)}</span>
+                        <span className="mono" style={{ fontSize: 'var(--text-base)', color: 'var(--color-negative)' }}>{formatCurrency(d.balance)}</span>
                         <span className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>{formatCurrency(d.min_payment)}/mo</span>
                         <button className="btn-paid-off" onClick={(e) => { e.stopPropagation(); deleteDebt(d.id) }}>
                           Paid Off
@@ -584,16 +584,16 @@ export default function Budget() {
                       <div style={{ padding: '0 0 1rem 1.5rem' }}>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem', marginBottom: '0.75rem' }}>
                           <div style={{ padding: '0.75rem', background: 'var(--color-surface)', borderRadius: 2, border: '1px solid var(--color-border)' }}>
-                            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>Monthly Payment</p>
+                            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>Monthly Payment</p>
                             <span className="mono" style={{ fontSize: 'var(--text-xl)', fontWeight: 600 }}>{formatCurrency(planData.monthlyPayment)}</span>
                           </div>
                           <div style={{ padding: '0.75rem', background: 'var(--color-surface)', borderRadius: 2, border: '1px solid var(--color-border)' }}>
-                            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>Payoff Timeline</p>
+                            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>Payoff Timeline</p>
                             <span className="mono" style={{ fontSize: 'var(--text-xl)', fontWeight: 600 }}>{formatMonths(planData.monthsToPayoff)}</span>
                           </div>
                           <div style={{ padding: '0.75rem', background: 'var(--color-surface)', borderRadius: 2, border: '1px solid var(--color-border)' }}>
-                            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>Total Interest</p>
-                            <span className="mono" style={{ fontSize: 'var(--text-xl)', fontWeight: 600, color: 'var(--color-danger)' }}>{formatCurrency(planData.totalInterest)}</span>
+                            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>Total Interest</p>
+                            <span className="mono" style={{ fontSize: 'var(--text-xl)', fontWeight: 600, color: 'var(--color-negative)' }}>{formatCurrency(planData.totalInterest)}</span>
                           </div>
                         </div>
                         <div style={{ display: 'flex', gap: '1rem', fontSize: 'var(--text-sm)' }}>
@@ -617,7 +617,7 @@ export default function Budget() {
           {/* AI Summary */}
           {debtPlan && !debtPlanLoading && debtPlan.aiSummary && (
             <div className="card">
-              <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
+              <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
                 {debtPlan.aiSummary}
               </p>
             </div>
@@ -643,13 +643,13 @@ export default function Budget() {
               onDrop={(e) => { e.preventDefault(); setDragActive(false); const f = e.dataTransfer.files[0]; if (f) handleFile(f) }}
               onClick={() => fileRef.current?.click()}
               style={{
-                border: `2px dashed ${dragActive ? 'var(--color-accent)' : 'var(--color-border-dark)'}`,
+                border: `2px dashed ${dragActive ? 'var(--color-gold)' : 'var(--color-border-dark)'}`,
                 borderRadius: 8, padding: '2rem', textAlign: 'center', cursor: 'pointer',
-                background: dragActive ? 'var(--color-accent-light)' : 'transparent',
+                background: dragActive ? 'var(--color-gold-light)' : 'transparent',
                 transition: 'all 0.15s ease',
               }}
             >
-              <p style={{ fontSize: 'var(--text-lg)', color: 'var(--color-text-muted)' }}>Drop your bank CSV here, or click to browse</p>
+              <p style={{ fontSize: 'var(--text-lg)', color: 'var(--color-text-secondary)' }}>Drop your bank CSV here, or click to browse</p>
               <input ref={fileRef} type="file" accept=".csv" onChange={(e) => { const f = e.target.files[0]; if (f) handleFile(f) }} style={{ display: 'none' }} />
             </div>
 
@@ -658,7 +658,7 @@ export default function Budget() {
             </button>
 
             {showGuide && (
-              <div style={{ marginTop: '0.75rem', padding: '1rem', background: 'var(--color-surface-2)', borderRadius: 8, fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>
+              <div style={{ marginTop: '0.75rem', padding: '1rem', background: 'var(--color-surface-2)', borderRadius: 8, fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }}>
                 <div style={{ marginBottom: '0.75rem' }}>
                   <strong>Chase:</strong>
                   <ol style={{ paddingLeft: '1.25rem', marginTop: '0.25rem' }}><li>Log in to chase.com</li><li>Go to your account activity</li><li>Click "Download account activity"</li><li>Select CSV format and date range</li></ol>
@@ -689,7 +689,7 @@ export default function Budget() {
                         <tr key={i}>
                           <td>{t.date}</td>
                           <td>{t.description}</td>
-                          <td className="mono" style={{ color: t.amount < 0 ? 'var(--color-danger)' : 'var(--color-success)' }}>{formatCurrency(t.amount)}</td>
+                          <td className="mono" style={{ color: t.amount < 0 ? 'var(--color-negative)' : 'var(--color-positive)' }}>{formatCurrency(t.amount)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -708,7 +708,7 @@ export default function Budget() {
             <div className="card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: analysisLoading ? 'var(--color-accent)' : 'var(--color-success)' }} />
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: analysisLoading ? 'var(--color-gold)' : 'var(--color-positive)' }} />
                   <h2 style={{ fontSize: 'var(--text-xl)' }}>AI Spending Analysis</h2>
                 </div>
                 {analysis && (
@@ -723,9 +723,9 @@ export default function Budget() {
                   <p className="text-faint" style={{ fontSize: 'var(--text-sm)', marginTop: '1rem' }}>Analyzing your spending patterns...</p>
                 </div>
               ) : (
-                <div style={{ fontSize: 'var(--text-base)', lineHeight: 1.7, color: 'var(--color-text)' }}>
+                <div style={{ fontSize: 'var(--text-base)', lineHeight: 1.7, color: 'var(--color-text-primary)' }}>
                   {analysis.split('\n').map((line, i) => {
-                    if (line.startsWith('## ')) return <h3 key={i} style={{ color: 'var(--color-accent)', marginTop: i > 0 ? '1.25rem' : 0, marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: 'var(--text-sm)' }}>{line.replace('## ', '')}</h3>
+                    if (line.startsWith('## ')) return <h3 key={i} style={{ color: 'var(--color-gold)', marginTop: i > 0 ? '1.25rem' : 0, marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: 'var(--text-sm)' }}>{line.replace('## ', '')}</h3>
                     if (line.startsWith('- ')) return <div key={i} style={{ paddingLeft: '0.75rem', marginBottom: '0.25rem', borderLeft: '2px solid var(--color-border-dark)' }}>{renderBold(line.replace('- ', ''))}</div>
                     if (line.trim() === '') return <div key={i} style={{ height: '0.5rem' }} />
                     return <p key={i} style={{ marginBottom: '0.25rem' }}>{renderBold(line)}</p>
@@ -794,13 +794,13 @@ export default function Budget() {
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', transform: isOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}>&#9654;</span>
+                        <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', transform: isOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}>&#9654;</span>
                         <span style={{ fontSize: 'var(--text-base)', fontWeight: 500 }}>{week.label}</span>
                         <span className="text-muted" style={{ fontSize: 'var(--text-sm)' }}>
                           {weekTxns.length} {weekTxns.length === 1 ? 'entry' : 'entries'}
                         </span>
                       </div>
-                      <span className="mono" style={{ fontSize: 'var(--text-base)', color: wTotal > 0 ? 'var(--color-danger)' : 'var(--color-text-muted)' }}>
+                      <span className="mono" style={{ fontSize: 'var(--text-base)', color: wTotal > 0 ? 'var(--color-negative)' : 'var(--color-text-secondary)' }}>
                         {wTotal > 0 ? `-${formatCurrency(wTotal)}` : '$0.00'}
                       </span>
                     </div>
@@ -836,7 +836,7 @@ export default function Budget() {
                                     style={{
                                       fontSize: 'var(--text-sm)', padding: '0.1rem 0.35rem', borderRadius: 2,
                                       background: 'var(--color-surface-2)', cursor: 'pointer',
-                                      color: CATEGORY_COLORS[t.category] || 'var(--color-text-muted)',
+                                      color: CATEGORY_COLORS[t.category] || 'var(--color-text-secondary)',
                                     }}
                                   >
                                     {t.category}
@@ -844,7 +844,7 @@ export default function Budget() {
                                 )}
                                 <span className="mono" style={{
                                   minWidth: 65, textAlign: 'right',
-                                  color: t.amount < 0 ? 'var(--color-danger)' : 'var(--color-success)',
+                                  color: t.amount < 0 ? 'var(--color-negative)' : 'var(--color-positive)',
                                 }}>
                                   {formatCurrency(t.amount)}
                                 </span>
@@ -852,7 +852,7 @@ export default function Budget() {
                                   onClick={() => deleteTransaction(t.id)}
                                   style={{
                                     background: 'none', border: 'none', cursor: 'pointer',
-                                    color: 'var(--color-text-muted)', fontSize: 'var(--text-base)', padding: '0 0.25rem',
+                                    color: 'var(--color-text-secondary)', fontSize: 'var(--text-base)', padding: '0 0.25rem',
                                   }}
                                   title="Delete"
                                 >
@@ -866,7 +866,7 @@ export default function Budget() {
                         {/* Add expense form */}
                         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
                           <div style={{ flex: '0 0 auto' }}>
-                            <label style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Date</label>
+                            <label style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Date</label>
                             <select
                               className="select"
                               value={addForm.date}
@@ -880,7 +880,7 @@ export default function Budget() {
                             </select>
                           </div>
                           <div style={{ flex: 1, minWidth: 120 }}>
-                            <label style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Description</label>
+                            <label style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Description</label>
                             <input
                               className="input"
                               placeholder="What did you spend on?"
@@ -890,7 +890,7 @@ export default function Budget() {
                             />
                           </div>
                           <div style={{ flex: '0 0 80px' }}>
-                            <label style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Amount</label>
+                            <label style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Amount</label>
                             <input
                               className="input"
                               type="number"
@@ -902,7 +902,7 @@ export default function Budget() {
                             />
                           </div>
                           <div style={{ flex: '0 0 auto' }}>
-                            <label style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Category</label>
+                            <label style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Category</label>
                             <select
                               className="select"
                               value={addForm.category}
@@ -929,7 +929,7 @@ export default function Budget() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <p className="text-muted" style={{ fontSize: 'var(--text-sm)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Spent</p>
-                <span className="mono" style={{ fontSize: 'var(--text-2xl)', color: 'var(--color-danger)' }}>
+                <span className="mono" style={{ fontSize: 'var(--text-2xl)', color: 'var(--color-negative)' }}>
                   {formatCurrency(totalSpent)}
                 </span>
               </div>
@@ -944,7 +944,7 @@ export default function Budget() {
               {totalBudget > 0 && (
                 <div style={{ textAlign: 'right' }}>
                   <p className="text-muted" style={{ fontSize: 'var(--text-sm)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Remaining</p>
-                  <span className="mono" style={{ fontSize: 'var(--text-2xl)', color: totalBudget - totalSpent >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
+                  <span className="mono" style={{ fontSize: 'var(--text-2xl)', color: totalBudget - totalSpent >= 0 ? 'var(--color-positive)' : 'var(--color-negative)' }}>
                     {formatCurrency(totalBudget - totalSpent)}
                   </span>
                 </div>
@@ -952,7 +952,7 @@ export default function Budget() {
               {totalDebt > 0 && (
                 <div style={{ textAlign: 'right' }}>
                   <p className="text-muted" style={{ fontSize: 'var(--text-sm)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Debt</p>
-                  <span className="mono" style={{ fontSize: 'var(--text-2xl)', color: 'var(--color-danger)' }}>
+                  <span className="mono" style={{ fontSize: 'var(--text-2xl)', color: 'var(--color-negative)' }}>
                     {formatCurrency(totalDebt)}
                   </span>
                 </div>
@@ -962,7 +962,7 @@ export default function Budget() {
               <div className="progress-bar" style={{ marginTop: '0.75rem', height: 8 }}>
                 <div className="progress-bar-fill" style={{
                   width: `${Math.min(100, (totalSpent / totalBudget) * 100)}%`,
-                  background: totalSpent > totalBudget ? 'var(--color-danger)' : 'var(--color-primary)',
+                  background: totalSpent > totalBudget ? 'var(--color-negative)' : 'var(--color-navy)',
                 }} />
               </div>
             )}

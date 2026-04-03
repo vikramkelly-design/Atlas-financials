@@ -94,9 +94,9 @@ export default function Analytics() {
           { key: 'chat', label: 'AI Chat' },
         ].map(t => (
           <button key={t.key} onClick={() => setTab(t.key)} style={{
-            padding: '0.6rem 1.25rem', border: 'none', borderBottom: tab === t.key ? '2px solid var(--color-accent)' : '2px solid transparent',
+            padding: '0.6rem 1.25rem', border: 'none', borderBottom: tab === t.key ? '2px solid var(--color-gold)' : '2px solid transparent',
             background: 'none', cursor: 'pointer', fontWeight: tab === t.key ? 600 : 400,
-            color: tab === t.key ? 'var(--color-accent)' : 'var(--color-text-muted)',
+            color: tab === t.key ? 'var(--color-gold)' : 'var(--color-text-secondary)',
             fontSize: 'var(--text-base)', marginBottom: '-2px', transition: 'all 0.15s ease',
           }}>
             {t.label}
@@ -112,9 +112,9 @@ export default function Analytics() {
           {portfolios.map(p => (
             <div key={p.id} onClick={() => setActiveId(p.id)} style={{
               padding: '0.4rem 0.75rem', borderRadius: 4, cursor: 'pointer', fontSize: 'var(--text-base)',
-              background: p.id === activeId ? 'var(--color-primary)' : 'var(--color-surface)',
-              color: p.id === activeId ? 'var(--color-accent)' : 'var(--color-text)',
-              border: '1px solid ' + (p.id === activeId ? 'var(--color-primary)' : 'var(--color-border)'),
+              background: p.id === activeId ? 'var(--color-navy)' : 'var(--color-surface)',
+              color: p.id === activeId ? 'var(--color-gold)' : 'var(--color-text-primary)',
+              border: '1px solid ' + (p.id === activeId ? 'var(--color-navy)' : 'var(--color-border)'),
             }}>
               {p.name}
             </div>
@@ -175,10 +175,10 @@ function PieChart({ enriched, totalValue }) {
               fill={seg.color} stroke="var(--color-surface)" strokeWidth="1.5" />
           ))}
           <circle cx="60" cy="60" r="28" fill="var(--color-surface)" />
-          <text x="60" y="56" textAnchor="middle" fill="var(--color-text)" fontSize={totalValue >= 1e6 ? '7' : totalValue >= 1e4 ? '8' : '9'} fontWeight="700" fontFamily="var(--font-mono)">
+          <text x="60" y="56" textAnchor="middle" fill="var(--color-text-primary)" fontSize={totalValue >= 1e6 ? '7' : totalValue >= 1e4 ? '8' : '9'} fontWeight="700" fontFamily="var(--font-mono)">
             {totalValue >= 1e6 ? `$${(totalValue / 1e6).toFixed(1)}M` : totalValue >= 1e4 ? `$${(totalValue / 1e3).toFixed(1)}K` : formatCurrency(totalValue).replace('.00', '')}
           </text>
-          <text x="60" y="68" textAnchor="middle" fill="var(--color-text-muted)" fontSize="7">Total Value</text>
+          <text x="60" y="68" textAnchor="middle" fill="var(--color-text-secondary)" fontSize="7">Total Value</text>
         </svg>
         <div style={{ fontSize: 'var(--text-sm)', flex: 1 }}>
           {segments.map(seg => (
@@ -205,9 +205,9 @@ function NetWorthCard({ networth, portfolioValue }) {
   const liabilities = networth ? networth.totalLiabilities : 0
   const totalNetWorth = portfolioValue + otherAssets - liabilities
   const items = [
-    { label: 'Portfolio Value', value: portfolioValue, color: 'var(--color-accent)' },
-    { label: 'Other Assets', value: otherAssets, color: 'var(--color-success)' },
-    { label: 'Liabilities', value: -liabilities, color: 'var(--color-danger)' },
+    { label: 'Portfolio Value', value: portfolioValue, color: 'var(--color-gold)' },
+    { label: 'Other Assets', value: otherAssets, color: 'var(--color-positive)' },
+    { label: 'Liabilities', value: -liabilities, color: 'var(--color-negative)' },
   ]
   const maxAbs = Math.max(...items.map(i => Math.abs(i.value)), 1)
 
@@ -370,11 +370,11 @@ function PerformanceChart({ history, period, setPeriod, loading }) {
       {/* Legend */}
       <div style={{ display: 'flex', gap: '1.25rem', fontSize: 'var(--text-sm)', marginBottom: '0.5rem' }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-          <span style={{ width: 14, height: 3, background: 'var(--color-accent)', borderRadius: 2 }} />
+          <span style={{ width: 14, height: 3, background: 'var(--color-gold)', borderRadius: 2 }} />
           Portfolio {pFinal != null && <span className="mono" style={{ color: numColor(pFinal), fontWeight: 600 }}>{pFinal >= 0 ? '+' : ''}{pFinal.toFixed(2)}%</span>}
         </span>
         <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-          <span style={{ width: 14, height: 3, background: 'var(--color-text-muted)', borderRadius: 2 }} />
+          <span style={{ width: 14, height: 3, background: 'var(--color-text-secondary)', borderRadius: 2 }} />
           S&P 500 {sFinal != null && <span className="mono" style={{ color: numColor(sFinal), fontWeight: 600 }}>{sFinal >= 0 ? '+' : ''}{sFinal.toFixed(2)}%</span>}
         </span>
       </div>
@@ -395,7 +395,7 @@ function PerformanceChart({ history, period, setPeriod, loading }) {
               return (
                 <g key={v}>
                   <line x1={PAD.left} x2={PAD.left + cw} y1={y} y2={y} stroke="var(--color-border)" strokeWidth="0.5" strokeDasharray="3,3" />
-                  <text x={PAD.left - 8} y={y + 3} textAnchor="end" fontSize="9" fill="var(--color-text-muted)" fontFamily="var(--font-mono)">
+                  <text x={PAD.left - 8} y={y + 3} textAnchor="end" fontSize="9" fill="var(--color-text-secondary)" fontFamily="var(--font-mono)">
                     {v >= 0 ? '+' : ''}{v.toFixed(1)}%
                   </text>
                 </g>
@@ -410,17 +410,17 @@ function PerformanceChart({ history, period, setPeriod, loading }) {
             )}
 
             {xLabels.map((l, i) => (
-              <text key={i} x={l.x} y={H - 8} textAnchor="middle" fontSize="8.5" fill="var(--color-text-muted)" fontFamily="var(--font-mono)">{l.label}</text>
+              <text key={i} x={l.x} y={H - 8} textAnchor="middle" fontSize="8.5" fill="var(--color-text-secondary)" fontFamily="var(--font-mono)">{l.label}</text>
             ))}
 
             {/* S&P line */}
             {sNorm.length >= 2 && (
-              <polyline points={toPolyline(sNorm)} fill="none" stroke="var(--color-text-muted)" strokeWidth="1.5" strokeLinejoin="round" strokeOpacity="0.6" />
+              <polyline points={toPolyline(sNorm)} fill="none" stroke="var(--color-text-secondary)" strokeWidth="1.5" strokeLinejoin="round" strokeOpacity="0.6" />
             )}
 
             {/* Portfolio line */}
             {pNorm.length >= 2 && (
-              <polyline points={toPolyline(pNorm)} fill="none" stroke="var(--color-accent)" strokeWidth="2.5" strokeLinejoin="round" />
+              <polyline points={toPolyline(pNorm)} fill="none" stroke="var(--color-gold)" strokeWidth="2.5" strokeLinejoin="round" />
             )}
 
             {/* Hover crosshair + dots */}
@@ -430,8 +430,8 @@ function PerformanceChart({ history, period, setPeriod, loading }) {
               return (
                 <>
                   <line x1={pp.x} x2={pp.x} y1={PAD.top} y2={PAD.top + ch} stroke="var(--color-border-dark)" strokeWidth="0.8" strokeDasharray="4,3" />
-                  <circle cx={pp.x} cy={pp.y} r="4.5" fill="var(--color-accent)" stroke="var(--color-surface)" strokeWidth="2" />
-                  {sp && <circle cx={sp.x} cy={sp.y} r="3.5" fill="var(--color-text-muted)" stroke="var(--color-surface)" strokeWidth="2" />}
+                  <circle cx={pp.x} cy={pp.y} r="4.5" fill="var(--color-gold)" stroke="var(--color-surface)" strokeWidth="2" />
+                  {sp && <circle cx={sp.x} cy={sp.y} r="3.5" fill="var(--color-text-secondary)" stroke="var(--color-surface)" strokeWidth="2" />}
                 </>
               )
             })()}
@@ -444,15 +444,15 @@ function PerformanceChart({ history, period, setPeriod, loading }) {
           {/* Tooltip (HTML overlay for crisp text) */}
           {hoverP && (
             <ChartTooltip svgRef={svgRef} W={W} idx={hoverIdx} dataLen={pNorm.length} pad={PAD} cw={cw}>
-              <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', marginBottom: 3 }}>{fmtDateFull(hoverP.date)}</div>
+              <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginBottom: 3 }}>{fmtDateFull(hoverP.date)}</div>
               <div style={{ fontSize: 'var(--text-sm)' }}>
-                <span style={{ color: 'var(--color-accent)', fontWeight: 600 }}>Portfolio:</span>{' '}
+                <span style={{ color: 'var(--color-gold)', fontWeight: 600 }}>Portfolio:</span>{' '}
                 <span className="mono" style={{ color: numColor(hoverP.pct), fontWeight: 600 }}>{hoverP.pct >= 0 ? '+' : ''}{hoverP.pct.toFixed(2)}%</span>
                 <span className="mono text-muted" style={{ marginLeft: 4, fontSize: 'var(--text-sm)' }}>({formatCurrency(hoverP.value)})</span>
               </div>
               {hoverS && (
                 <div style={{ fontSize: 'var(--text-sm)' }}>
-                  <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>S&P 500:</span>{' '}
+                  <span style={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>S&P 500:</span>{' '}
                   <span className="mono" style={{ color: numColor(hoverS.pct), fontWeight: 600 }}>{hoverS.pct >= 0 ? '+' : ''}{hoverS.pct.toFixed(2)}%</span>
                 </div>
               )}
@@ -565,17 +565,17 @@ function ValueChart({ history, period, loading }) {
               return (
                 <g key={v}>
                   <line x1={PAD.left} x2={PAD.left + cw} y1={y} y2={y} stroke="var(--color-border)" strokeWidth="0.5" strokeDasharray="3,3" />
-                  <text x={PAD.left - 8} y={y + 3} textAnchor="end" fontSize="9" fill="var(--color-text-muted)" fontFamily="var(--font-mono)">{fmtDollar(v)}</text>
+                  <text x={PAD.left - 8} y={y + 3} textAnchor="end" fontSize="9" fill="var(--color-text-secondary)" fontFamily="var(--font-mono)">{fmtDollar(v)}</text>
                 </g>
               )
             })}
 
             {xLabels.map((l, i) => (
-              <text key={i} x={l.x} y={H - 8} textAnchor="middle" fontSize="8.5" fill="var(--color-text-muted)" fontFamily="var(--font-mono)">{l.label}</text>
+              <text key={i} x={l.x} y={H - 8} textAnchor="middle" fontSize="8.5" fill="var(--color-text-secondary)" fontFamily="var(--font-mono)">{l.label}</text>
             ))}
 
-            <path d={areaPath} fill="var(--color-accent)" fillOpacity="0.12" />
-            <polyline points={polyline} fill="none" stroke="var(--color-accent)" strokeWidth="2.5" strokeLinejoin="round" />
+            <path d={areaPath} fill="var(--color-gold)" fillOpacity="0.12" />
+            <polyline points={polyline} fill="none" stroke="var(--color-gold)" strokeWidth="2.5" strokeLinejoin="round" />
 
             {/* Hover crosshair + dot */}
             {hoverIdx != null && portfolio.length >= 2 && (() => {
@@ -583,7 +583,7 @@ function ValueChart({ history, period, loading }) {
               return (
                 <>
                   <line x1={p.x} x2={p.x} y1={PAD.top} y2={PAD.top + ch} stroke="var(--color-border-dark)" strokeWidth="0.8" strokeDasharray="4,3" />
-                  <circle cx={p.x} cy={p.y} r="4.5" fill="var(--color-accent)" stroke="var(--color-surface)" strokeWidth="2" />
+                  <circle cx={p.x} cy={p.y} r="4.5" fill="var(--color-gold)" stroke="var(--color-surface)" strokeWidth="2" />
                 </>
               )
             })()}
@@ -595,9 +595,9 @@ function ValueChart({ history, period, loading }) {
           {/* Tooltip */}
           {hoverD && (
             <ChartTooltip svgRef={svgRef} W={W} idx={hoverIdx} dataLen={portfolio.length} pad={PAD} cw={cw}>
-              <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', marginBottom: 3 }}>{fmtDateFull(hoverD.date)}</div>
+              <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginBottom: 3 }}>{fmtDateFull(hoverD.date)}</div>
               <div style={{ fontSize: 'var(--text-base)', fontWeight: 600 }}>
-                <span className="mono" style={{ color: 'var(--color-accent)' }}>{formatCurrency(hoverD.value)}</span>
+                <span className="mono" style={{ color: 'var(--color-gold)' }}>{formatCurrency(hoverD.value)}</span>
               </div>
               {startVal > 0 && (
                 <div className="mono" style={{ fontSize: 'var(--text-sm)', color: numColor(hoverD.value - startVal) }}>

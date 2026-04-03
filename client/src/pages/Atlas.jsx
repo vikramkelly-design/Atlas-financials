@@ -36,9 +36,9 @@ function fmtDeadline(deadline) {
 
 function deadlineColor(deadline) {
   const d = daysUntil(deadline)
-  if (d <= 7) return 'var(--color-danger)'
-  if (d <= 30) return 'var(--color-accent)'
-  return 'var(--color-text-faint)'
+  if (d <= 7) return 'var(--color-negative)'
+  if (d <= 30) return 'var(--color-gold)'
+  return 'var(--color-text-muted)'
 }
 
 export default function Atlas() {
@@ -233,14 +233,14 @@ export default function Atlas() {
       <div>
         <h1 style={{ fontSize: 'var(--text-3xl)', marginBottom: '1.5rem' }}>Atlas</h1>
         <div className="card" style={{ textAlign: 'center', padding: '4rem 2rem' }}>
-          <svg width="56" height="56" fill="none" stroke="var(--color-accent)" strokeWidth="1.5" viewBox="0 0 24 24" style={{ margin: '0 auto 1.25rem', display: 'block' }}>
+          <svg width="56" height="56" fill="none" stroke="var(--color-gold)" strokeWidth="1.5" viewBox="0 0 24 24" style={{ margin: '0 auto 1.25rem', display: 'block' }}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l5.447 2.724A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
           </svg>
           <h2 style={{ fontSize: 'var(--text-xl)', marginBottom: '0.5rem' }}>Start Your Financial Journey</h2>
-          <p style={{ color: 'var(--color-danger)', fontSize: 'var(--text-base)', marginBottom: '0.35rem', maxWidth: 420, margin: '0 auto 0.35rem' }}>
+          <p style={{ color: 'var(--color-negative)', fontSize: 'var(--text-base)', marginBottom: '0.35rem', maxWidth: 420, margin: '0 auto 0.35rem' }}>
             Set an ultimate goal — the big destination you're working toward.
           </p>
-          <p style={{ color: 'var(--color-text-faint)', fontSize: 'var(--text-sm)', marginBottom: '1.5rem', maxWidth: 420, margin: '0 auto 1.5rem' }}>
+          <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', marginBottom: '1.5rem', maxWidth: 420, margin: '0 auto 1.5rem' }}>
             Then break it into milestones. Complete one, set the next, and watch your map grow as you progress. You can have up to 5 ultimate goals.
           </p>
           <button className="btn btn-primary" style={{ fontSize: 'var(--text-base)', padding: '0.6rem 1.5rem' }} onClick={() => setShowUltimateForm(true)}>
@@ -256,7 +256,7 @@ export default function Atlas() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <div>
           <h1 style={{ fontSize: 'var(--text-3xl)', marginBottom: '0.15rem' }}>Atlas</h1>
-          <p style={{ color: 'var(--color-text-faint)', fontSize: 'var(--text-sm)' }}>Chart your financial journey</p>
+          <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)' }}>Chart your financial journey</p>
         </div>
         {ultimateGoals.length < 5 && (
           <button className="btn btn-ghost" onClick={() => { setShowUltimateForm(!showUltimateForm); setShowMilestoneForm(false) }}
@@ -277,9 +277,9 @@ export default function Atlas() {
               style={{
                 padding: '0.5rem 1rem', border: '1px solid', borderRadius: 2, cursor: 'pointer',
                 fontSize: 'var(--text-sm)', fontWeight: 500, transition: 'all 0.15s',
-                background: selectedUltimate === u.id ? 'var(--color-primary)' : 'var(--color-bg)',
-                color: selectedUltimate === u.id ? 'var(--color-accent)' : 'var(--color-text)',
-                borderColor: selectedUltimate === u.id ? 'var(--color-primary)' : 'var(--color-border)',
+                background: selectedUltimate === u.id ? 'var(--color-navy)' : 'var(--color-bg)',
+                color: selectedUltimate === u.id ? 'var(--color-gold)' : 'var(--color-text-primary)',
+                borderColor: selectedUltimate === u.id ? 'var(--color-navy)' : 'var(--color-border)',
               }}>
               {u.status === 'completed' && <span style={{ marginRight: 4 }}>✓ </span>}
               {u.name}
@@ -294,14 +294,14 @@ export default function Atlas() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div style={{ flex: 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
-                <svg width="18" height="18" fill="none" stroke="var(--color-accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                <svg width="18" height="18" fill="none" stroke="var(--color-gold)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                   <path d={getCategoryIcon(currentUltimate.category)} />
                 </svg>
-                <span style={{ fontSize: 'var(--text-xs)', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-text-faint)' }}>Ultimate Goal</span>
+                <span style={{ fontSize: 'var(--text-xs)', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-text-muted)' }}>Ultimate Goal</span>
                 <span className="badge badge-neutral">{currentUltimate.category}</span>
               </div>
               <h2 style={{ fontSize: 'var(--text-xl)', marginBottom: '0.25rem' }}>{currentUltimate.name}</h2>
-              {currentUltimate.description && <p style={{ color: 'var(--color-danger)', fontSize: 'var(--text-sm)', marginBottom: '0.5rem' }}>{currentUltimate.description}</p>}
+              {currentUltimate.description && <p style={{ color: 'var(--color-negative)', fontSize: 'var(--text-sm)', marginBottom: '0.5rem' }}>{currentUltimate.description}</p>}
               <div style={{ display: 'flex', gap: '1.5rem', fontSize: 'var(--text-sm)' }}>
                 <span><span className="text-faint">Target:</span> <span className="mono" style={{ fontWeight: 600 }}>{formatCurrency(currentUltimate.target_amount)}</span></span>
                 <span><span className="text-faint">Saved:</span> <span className="mono text-success" style={{ fontWeight: 600 }}>{formatCurrency(totalMilestoneSaved)}</span></span>
@@ -312,7 +312,7 @@ export default function Atlas() {
                 <div className="progress-bar" style={{ height: 8 }}>
                   <div className="progress-bar-fill" style={{
                     width: `${Math.min(100, (totalMilestoneSaved / currentUltimate.target_amount) * 100)}%`,
-                    background: totalMilestoneSaved >= currentUltimate.target_amount ? 'var(--color-success)' : 'var(--color-primary)'
+                    background: totalMilestoneSaved >= currentUltimate.target_amount ? 'var(--color-positive)' : 'var(--color-navy)'
                   }} />
                 </div>
                 <p className="mono text-faint" style={{ fontSize: 'var(--text-sm)', textAlign: 'right', marginTop: '0.2rem' }}>
@@ -321,7 +321,7 @@ export default function Atlas() {
               </div>
             </div>
             <button onClick={() => deleteUltimate(currentUltimate.id)} title="Delete ultimate goal"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-faint)', fontSize: 'var(--text-base)', padding: '0.25rem' }}>×</button>
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', fontSize: 'var(--text-base)', padding: '0.25rem' }}>×</button>
           </div>
         </div>
       )}
@@ -333,7 +333,7 @@ export default function Atlas() {
       {needsFirstMilestone && !showMilestoneForm && (
         <div className="card" style={{ textAlign: 'center', padding: '2.5rem 2rem', marginBottom: '1.25rem' }}>
           <h3 style={{ fontSize: 'var(--text-lg)', marginBottom: '0.5rem' }}>Set Your First Milestone</h3>
-          <p style={{ color: 'var(--color-danger)', fontSize: 'var(--text-base)', marginBottom: '1rem', maxWidth: 380, margin: '0 auto 1rem' }}>
+          <p style={{ color: 'var(--color-negative)', fontSize: 'var(--text-base)', marginBottom: '1rem', maxWidth: 380, margin: '0 auto 1rem' }}>
             Break your ultimate goal into smaller steps. What's the first milestone on your journey to "{currentUltimate?.name}"?
           </p>
           <button className="btn btn-primary" onClick={() => { setShowMilestoneForm(true); setFormError('') }}>
@@ -344,10 +344,10 @@ export default function Atlas() {
 
       {/* Prompt: Set next milestone */}
       {needsNextMilestone && !showMilestoneForm && (
-        <div className="card" style={{ textAlign: 'center', padding: '2rem', marginBottom: '1.25rem', background: 'var(--color-bg)', border: '1px solid var(--color-accent-40)' }}>
+        <div className="card" style={{ textAlign: 'center', padding: '2rem', marginBottom: '1.25rem', background: 'var(--color-bg)', border: '1px solid var(--color-gold-40)' }}>
           <p style={{ fontSize: 'var(--text-lg)', marginBottom: '0.15rem' }}>🎉</p>
           <h3 style={{ fontSize: 'var(--text-lg)', marginBottom: '0.35rem' }}>Milestone Complete!</h3>
-          <p style={{ color: 'var(--color-danger)', fontSize: 'var(--text-base)', marginBottom: '1rem' }}>
+          <p style={{ color: 'var(--color-negative)', fontSize: 'var(--text-base)', marginBottom: '1rem' }}>
             Keep the momentum going — set your next milestone.
           </p>
           <button className="btn btn-primary" onClick={() => { setShowMilestoneForm(true); setFormError('') }}>
@@ -376,8 +376,8 @@ export default function Atlas() {
                 <g key={i}>
                   <path d={p.d} fill="none" stroke="var(--color-border)" strokeWidth="5" strokeLinecap="round" />
                   {p.completed
-                    ? <path d={p.d} fill="none" stroke="var(--color-success)" strokeWidth="5" strokeLinecap="round" />
-                    : <path d={p.d} fill="none" stroke="var(--color-primary)" strokeWidth="5" strokeLinecap="round" strokeDasharray="8,8" strokeOpacity="0.25" />
+                    ? <path d={p.d} fill="none" stroke="var(--color-positive)" strokeWidth="5" strokeLinecap="round" />
+                    : <path d={p.d} fill="none" stroke="var(--color-navy)" strokeWidth="5" strokeLinecap="round" strokeDasharray="8,8" strokeOpacity="0.25" />
                   }
                 </g>
               ))}
@@ -390,15 +390,15 @@ export default function Atlas() {
                     <g key="ultimate">
                       <polygon
                         points={`${node.x},${node.y - 28} ${node.x + 8},${node.y - 10} ${node.x + 26},${node.y - 10} ${node.x + 12},${node.y + 2} ${node.x + 18},${node.y + 20} ${node.x},${node.y + 8} ${node.x - 18},${node.y + 20} ${node.x - 12},${node.y + 2} ${node.x - 26},${node.y - 10} ${node.x - 8},${node.y - 10}`}
-                        fill={allDone ? 'var(--color-accent)' : 'var(--color-bg)'}
-                        stroke={allDone ? 'var(--color-accent)' : 'var(--color-primary)'}
+                        fill={allDone ? 'var(--color-gold)' : 'var(--color-bg)'}
+                        stroke={allDone ? 'var(--color-gold)' : 'var(--color-navy)'}
                         strokeWidth="2"
                       />
-                      <text x={node.x} y={node.y + 38} textAnchor="middle" fontSize="11" fill="var(--color-text)"
-                        fontWeight="700" fontFamily="var(--font-body)">
+                      <text x={node.x} y={node.y + 38} textAnchor="middle" fontSize="11" fill="var(--color-text-primary)"
+                        fontWeight="700" fontFamily="var(--font-sans)">
                         {currentUltimate.name.length > 20 ? currentUltimate.name.slice(0, 18) + '…' : currentUltimate.name}
                       </text>
-                      <text x={node.x} y={node.y + 50} textAnchor="middle" fontSize="9" fill="var(--color-accent)"
+                      <text x={node.x} y={node.y + 50} textAnchor="middle" fontSize="9" fill="var(--color-gold)"
                         fontFamily="var(--font-mono)" fontWeight="600">
                         ULTIMATE GOAL
                       </text>
@@ -420,47 +420,47 @@ export default function Atlas() {
                     style={{ cursor: 'pointer' }}>
                     {isSelected && (
                       <rect x={node.x - nodeSize - 4} y={node.y - nodeSize - 4} width={(nodeSize + 4) * 2} height={(nodeSize + 4) * 2}
-                        rx={4} fill="none" stroke="var(--color-accent)" strokeWidth="2" strokeDasharray="4,3" />
+                        rx={4} fill="none" stroke="var(--color-gold)" strokeWidth="2" strokeDasharray="4,3" />
                     )}
                     {/* Node circle */}
                     <circle cx={node.x} cy={node.y} r={nodeSize}
-                      fill={isCompleted ? 'var(--color-success)' : isPaused ? 'var(--color-border)' : isActive ? 'var(--color-bg)' : 'var(--color-bg)'}
-                      stroke={isCompleted ? 'var(--color-success)' : isActive ? 'var(--color-primary)' : 'var(--color-text-faint)'}
+                      fill={isCompleted ? 'var(--color-positive)' : isPaused ? 'var(--color-border)' : isActive ? 'var(--color-bg)' : 'var(--color-bg)'}
+                      stroke={isCompleted ? 'var(--color-positive)' : isActive ? 'var(--color-navy)' : 'var(--color-text-muted)'}
                       strokeWidth={isActive ? 3 : 2} />
                     {/* Icon or checkmark */}
                     {isCompleted ? (
                       <text x={node.x} y={node.y + 5} textAnchor="middle" fontSize="18" fill="var(--color-bg)" fontWeight="700">✓</text>
                     ) : (
                       <svg x={node.x - 10} y={node.y - 10} width="20" height="20" viewBox="0 0 24 24" fill="none"
-                        stroke={isActive ? 'var(--color-primary)' : 'var(--color-text-faint)'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        stroke={isActive ? 'var(--color-navy)' : 'var(--color-text-muted)'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                         <path d={getCategoryIcon(m.category)} />
                       </svg>
                     )}
                     {/* Progress arc for active */}
                     {isActive && pct > 0 && (
                       <circle cx={node.x} cy={node.y} r={nodeSize + 4}
-                        fill="none" stroke="var(--color-accent)" strokeWidth="3"
+                        fill="none" stroke="var(--color-gold)" strokeWidth="3"
                         strokeDasharray={`${pct * 2 * Math.PI * (nodeSize + 4)} ${2 * Math.PI * (nodeSize + 4)}`}
                         strokeLinecap="round"
                         transform={`rotate(-90 ${node.x} ${node.y})`} />
                     )}
                     {/* Step number */}
-                    <text x={node.x} y={node.y + nodeSize + 16} textAnchor="middle" fontSize="11" fill="var(--color-text)"
-                      fontWeight="600" fontFamily="var(--font-body)">
+                    <text x={node.x} y={node.y + nodeSize + 16} textAnchor="middle" fontSize="11" fill="var(--color-text-primary)"
+                      fontWeight="600" fontFamily="var(--font-sans)">
                       {m.name.length > 16 ? m.name.slice(0, 14) + '…' : m.name}
                     </text>
-                    <text x={node.x} y={node.y + nodeSize + 28} textAnchor="middle" fontSize="9" fill="var(--color-danger)"
+                    <text x={node.x} y={node.y + nodeSize + 28} textAnchor="middle" fontSize="9" fill="var(--color-negative)"
                       fontFamily="var(--font-mono)">
                       {isCompleted ? '✓ Completed' : `${formatCurrency(m.current_amount)} / ${formatCurrency(m.target_amount)}`}
                     </text>
                     <text x={node.x} y={node.y + nodeSize + 40} textAnchor="middle" fontSize="8.5"
-                      fill={isCompleted ? 'var(--color-success)' : deadlineColor(m.deadline)} fontFamily="var(--font-mono)">
+                      fill={isCompleted ? 'var(--color-positive)' : deadlineColor(m.deadline)} fontFamily="var(--font-mono)">
                       {isCompleted ? '' : fmtDeadline(m.deadline)}
                     </text>
                     {/* Step badge */}
                     <circle cx={node.x + nodeSize - 4} cy={node.y - nodeSize + 4} r={8}
-                      fill="var(--color-primary)" stroke="var(--color-bg)" strokeWidth="1.5" />
-                    <text x={node.x + nodeSize - 4} y={node.y - nodeSize + 7.5} textAnchor="middle" fontSize="8" fill="var(--color-accent)"
+                      fill="var(--color-navy)" stroke="var(--color-bg)" strokeWidth="1.5" />
+                    <text x={node.x + nodeSize - 4} y={node.y - nodeSize + 7.5} textAnchor="middle" fontSize="8" fill="var(--color-gold)"
                       fontFamily="var(--font-mono)" fontWeight="700">
                       {i + 1}
                     </text>
@@ -499,29 +499,29 @@ function GoalForm({ title, form, setForm, onSubmit, error, onCancel }) {
       <form onSubmit={onSubmit}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
           <div>
-            <label style={{ display: 'block', fontSize: 'var(--text-xs)', textTransform: 'uppercase', color: 'var(--color-text-faint)', letterSpacing: '0.06em', marginBottom: 3 }}>Name</label>
+            <label style={{ display: 'block', fontSize: 'var(--text-xs)', textTransform: 'uppercase', color: 'var(--color-text-muted)', letterSpacing: '0.06em', marginBottom: 3 }}>Name</label>
             <input className="input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Emergency Fund" />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 'var(--text-xs)', textTransform: 'uppercase', color: 'var(--color-text-faint)', letterSpacing: '0.06em', marginBottom: 3 }}>Target Amount</label>
+            <label style={{ display: 'block', fontSize: 'var(--text-xs)', textTransform: 'uppercase', color: 'var(--color-text-muted)', letterSpacing: '0.06em', marginBottom: 3 }}>Target Amount</label>
             <input className="input" type="number" step="0.01" min="0" value={form.target_amount} onChange={e => setForm(f => ({ ...f, target_amount: e.target.value }))} placeholder="10000" />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 'var(--text-xs)', textTransform: 'uppercase', color: 'var(--color-text-faint)', letterSpacing: '0.06em', marginBottom: 3 }}>Deadline</label>
+            <label style={{ display: 'block', fontSize: 'var(--text-xs)', textTransform: 'uppercase', color: 'var(--color-text-muted)', letterSpacing: '0.06em', marginBottom: 3 }}>Deadline</label>
             <input className="input" type="date" value={form.deadline} onChange={e => setForm(f => ({ ...f, deadline: e.target.value }))} />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 'var(--text-xs)', textTransform: 'uppercase', color: 'var(--color-text-faint)', letterSpacing: '0.06em', marginBottom: 3 }}>Category</label>
+            <label style={{ display: 'block', fontSize: 'var(--text-xs)', textTransform: 'uppercase', color: 'var(--color-text-muted)', letterSpacing: '0.06em', marginBottom: 3 }}>Category</label>
             <select className="select" style={{ width: '100%' }} value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
               {CATEGORIES.map(c => <option key={c.key} value={c.key}>{c.key}</option>)}
             </select>
           </div>
         </div>
         <div style={{ marginBottom: '0.75rem' }}>
-          <label style={{ display: 'block', fontSize: 'var(--text-xs)', textTransform: 'uppercase', color: 'var(--color-text-faint)', letterSpacing: '0.06em', marginBottom: 3 }}>Description (optional)</label>
+          <label style={{ display: 'block', fontSize: 'var(--text-xs)', textTransform: 'uppercase', color: 'var(--color-text-muted)', letterSpacing: '0.06em', marginBottom: 3 }}>Description (optional)</label>
           <input className="input" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Why this matters" />
         </div>
-        {error && <p style={{ color: 'var(--color-danger)', fontSize: 'var(--text-sm)', marginBottom: '0.5rem' }}>{error}</p>}
+        {error && <p style={{ color: 'var(--color-negative)', fontSize: 'var(--text-sm)', marginBottom: '0.5rem' }}>{error}</p>}
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button type="submit" className="btn btn-primary">Create</button>
           <button type="button" className="btn btn-ghost" onClick={onCancel}>Cancel</button>
@@ -548,27 +548,27 @@ function MilestoneDetail({ milestone, onUpdate, onDelete, onClose }) {
     <div className="card" style={{ width: 300, flexShrink: 0, alignSelf: 'flex-start', position: 'sticky', top: '1.25rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
         <span className="badge badge-neutral">{milestone.category}</span>
-        <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-faint)', fontSize: 'var(--text-lg)' }}>×</button>
+        <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', fontSize: 'var(--text-lg)' }}>×</button>
       </div>
 
       <h3 style={{ fontSize: 'var(--text-lg)', marginBottom: '0.25rem' }}>{milestone.name}</h3>
-      {milestone.description && <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-danger)', marginBottom: '0.75rem', lineHeight: 1.5 }}>{milestone.description}</p>}
+      {milestone.description && <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-negative)', marginBottom: '0.75rem', lineHeight: 1.5 }}>{milestone.description}</p>}
 
       {/* Progress */}
       <div style={{ marginBottom: '1rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-sm)', marginBottom: '0.35rem' }}>
-          <span className="mono" style={{ color: 'var(--color-success)', fontWeight: 600 }}>{formatCurrency(milestone.current_amount)}</span>
-          <span className="mono" style={{ color: 'var(--color-text)' }}>{formatCurrency(milestone.target_amount)}</span>
+          <span className="mono" style={{ color: 'var(--color-positive)', fontWeight: 600 }}>{formatCurrency(milestone.current_amount)}</span>
+          <span className="mono" style={{ color: 'var(--color-text-primary)' }}>{formatCurrency(milestone.target_amount)}</span>
         </div>
         <div className="progress-bar" style={{ height: 8 }}>
-          <div className="progress-bar-fill" style={{ width: `${pct}%`, background: pct >= 100 ? 'var(--color-success)' : 'var(--color-primary)' }} />
+          <div className="progress-bar-fill" style={{ width: `${pct}%`, background: pct >= 100 ? 'var(--color-positive)' : 'var(--color-navy)' }} />
         </div>
-        <p className="mono" style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-faint)', marginTop: '0.25rem', textAlign: 'right' }}>{pct.toFixed(1)}%</p>
+        <p className="mono" style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', marginTop: '0.25rem', textAlign: 'right' }}>{pct.toFixed(1)}%</p>
       </div>
 
       {/* Deadline */}
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-sm)', marginBottom: '1rem', padding: '0.5rem 0.65rem', background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 2 }}>
-        <span style={{ color: 'var(--color-text-faint)' }}>Deadline</span>
+        <span style={{ color: 'var(--color-text-muted)' }}>Deadline</span>
         <span className="mono" style={{ color: deadlineColor(milestone.deadline), fontWeight: 600 }}>
           {new Date(milestone.deadline + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
         </span>
@@ -577,7 +577,7 @@ function MilestoneDetail({ milestone, onUpdate, onDelete, onClose }) {
       {/* Update Progress */}
       {milestone.status !== 'completed' && (
         <div style={{ marginBottom: '1rem' }}>
-          <label style={{ display: 'block', fontSize: 'var(--text-xs)', textTransform: 'uppercase', color: 'var(--color-text-faint)', letterSpacing: '0.06em', marginBottom: 3 }}>Update Progress</label>
+          <label style={{ display: 'block', fontSize: 'var(--text-xs)', textTransform: 'uppercase', color: 'var(--color-text-muted)', letterSpacing: '0.06em', marginBottom: 3 }}>Update Progress</label>
           <div style={{ display: 'flex', gap: '0.4rem' }}>
             <input className="input" type="number" step="0.01" min="0" value={editAmount}
               onChange={e => setEditAmount(e.target.value)} style={{ flex: 1 }} />
@@ -588,7 +588,7 @@ function MilestoneDetail({ milestone, onUpdate, onDelete, onClose }) {
 
       {/* Status */}
       <div style={{ marginBottom: '1rem' }}>
-        <label style={{ display: 'block', fontSize: 'var(--text-xs)', textTransform: 'uppercase', color: 'var(--color-text-faint)', letterSpacing: '0.06em', marginBottom: 3 }}>Status</label>
+        <label style={{ display: 'block', fontSize: 'var(--text-xs)', textTransform: 'uppercase', color: 'var(--color-text-muted)', letterSpacing: '0.06em', marginBottom: 3 }}>Status</label>
         <div style={{ display: 'flex', gap: '0.35rem' }}>
           {['active', 'completed', 'paused'].map(s => (
             <button key={s} onClick={() => onUpdate({ status: s })}

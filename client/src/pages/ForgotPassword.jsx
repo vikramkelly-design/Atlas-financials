@@ -12,7 +12,7 @@ export default function ForgotPassword() {
 
   const inputStyle = {
     width: '100%', padding: '0.6rem 0.75rem', borderRadius: 2,
-    border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)',
+    border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text-primary)',
     fontSize: 'var(--text-base)', outline: 'none',
   }
 
@@ -50,13 +50,13 @@ export default function ForgotPassword() {
     }}>
       <div style={{ width: '100%', maxWidth: 380, padding: '2rem' }}>
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <h1 style={{ fontFamily: 'var(--font-brand)', fontSize: 42, color: 'var(--color-accent)', marginBottom: '0.15rem' }}>Atlas</h1>
+          <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: 42, color: 'var(--color-gold)', marginBottom: '0.15rem' }}>Atlas</h1>
         </div>
 
         {step === 'email' && (
           <>
             <h2 style={{ fontSize: 'var(--text-lg)', marginBottom: '0.5rem', textAlign: 'center' }}>Reset Password</h2>
-            <p style={{ color: 'var(--color-text-faint)', fontSize: 'var(--text-sm)', marginBottom: '1.5rem', textAlign: 'center' }}>
+            <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', marginBottom: '1.5rem', textAlign: 'center' }}>
               Enter your email and we'll send you a reset code.
             </p>
             <form onSubmit={requestReset}>
@@ -64,7 +64,7 @@ export default function ForgotPassword() {
                 <label className="form-label">Email</label>
                 <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" style={inputStyle} autoFocus />
               </div>
-              {error && <div style={{ background: 'var(--color-danger-light)', border: '1px solid rgba(139, 58, 42, 0.2)', borderRadius: 2, padding: '0.45rem 0.65rem', marginBottom: '0.85rem', color: 'var(--color-danger)', fontSize: 'var(--text-sm)' }}>{error}</div>}
+              {error && <div style={{ background: 'var(--color-negative-light)', border: '1px solid rgba(139, 58, 42, 0.2)', borderRadius: 2, padding: '0.45rem 0.65rem', marginBottom: '0.85rem', color: 'var(--color-negative)', fontSize: 'var(--text-sm)' }}>{error}</div>}
               <button type="submit" disabled={loading} className="btn btn-primary" style={{ width: '100%' }}>
                 {loading ? 'Sending...' : 'Send Reset Code'}
               </button>
@@ -75,7 +75,7 @@ export default function ForgotPassword() {
         {step === 'reset' && (
           <>
             <h2 style={{ fontSize: 'var(--text-lg)', marginBottom: '0.5rem', textAlign: 'center' }}>Enter Reset Code</h2>
-            <p style={{ color: 'var(--color-text-faint)', fontSize: 'var(--text-sm)', marginBottom: '1.5rem', textAlign: 'center' }}>
+            <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', marginBottom: '1.5rem', textAlign: 'center' }}>
               Check your email for the reset code.
             </p>
             <form onSubmit={resetPassword}>
@@ -87,7 +87,7 @@ export default function ForgotPassword() {
                 <label className="form-label">New Password</label>
                 <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Min 6 characters" style={inputStyle} />
               </div>
-              {error && <div style={{ background: 'var(--color-danger-light)', border: '1px solid rgba(139, 58, 42, 0.2)', borderRadius: 2, padding: '0.45rem 0.65rem', marginBottom: '0.85rem', color: 'var(--color-danger)', fontSize: 'var(--text-sm)' }}>{error}</div>}
+              {error && <div style={{ background: 'var(--color-negative-light)', border: '1px solid rgba(139, 58, 42, 0.2)', borderRadius: 2, padding: '0.45rem 0.65rem', marginBottom: '0.85rem', color: 'var(--color-negative)', fontSize: 'var(--text-sm)' }}>{error}</div>}
               <button type="submit" disabled={loading} className="btn btn-primary" style={{ width: '100%' }}>
                 {loading ? 'Resetting...' : 'Reset Password'}
               </button>
@@ -97,14 +97,14 @@ export default function ForgotPassword() {
 
         {step === 'done' && (
           <div style={{ textAlign: 'center' }}>
-            <p style={{ color: 'var(--color-success)', fontSize: 'var(--text-lg)', marginBottom: '1rem' }}>Password reset successful!</p>
-            <Link to="/" style={{ color: 'var(--color-accent)', fontSize: 'var(--text-base)' }}>Back to Login</Link>
+            <p style={{ color: 'var(--color-positive)', fontSize: 'var(--text-lg)', marginBottom: '1rem' }}>Password reset successful!</p>
+            <Link to="/" style={{ color: 'var(--color-gold)', fontSize: 'var(--text-base)' }}>Back to Login</Link>
           </div>
         )}
 
         {step !== 'done' && (
           <p style={{ textAlign: 'center', marginTop: '1.5rem' }}>
-            <Link to="/" style={{ color: 'var(--color-accent)', fontSize: 'var(--text-sm)' }}>Back to Login</Link>
+            <Link to="/" style={{ color: 'var(--color-gold)', fontSize: 'var(--text-sm)' }}>Back to Login</Link>
           </p>
         )}
       </div>

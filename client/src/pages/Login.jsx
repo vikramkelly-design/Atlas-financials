@@ -29,7 +29,7 @@ export default function Login({ onAuth }) {
 
   const inputStyle = {
     width: '100%', padding: '0.6rem 0.75rem', borderRadius: 2,
-    border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)',
+    border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text-primary)',
     fontSize: 'var(--text-base)', outline: 'none', transition: 'border-color 0.1s',
   }
 
@@ -42,13 +42,13 @@ export default function Login({ onAuth }) {
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
           <h1 style={{
-            fontFamily: 'var(--font-brand)', fontSize: 56,
-            color: 'var(--color-accent)', fontWeight: 400, marginBottom: '0.15rem',
+            fontFamily: 'var(--font-serif)', fontSize: 56,
+            color: 'var(--color-gold)', fontWeight: 400, marginBottom: '0.15rem',
           }}>
             Atlas
           </h1>
           <p style={{
-            color: 'var(--color-text-faint)', fontSize: 'var(--text-sm)',
+            color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)',
             textTransform: 'uppercase', letterSpacing: '0.15em',
           }}>
             Finance Terminal
@@ -60,8 +60,8 @@ export default function Login({ onAuth }) {
           {['login', 'signup'].map(m => (
             <button key={m} onClick={() => { setMode(m); setError('') }} style={{
               flex: 1, padding: '0.55rem', border: 'none', cursor: 'pointer',
-              background: mode === m ? 'var(--color-primary)' : 'var(--color-surface)',
-              color: mode === m ? 'var(--color-accent)' : 'var(--color-text-faint)',
+              background: mode === m ? 'var(--color-navy)' : 'var(--color-surface)',
+              color: mode === m ? 'var(--color-gold)' : 'var(--color-text-muted)',
               fontSize: 'var(--text-sm)', fontWeight: 600, textTransform: 'uppercase',
               letterSpacing: '0.06em', transition: 'all 0.1s',
             }}>
@@ -92,8 +92,8 @@ export default function Login({ onAuth }) {
 
           {error && (
             <div style={{
-              background: 'var(--color-danger-light)', border: '1px solid rgba(139, 58, 42, 0.2)', borderRadius: 2,
-              padding: '0.45rem 0.65rem', marginBottom: 'var(--text-base)', color: 'var(--color-danger)', fontSize: 'var(--text-sm)',
+              background: 'var(--color-negative-light)', border: '1px solid rgba(139, 58, 42, 0.2)', borderRadius: 2,
+              padding: '0.45rem 0.65rem', marginBottom: 'var(--text-base)', color: 'var(--color-negative)', fontSize: 'var(--text-sm)',
             }}>
               {error}
             </div>
@@ -108,7 +108,7 @@ export default function Login({ onAuth }) {
           </button>
           {mode === 'login' && (
             <p style={{ textAlign: 'center', marginTop: '1rem' }}>
-              <a href="/forgot-password" style={{ color: 'var(--color-accent)', fontSize: 'var(--text-sm)' }}>Forgot password?</a>
+              <a href="/forgot-password" style={{ color: 'var(--color-gold)', fontSize: 'var(--text-sm)' }}>Forgot password?</a>
             </p>
           )}
         </form>

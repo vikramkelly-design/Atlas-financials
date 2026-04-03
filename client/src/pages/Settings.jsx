@@ -84,14 +84,14 @@ export default function Settings() {
   if (loading) return <LoadingSpinner />
 
   const sectionStyle = { marginBottom: 'var(--space-xl)' }
-  const labelStyle = { display: 'block', color: 'var(--color-text-faint)', fontSize: 'var(--text-xs)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 3 }
+  const labelStyle = { display: 'block', color: 'var(--color-text-muted)', fontSize: 'var(--text-xs)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 3 }
   const fieldStyle = { marginBottom: 'var(--space-md)' }
 
   return (
     <div style={{ maxWidth: 560 }}>
       {/* Profile */}
       <div className="card" style={sectionStyle}>
-        <h3 style={{ fontSize: 'var(--text-lg)', marginBottom: 'var(--space-md)', color: 'var(--color-text)' }}>Profile</h3>
+        <h3 style={{ fontSize: 'var(--text-lg)', marginBottom: 'var(--space-md)', color: 'var(--color-text-primary)' }}>Profile</h3>
         <div style={fieldStyle}>
           <label style={labelStyle}>Name</label>
           <input className="input" value={profile.name} onChange={e => setProfile(p => ({ ...p, name: e.target.value }))} />
@@ -107,7 +107,7 @@ export default function Settings() {
 
       {/* Change Password */}
       <div className="card" style={sectionStyle}>
-        <h3 style={{ fontSize: 'var(--text-lg)', marginBottom: 'var(--space-md)', color: 'var(--color-text)' }}>Change Password</h3>
+        <h3 style={{ fontSize: 'var(--text-lg)', marginBottom: 'var(--space-md)', color: 'var(--color-text-primary)' }}>Change Password</h3>
         <div style={fieldStyle}>
           <label style={labelStyle}>Current Password</label>
           <input className="input" type="password" value={passwords.currentPassword}
@@ -130,7 +130,7 @@ export default function Settings() {
 
       {/* Preferences */}
       <div className="card" style={sectionStyle}>
-        <h3 style={{ fontSize: 'var(--text-lg)', marginBottom: 'var(--space-md)', color: 'var(--color-text)' }}>Preferences</h3>
+        <h3 style={{ fontSize: 'var(--text-lg)', marginBottom: 'var(--space-md)', color: 'var(--color-text-primary)' }}>Preferences</h3>
         <div>
           <label style={labelStyle}>Debt Payoff Strategy</label>
           <div style={{ display: 'flex', gap: 'var(--space-sm)', marginTop: 'var(--space-xs)' }}>
@@ -141,16 +141,16 @@ export default function Settings() {
               </button>
             ))}
           </div>
-          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', marginTop: 'var(--space-xs)' }}>
+          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginTop: 'var(--space-xs)' }}>
             {debtStrategy === 'avalanche' ? 'Pay highest interest rate first — saves the most money.' : 'Pay smallest balance first — builds momentum faster.'}
           </p>
         </div>
       </div>
 
       {/* Danger Zone */}
-      <div className="card" style={{ borderColor: 'var(--color-danger)' }}>
-        <h3 style={{ fontSize: 'var(--text-lg)', marginBottom: 'var(--space-sm)', color: 'var(--color-danger)' }}>Danger Zone</h3>
-        <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-muted)', marginBottom: 'var(--space-md)' }}>
+      <div className="card" style={{ borderColor: 'var(--color-negative)' }}>
+        <h3 style={{ fontSize: 'var(--text-lg)', marginBottom: 'var(--space-sm)', color: 'var(--color-negative)' }}>Danger Zone</h3>
+        <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-secondary)', marginBottom: 'var(--space-md)' }}>
           Permanently delete your account and all data. This cannot be undone.
         </p>
         <button className="btn btn-danger" onClick={() => setDeleteOpen(true)}>Delete Account</button>
@@ -163,11 +163,11 @@ export default function Settings() {
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999,
         }}>
           <div onClick={e => e.stopPropagation()} style={{
-            background: 'var(--color-surface)', border: '1px solid var(--color-danger)', borderRadius: 2,
+            background: 'var(--color-surface)', border: '1px solid var(--color-negative)', borderRadius: 2,
             padding: 'var(--space-lg)', maxWidth: 380, width: '90%',
           }}>
-            <h3 style={{ fontSize: 'var(--text-lg)', marginBottom: 'var(--space-sm)', color: 'var(--color-danger)' }}>Delete Account</h3>
-            <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-muted)', marginBottom: 'var(--space-md)' }}>
+            <h3 style={{ fontSize: 'var(--text-lg)', marginBottom: 'var(--space-sm)', color: 'var(--color-negative)' }}>Delete Account</h3>
+            <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-secondary)', marginBottom: 'var(--space-md)' }}>
               Enter your password to confirm deletion.
             </p>
             <input className="input" type="password" placeholder="Password" value={deletePassword}

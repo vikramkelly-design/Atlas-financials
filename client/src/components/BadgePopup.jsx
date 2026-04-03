@@ -31,7 +31,7 @@ export default function BadgePopup({ badge, onClose }) {
     }}>
       <div onClick={e => e.stopPropagation()} style={{
         background: 'var(--color-surface)',
-        border: '2px solid var(--color-accent)',
+        border: '2px solid var(--color-gold)',
         borderRadius: 4,
         padding: 'var(--space-xl)',
         textAlign: 'center',
@@ -41,25 +41,25 @@ export default function BadgePopup({ badge, onClose }) {
       }}>
         <div style={{
           width: 64, height: 64, margin: '0 auto var(--space-md)',
-          background: 'var(--color-accent-15)',
+          background: 'var(--color-gold-15)',
           borderRadius: '50%',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          border: '2px solid var(--color-accent)',
+          border: '2px solid var(--color-gold)',
         }}>
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--color-gold)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d={iconPath} />
           </svg>
         </div>
         <p style={{
           fontSize: 'var(--text-xs)', textTransform: 'uppercase', letterSpacing: '0.08em',
-          color: 'var(--color-accent)', marginBottom: 'var(--space-xs)', fontWeight: 600,
+          color: 'var(--color-gold)', marginBottom: 'var(--space-xs)', fontWeight: 600,
         }}>
           Badge Earned!
         </p>
-        <h3 style={{ fontSize: 'var(--text-xl)', color: 'var(--color-text)', marginBottom: 'var(--space-xs)' }}>
+        <h3 style={{ fontSize: 'var(--text-xl)', color: 'var(--color-text-primary)', marginBottom: 'var(--space-xs)' }}>
           {badge.name}
         </h3>
-        <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-muted)', marginBottom: 'var(--space-lg)' }}>
+        <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-secondary)', marginBottom: 'var(--space-lg)' }}>
           {badge.description}
         </p>
         <button className="btn btn-primary" onClick={onClose}>Got it!</button>

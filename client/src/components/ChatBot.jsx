@@ -47,12 +47,12 @@ export default function ChatBot() {
       {!open && (
         <button onClick={() => setOpen(true)} aria-label="Open AI chat assistant" style={{
           position: 'fixed', bottom: 20, right: 20, width: 44, height: 44,
-          borderRadius: 2, background: 'var(--color-primary)', border: 'none',
+          borderRadius: 2, background: 'var(--color-navy)', border: 'none',
           cursor: 'pointer', boxShadow: '0 2px 12px rgba(0,0,0,0.15)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           zIndex: 1000,
         }}>
-          <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="var(--color-accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="var(--color-gold)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
           </svg>
         </button>
@@ -69,16 +69,16 @@ export default function ChatBot() {
           <div style={{
             padding: '0.6rem 0.85rem', borderBottom: '1px solid var(--color-border)',
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            background: 'var(--color-primary)', borderRadius: '2px 2px 0 0',
+            background: 'var(--color-navy)', borderRadius: '2px 2px 0 0',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-accent)' }} />
-              <span style={{ color: 'var(--color-accent)', fontFamily: 'var(--font-brand)', fontSize: 'var(--text-xl)' }}>Atlas</span>
-              <span style={{ color: 'var(--color-accent-50)', fontSize: 'var(--text-xs)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>AI</span>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-gold)' }} />
+              <span style={{ color: 'var(--color-gold)', fontFamily: 'var(--font-serif)', fontSize: 'var(--text-xl)' }}>Atlas</span>
+              <span style={{ color: 'var(--color-gold-50)', fontSize: 'var(--text-xs)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>AI</span>
             </div>
             <button onClick={() => setOpen(false)} aria-label="Close chat" style={{
-              background: 'none', border: '1px solid var(--color-accent-30)', borderRadius: 2,
-              color: 'var(--color-accent)', cursor: 'pointer', fontSize: 'var(--text-sm)', padding: '0.1rem 0.4rem',
+              background: 'none', border: '1px solid var(--color-gold-30)', borderRadius: 2,
+              color: 'var(--color-gold)', cursor: 'pointer', fontSize: 'var(--text-sm)', padding: '0.1rem 0.4rem',
             }}>ESC</button>
           </div>
 
@@ -92,8 +92,8 @@ export default function ChatBot() {
                 <div style={{
                   padding: '0.45rem 0.65rem',
                   borderRadius: 2,
-                  background: msg.role === 'user' ? 'var(--color-primary)' : 'var(--color-bg)',
-                  color: msg.role === 'user' ? 'var(--color-accent)' : 'var(--color-text-muted)',
+                  background: msg.role === 'user' ? 'var(--color-navy)' : 'var(--color-bg)',
+                  color: msg.role === 'user' ? 'var(--color-gold)' : 'var(--color-text-secondary)',
                   fontSize: 'var(--text-sm)', lineHeight: 1.55,
                   border: msg.role === 'user' ? 'none' : '1px solid var(--color-border)',
                 }}>
@@ -106,7 +106,7 @@ export default function ChatBot() {
                 <div style={{
                   padding: '0.45rem 0.65rem', borderRadius: 2,
                   background: 'var(--color-bg)', border: '1px solid var(--color-border)',
-                  color: 'var(--color-text-faint)', fontSize: 'var(--text-sm)',
+                  color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)',
                 }}>
                   <span style={{ animation: 'pulse 1s ease-in-out infinite' }}>Processing...</span>
                 </div>
@@ -124,12 +124,12 @@ export default function ChatBot() {
               placeholder="Ask about IV, P/E, portfolio..." disabled={loading}
               style={{
                 flex: 1, padding: '0.45rem 0.65rem', borderRadius: 2,
-                border: '1px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text)',
+                border: '1px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-primary)',
                 fontSize: 'var(--text-sm)', outline: 'none',
               }} />
             <button type="submit" disabled={loading || !input.trim()} style={{
-              padding: '0.45rem 0.65rem', borderRadius: 2, border: '1px solid var(--color-primary)',
-              background: 'transparent', color: 'var(--color-primary)', cursor: 'pointer',
+              padding: '0.45rem 0.65rem', borderRadius: 2, border: '1px solid var(--color-navy)',
+              background: 'transparent', color: 'var(--color-navy)', cursor: 'pointer',
               opacity: loading || !input.trim() ? 0.3 : 1, fontSize: 'var(--text-sm)',
               textTransform: 'uppercase', letterSpacing: '0.04em',
             }}>

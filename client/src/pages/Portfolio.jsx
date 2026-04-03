@@ -204,9 +204,9 @@ export default function Portfolio() {
           { key: 'chat', label: 'AI Chat' },
         ].map(t => (
           <button key={t.key} onClick={() => setTab(t.key)} style={{
-            padding: '0.6rem 1.25rem', border: 'none', borderBottom: tab === t.key ? '2px solid var(--color-accent)' : '2px solid transparent',
+            padding: '0.6rem 1.25rem', border: 'none', borderBottom: tab === t.key ? '2px solid var(--color-gold)' : '2px solid transparent',
             background: 'none', cursor: 'pointer', fontWeight: tab === t.key ? 600 : 400,
-            color: tab === t.key ? 'var(--color-accent)' : 'var(--color-text-muted)',
+            color: tab === t.key ? 'var(--color-gold)' : 'var(--color-text-secondary)',
             fontSize: 'var(--text-base)', marginBottom: '-2px', transition: 'all 0.15s ease',
           }}>
             {t.label}
@@ -223,7 +223,7 @@ export default function Portfolio() {
           <div onClick={e => e.stopPropagation()} className="card" style={{ maxWidth: 400, width: '100%' }}>
             <h3 style={{ fontSize: 'var(--text-xl)', marginBottom: '1rem' }}>New Portfolio</h3>
             <div style={{ marginBottom: '1rem' }}>
-              <label style={{ fontSize: 'var(--text-sm)', textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>Portfolio Name</label>
+              <label style={{ fontSize: 'var(--text-sm)', textTransform: 'uppercase', color: 'var(--color-text-secondary)' }}>Portfolio Name</label>
               <input className="input" value={createName} onChange={e => setCreateName(e.target.value)} placeholder="e.g. My Investments"
                 autoFocus onKeyDown={e => e.key === 'Enter' && createPortfolio()} />
             </div>
@@ -245,18 +245,18 @@ export default function Portfolio() {
         {portfolios.map(p => (
           <div key={p.id} onClick={() => setActiveId(p.id)} style={{
             padding: '0.4rem 0.75rem', borderRadius: 4, cursor: 'pointer', fontSize: 'var(--text-base)',
-            background: p.id === activeId ? 'var(--color-primary)' : 'var(--color-surface)',
-            color: p.id === activeId ? 'var(--color-accent)' : 'var(--color-text)',
-            border: '1px solid ' + (p.id === activeId ? 'var(--color-primary)' : 'var(--color-border)'),
+            background: p.id === activeId ? 'var(--color-navy)' : 'var(--color-surface)',
+            color: p.id === activeId ? 'var(--color-gold)' : 'var(--color-text-primary)',
+            border: '1px solid ' + (p.id === activeId ? 'var(--color-navy)' : 'var(--color-border)'),
             display: 'flex', alignItems: 'center', gap: '0.5rem'
           }}>
             {p.name}
             {p.id === activeId && portfolios.length > 1 && (
-              <button onClick={(e) => { e.stopPropagation(); deletePortfolio(p.id) }} style={{ background: 'none', border: 'none', color: p.id === activeId ? 'var(--color-accent)' : 'var(--color-text-faint)', cursor: 'pointer', fontSize: 'var(--text-base)', lineHeight: 1 }}>x</button>
+              <button onClick={(e) => { e.stopPropagation(); deletePortfolio(p.id) }} style={{ background: 'none', border: 'none', color: p.id === activeId ? 'var(--color-gold)' : 'var(--color-text-muted)', cursor: 'pointer', fontSize: 'var(--text-base)', lineHeight: 1 }}>x</button>
             )}
           </div>
         ))}
-        <button onClick={() => setShowCreateModal(true)} style={{ padding: '0.4rem 0.6rem', background: 'none', border: '1px dashed var(--color-border-dark)', borderRadius: 4, cursor: 'pointer', color: 'var(--color-text-muted)', fontSize: 'var(--text-base)' }}>+ New</button>
+        <button onClick={() => setShowCreateModal(true)} style={{ padding: '0.4rem 0.6rem', background: 'none', border: '1px dashed var(--color-border-dark)', borderRadius: 4, cursor: 'pointer', color: 'var(--color-text-secondary)', fontSize: 'var(--text-base)' }}>+ New</button>
       </div>
 
       {activePortfolio && (
@@ -266,21 +266,21 @@ export default function Portfolio() {
             <h3 style={{ fontSize: 'var(--text-base)', marginBottom: '0.75rem' }}>Add Stock</h3>
             <form onSubmit={addStock} style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
               <div>
-                <label style={{ fontSize: 'var(--text-sm)', textTransform: 'uppercase', color: 'var(--color-text-muted)', display: 'block', marginBottom: 2 }}>Ticker</label>
+                <label style={{ fontSize: 'var(--text-sm)', textTransform: 'uppercase', color: 'var(--color-text-secondary)', display: 'block', marginBottom: 2 }}>Ticker</label>
                 <input className="input mono" value={addForm.ticker} onChange={e => setAddForm(p => ({ ...p, ticker: e.target.value.toUpperCase() }))} placeholder="AAPL" style={{ width: 100 }} />
               </div>
               <div>
-                <label style={{ fontSize: 'var(--text-sm)', textTransform: 'uppercase', color: 'var(--color-text-muted)', display: 'block', marginBottom: 2 }}>Shares</label>
+                <label style={{ fontSize: 'var(--text-sm)', textTransform: 'uppercase', color: 'var(--color-text-secondary)', display: 'block', marginBottom: 2 }}>Shares</label>
                 <input className="input" type="number" step="any" min="0" value={addForm.shares} onChange={e => setAddForm(p => ({ ...p, shares: e.target.value }))} placeholder="10" style={{ width: 90 }} />
               </div>
               <div>
-                <label style={{ fontSize: 'var(--text-sm)', textTransform: 'uppercase', color: 'var(--color-text-muted)', display: 'block', marginBottom: 2 }}>Avg Cost <span className="text-faint">(optional)</span></label>
+                <label style={{ fontSize: 'var(--text-sm)', textTransform: 'uppercase', color: 'var(--color-text-secondary)', display: 'block', marginBottom: 2 }}>Avg Cost <span className="text-faint">(optional)</span></label>
                 <input className="input" type="number" step="any" min="0" value={addForm.avgCost} onChange={e => setAddForm(p => ({ ...p, avgCost: e.target.value }))} placeholder="Auto" style={{ width: 100 }} />
               </div>
               <button type="submit" className="btn btn-primary" disabled={addLoading} style={{ fontSize: 'var(--text-sm)' }}>
                 {addLoading ? 'Adding...' : 'Add'}
               </button>
-              {addError && <span style={{ color: 'var(--color-danger)', fontSize: 'var(--text-sm)' }}>{addError}</span>}
+              {addError && <span style={{ color: 'var(--color-negative)', fontSize: 'var(--text-sm)' }}>{addError}</span>}
             </form>
           </div>
 
@@ -293,7 +293,7 @@ export default function Portfolio() {
               </div>
               <div className="card" style={{ padding: '1rem' }}>
                 <p className="text-muted" style={{ fontSize: 'var(--text-sm)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Market Value</p>
-                <span className="mono" style={{ fontSize: 'var(--text-xl)', color: 'var(--color-accent)' }}>{formatCurrency(summary.totalValue)}</span>
+                <span className="mono" style={{ fontSize: 'var(--text-xl)', color: 'var(--color-gold)' }}>{formatCurrency(summary.totalValue)}</span>
               </div>
               <div className="card" style={{ padding: '1rem' }}>
                 <p className="text-muted" style={{ fontSize: 'var(--text-sm)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Gain/Loss</p>
@@ -332,7 +332,7 @@ export default function Portfolio() {
                               </div>
                             ) : '--'}
                           </td>
-                          <td className="mono" style={{ color: 'var(--color-accent)', fontWeight: 600 }}>{p.mosPrice ? formatCurrency(p.mosPrice) : '--'}</td>
+                          <td className="mono" style={{ color: 'var(--color-gold)', fontWeight: 600 }}>{p.mosPrice ? formatCurrency(p.mosPrice) : '--'}</td>
                           <td>
                             {p.verdict && p.verdict !== 'N/A' ? (
                               <span className={`badge ${p.verdict === 'UNDERVALUED' ? 'badge-success' : p.verdict === 'FAIRLY VALUED' ? 'badge-gold' : 'badge-danger'}`}>{p.verdict}</span>
@@ -340,7 +340,7 @@ export default function Portfolio() {
                           </td>
                           <td className="mono">{weight != null ? weight.toFixed(1) + '%' : '--'}</td>
                           <td>
-                            <button onClick={() => removePosition(p.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-faint)', fontSize: 'var(--text-lg)' }} title="Remove">x</button>
+                            <button onClick={() => removePosition(p.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', fontSize: 'var(--text-lg)' }} title="Remove">x</button>
                           </td>
                         </tr>
                       )
@@ -372,7 +372,7 @@ export default function Portfolio() {
                       <span className="mono">{weight.toFixed(1)}%</span>
                     </div>
                     <div style={{ height: 6, background: 'var(--color-surface-2)', borderRadius: 3, overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${weight}%`, background: weight > 30 ? 'var(--color-accent)' : 'var(--color-primary)', borderRadius: 3 }} />
+                      <div style={{ height: '100%', width: `${weight}%`, background: weight > 30 ? 'var(--color-gold)' : 'var(--color-navy)', borderRadius: 3 }} />
                     </div>
                   </div>
                 )
@@ -386,7 +386,7 @@ export default function Portfolio() {
                   </div>
                 ) : analysis ? (
                   <div>
-                    <p style={{ fontSize: 'var(--text-base)', lineHeight: 1.7, color: 'var(--color-text)' }}>{analysis}</p>
+                    <p style={{ fontSize: 'var(--text-base)', lineHeight: 1.7, color: 'var(--color-text-primary)' }}>{analysis}</p>
                     <button onClick={() => { setAnalysis(null); fetchAnalysis() }} className="btn btn-ghost" style={{ fontSize: 'var(--text-sm)', marginTop: '0.5rem', padding: '0.2rem 0.5rem' }}>Refresh analysis</button>
                   </div>
                 ) : (

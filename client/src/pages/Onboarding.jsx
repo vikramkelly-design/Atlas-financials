@@ -127,16 +127,16 @@ export default function Onboarding({ onComplete }) {
 
   const inputStyle = {
     width: '100%', padding: '0.65rem 0.75rem', borderRadius: 2,
-    border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)',
+    border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text-primary)',
     fontSize: 'var(--text-base)', outline: 'none',
   }
 
   const OptionBtn = ({ selected, onClick, children }) => (
     <button type="button" onClick={onClick} style={{
       padding: '0.6rem 1.2rem', borderRadius: 2, cursor: 'pointer',
-      border: selected ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
-      background: selected ? 'var(--color-primary)' : 'var(--color-surface)',
-      color: selected ? 'var(--color-accent)' : 'var(--color-text)',
+      border: selected ? '2px solid var(--color-navy)' : '1px solid var(--color-border)',
+      background: selected ? 'var(--color-navy)' : 'var(--color-surface)',
+      color: selected ? 'var(--color-gold)' : 'var(--color-text-primary)',
       fontSize: 'var(--text-base)', fontWeight: selected ? 600 : 400,
       transition: 'all 0.1s',
     }}>
@@ -152,12 +152,12 @@ export default function Onboarding({ onComplete }) {
       <div style={{ minHeight: '100vh', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ width: '100%', maxWidth: 440, padding: '2rem' }}>
           <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-            <h1 style={{ fontFamily: 'var(--font-brand)', fontSize: 48, color: 'var(--color-accent)', fontWeight: 400, marginBottom: '0.5rem' }}>Atlas</h1>
-            <p style={{ color: 'var(--color-text-faint)', fontSize: 'var(--text-sm)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Baseline Health Assessment</p>
+            <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: 48, color: 'var(--color-gold)', fontWeight: 400, marginBottom: '0.5rem' }}>Atlas</h1>
+            <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Baseline Health Assessment</p>
           </div>
 
           <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-            <span className="score-reveal" style={{ fontSize: 'var(--text-4xl)', fontWeight: 700, color: 'var(--color-primary)' }}>{result.label}</span>
+            <span className="score-reveal" style={{ fontSize: 'var(--text-4xl)', fontWeight: 700, color: 'var(--color-navy)' }}>{result.label}</span>
             <div style={{ marginTop: '0.75rem' }}>
               <span style={{ fontSize: 'var(--text-lg)', fontWeight: 600, color: gradeColor(result.grade), padding: '0.2rem 0.75rem', background: 'var(--color-surface)', border: `1px solid ${gradeColor(result.grade)}`, borderRadius: 2 }}>
                 {result.grade}
@@ -169,27 +169,27 @@ export default function Onboarding({ onComplete }) {
             {result.categories.map((cat, i) => (
               <div key={cat.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.65rem 0.85rem', borderBottom: i < result.categories.length - 1 ? '1px solid var(--color-border)' : 'none', background: 'var(--color-bg)' }}>
                 <div>
-                  <span style={{ fontSize: 'var(--text-base)', fontWeight: 500, color: 'var(--color-text)' }}>{cat.name}</span>
-                  <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-faint)', marginTop: 2 }}>{cat.summary}</p>
+                  <span style={{ fontSize: 'var(--text-base)', fontWeight: 500, color: 'var(--color-text-primary)' }}>{cat.name}</span>
+                  <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', marginTop: 2 }}>{cat.summary}</p>
                 </div>
                 <span style={{ fontSize: 'var(--text-lg)', fontWeight: 700, color: gradeColor(cat.grade), minWidth: 30, textAlign: 'right' }}>{cat.grade}</span>
               </div>
             ))}
           </div>
 
-          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-accent)', background: 'var(--color-accent-15)', padding: '0.5rem 0.75rem', borderRadius: 2, textAlign: 'center', marginBottom: '1rem' }}>
+          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-gold)', background: 'var(--color-gold-15)', padding: '0.5rem 0.75rem', borderRadius: 2, textAlign: 'center', marginBottom: '1rem' }}>
             Your full numerical score unlocks after you add real data — import a CSV or add positions.
           </p>
 
           {result.aiSummary && (
-            <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-muted)', textAlign: 'center', marginBottom: '1.5rem', lineHeight: 1.5 }}>
+            <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-secondary)', textAlign: 'center', marginBottom: '1.5rem', lineHeight: 1.5 }}>
               {result.aiSummary}
             </p>
           )}
 
           <button onClick={onComplete} style={{
             width: '100%', padding: '0.7rem', borderRadius: 2, border: 'none',
-            background: 'var(--color-primary)', color: 'var(--color-accent)', fontSize: 'var(--text-base)',
+            background: 'var(--color-navy)', color: 'var(--color-gold)', fontSize: 'var(--text-base)',
             fontWeight: 600, cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.06em',
           }}>
             Go to Dashboard
@@ -204,37 +204,37 @@ export default function Onboarding({ onComplete }) {
       <div style={{ width: '100%', maxWidth: 480, padding: '2rem' }}>
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <h1 style={{ fontFamily: 'var(--font-brand)', fontSize: 48, color: 'var(--color-accent)', fontWeight: 400, marginBottom: '0.5rem' }}>Atlas</h1>
-          <p style={{ color: 'var(--color-text-faint)', fontSize: 'var(--text-sm)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Quick Financial Check-Up</p>
+          <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: 48, color: 'var(--color-gold)', fontWeight: 400, marginBottom: '0.5rem' }}>Atlas</h1>
+          <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Quick Financial Check-Up</p>
         </div>
 
         {/* Progress */}
         <div style={{ display: 'flex', gap: 4, marginBottom: '0.5rem' }}>
           {STEPS.map((_, i) => (
-            <div key={i} style={{ flex: 1, height: 4, borderRadius: 2, background: i <= step ? 'var(--color-primary)' : 'var(--color-border)', transition: 'background 0.2s' }} />
+            <div key={i} style={{ flex: 1, height: 4, borderRadius: 2, background: i <= step ? 'var(--color-navy)' : 'var(--color-border)', transition: 'background 0.2s' }} />
           ))}
         </div>
-        <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textAlign: 'center', marginBottom: '1.5rem' }}>Step {step + 1} of {STEPS.length}</p>
+        <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', textAlign: 'center', marginBottom: '1.5rem' }}>Step {step + 1} of {STEPS.length}</p>
 
         {/* Step title */}
-        <h2 style={{ fontSize: 'var(--text-lg)', color: 'var(--color-text)', marginBottom: '0.25rem' }}>{STEPS[step].title}</h2>
-        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-faint)', marginBottom: '1.5rem' }}>{STEPS[step].subtitle}</p>
+        <h2 style={{ fontSize: 'var(--text-lg)', color: 'var(--color-text-primary)', marginBottom: '0.25rem' }}>{STEPS[step].title}</h2>
+        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', marginBottom: '1.5rem' }}>{STEPS[step].subtitle}</p>
 
         {/* Step 0: Income & Spending */}
         {step === 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div>
-              <label style={{ display: 'block', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', marginBottom: 4 }}>Monthly income (after taxes)</label>
+              <label style={{ display: 'block', color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)', marginBottom: 4 }}>Monthly income (after taxes)</label>
               <div style={{ position: 'relative' }}>
-                <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-faint)' }}>$</span>
+                <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }}>$</span>
                 <input type="number" value={answers.monthly_income} onChange={e => set('monthly_income', e.target.value)}
                   placeholder="0" style={{ ...inputStyle, paddingLeft: '1.5rem' }} />
               </div>
             </div>
             <div>
-              <label style={{ display: 'block', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', marginBottom: 4 }}>Monthly spending (roughly)</label>
+              <label style={{ display: 'block', color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)', marginBottom: 4 }}>Monthly spending (roughly)</label>
               <div style={{ position: 'relative' }}>
-                <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-faint)' }}>$</span>
+                <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }}>$</span>
                 <input type="number" value={answers.monthly_spending} onChange={e => set('monthly_spending', e.target.value)}
                   placeholder="0" style={{ ...inputStyle, paddingLeft: '1.5rem' }} />
               </div>
@@ -246,15 +246,15 @@ export default function Onboarding({ onComplete }) {
         {step === 1 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             {answers.monthly_spending && (
-              <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-accent)', background: 'var(--color-accent-15)', padding: '0.5rem 0.75rem', borderRadius: 2 }}>
+              <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-gold)', background: 'var(--color-gold-15)', padding: '0.5rem 0.75rem', borderRadius: 2 }}>
                 You said you spend ~${parseFloat(answers.monthly_spending).toLocaleString()}/mo. Set limits below to keep yourself on track.
               </p>
             )}
             {BUDGET_CATEGORIES.map(cat => (
               <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text)', width: 130, flexShrink: 0 }}>{cat}</span>
+                <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-primary)', width: 130, flexShrink: 0 }}>{cat}</span>
                 <div style={{ position: 'relative', flex: 1 }}>
-                  <span style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-faint)', fontSize: 'var(--text-base)' }}>$</span>
+                  <span style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)', fontSize: 'var(--text-base)' }}>$</span>
                   <input type="number" value={budgetGoals[cat]}
                     onChange={e => setBudgetGoals(g => ({ ...g, [cat]: e.target.value }))}
                     placeholder="0" style={{ ...inputStyle, paddingLeft: '1.3rem', padding: '0.45rem 0.5rem 0.45rem 1.3rem' }} />
@@ -268,15 +268,15 @@ export default function Onboarding({ onComplete }) {
         {step === 2 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div>
-              <label style={{ display: 'block', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', marginBottom: 4 }}>Monthly savings</label>
+              <label style={{ display: 'block', color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)', marginBottom: 4 }}>Monthly savings</label>
               <div style={{ position: 'relative' }}>
-                <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-faint)' }}>$</span>
+                <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }}>$</span>
                 <input type="number" value={answers.monthly_savings} onChange={e => set('monthly_savings', e.target.value)}
                   placeholder="0" style={{ ...inputStyle, paddingLeft: '1.5rem' }} />
               </div>
             </div>
             <div>
-              <label style={{ display: 'block', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', marginBottom: 4 }}>Do you have an emergency fund?</label>
+              <label style={{ display: 'block', color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)', marginBottom: 4 }}>Do you have an emergency fund?</label>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 {['Yes', 'Working on it', 'No'].map(opt => (
                   <OptionBtn key={opt} selected={answers.has_emergency_fund === opt} onClick={() => set('has_emergency_fund', opt)}>{opt}</OptionBtn>
@@ -290,7 +290,7 @@ export default function Onboarding({ onComplete }) {
         {step === 3 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div>
-              <label style={{ display: 'block', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', marginBottom: 4 }}>Do you invest?</label>
+              <label style={{ display: 'block', color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)', marginBottom: 4 }}>Do you invest?</label>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 {['Yes', 'No'].map(opt => (
                   <OptionBtn key={opt} selected={answers.invests === opt} onClick={() => set('invests', opt)}>{opt}</OptionBtn>
@@ -300,7 +300,7 @@ export default function Onboarding({ onComplete }) {
             {answers.invests === 'Yes' && (
               <>
                 <div>
-                  <label style={{ display: 'block', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', marginBottom: 4 }}>How many different stocks or funds?</label>
+                  <label style={{ display: 'block', color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)', marginBottom: 4 }}>How many different stocks or funds?</label>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
                     {['1-3', '4-7', '8+'].map(opt => (
                       <OptionBtn key={opt} selected={answers.num_investments === opt} onClick={() => set('num_investments', opt)}>{opt}</OptionBtn>
@@ -308,7 +308,7 @@ export default function Onboarding({ onComplete }) {
                   </div>
                 </div>
                 <div>
-                  <label style={{ display: 'block', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', marginBottom: 4 }}>Is most of your money in one stock?</label>
+                  <label style={{ display: 'block', color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)', marginBottom: 4 }}>Is most of your money in one stock?</label>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
                     {['Yes', 'No'].map(opt => (
                       <OptionBtn key={opt} selected={answers.concentrated === opt} onClick={() => set('concentrated', opt)}>{opt}</OptionBtn>
@@ -324,17 +324,17 @@ export default function Onboarding({ onComplete }) {
         {step === 4 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div>
-              <label style={{ display: 'block', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', marginBottom: 4 }}>Total debt (student loans, credit cards, mortgage, etc.)</label>
+              <label style={{ display: 'block', color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)', marginBottom: 4 }}>Total debt (student loans, credit cards, mortgage, etc.)</label>
               <div style={{ position: 'relative' }}>
-                <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-faint)' }}>$</span>
+                <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }}>$</span>
                 <input type="number" value={answers.total_debt} onChange={e => set('total_debt', e.target.value)}
                   placeholder="0" style={{ ...inputStyle, paddingLeft: '1.5rem' }} />
               </div>
             </div>
             <div>
-              <label style={{ display: 'block', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', marginBottom: 4 }}>Total assets (savings, property, investments, etc.)</label>
+              <label style={{ display: 'block', color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)', marginBottom: 4 }}>Total assets (savings, property, investments, etc.)</label>
               <div style={{ position: 'relative' }}>
-                <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-faint)' }}>$</span>
+                <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }}>$</span>
                 <input type="number" value={answers.total_assets} onChange={e => set('total_assets', e.target.value)}
                   placeholder="0" style={{ ...inputStyle, paddingLeft: '1.5rem' }} />
               </div>
@@ -347,24 +347,24 @@ export default function Onboarding({ onComplete }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
               <div style={{ flex: '1 1 120px' }}>
-                <label style={{ display: 'block', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', marginBottom: 3 }}>Name</label>
+                <label style={{ display: 'block', color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)', marginBottom: 3 }}>Name</label>
                 <input style={inputStyle} placeholder="e.g. Visa" value={debtForm.name} onChange={e => setDebtForm(f => ({ ...f, name: e.target.value }))} />
               </div>
               <div style={{ flex: '0 1 90px' }}>
-                <label style={{ display: 'block', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', marginBottom: 3 }}>Balance</label>
+                <label style={{ display: 'block', color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)', marginBottom: 3 }}>Balance</label>
                 <input style={inputStyle} type="number" placeholder="$0" value={debtForm.balance} onChange={e => setDebtForm(f => ({ ...f, balance: e.target.value }))} />
               </div>
               <div style={{ flex: '0 1 70px' }}>
-                <label style={{ display: 'block', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', marginBottom: 3 }}>APR %</label>
+                <label style={{ display: 'block', color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)', marginBottom: 3 }}>APR %</label>
                 <input style={inputStyle} type="number" step="0.1" placeholder="0" value={debtForm.interest_rate} onChange={e => setDebtForm(f => ({ ...f, interest_rate: e.target.value }))} />
               </div>
               <div style={{ flex: '0 1 90px' }}>
-                <label style={{ display: 'block', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', marginBottom: 3 }}>Min/mo</label>
+                <label style={{ display: 'block', color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)', marginBottom: 3 }}>Min/mo</label>
                 <input style={inputStyle} type="number" placeholder="$0" value={debtForm.min_payment} onChange={e => setDebtForm(f => ({ ...f, min_payment: e.target.value }))} />
               </div>
               <button type="button" onClick={addDebt} style={{
                 padding: '0.65rem 0.75rem', borderRadius: 2, border: 'none',
-                background: 'var(--color-primary)', color: 'var(--color-accent)', fontSize: 'var(--text-sm)', fontWeight: 600, cursor: 'pointer', height: 38,
+                background: 'var(--color-navy)', color: 'var(--color-gold)', fontSize: 'var(--text-sm)', fontWeight: 600, cursor: 'pointer', height: 38,
               }}>Add</button>
             </div>
 
@@ -374,11 +374,11 @@ export default function Onboarding({ onComplete }) {
                   <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.65rem', borderBottom: i < debtList.length - 1 ? '1px solid var(--color-border)' : 'none' }}>
                     <div>
                       <span style={{ fontSize: 'var(--text-base)', fontWeight: 500 }}>{d.name}</span>
-                      <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-faint)', marginLeft: '0.5rem' }}>{d.interest_rate}% APR</span>
+                      <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', marginLeft: '0.5rem' }}>{d.interest_rate}% APR</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-danger)' }}>${parseFloat(d.balance).toLocaleString()}</span>
-                      <button type="button" onClick={() => removeDebt(i)} style={{ background: 'none', border: 'none', color: 'var(--color-text-faint)', cursor: 'pointer', fontSize: 'var(--text-lg)' }}>×</button>
+                      <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-negative)' }}>${parseFloat(d.balance).toLocaleString()}</span>
+                      <button type="button" onClick={() => removeDebt(i)} style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: 'var(--text-lg)' }}>×</button>
                     </div>
                   </div>
                 ))}
@@ -386,7 +386,7 @@ export default function Onboarding({ onComplete }) {
             )}
 
             {debtList.length === 0 && (
-              <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-faint)' }}>Add each debt above — credit cards, student loans, car loans, etc. This will auto-populate your Debt Planner.</p>
+              <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>Add each debt above — credit cards, student loans, car loans, etc. This will auto-populate your Debt Planner.</p>
             )}
           </div>
         )}
@@ -395,7 +395,7 @@ export default function Onboarding({ onComplete }) {
         {step === 6 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div>
-              <label style={{ display: 'block', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', marginBottom: 4 }}>Do you have a financial goal you're working toward?</label>
+              <label style={{ display: 'block', color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)', marginBottom: 4 }}>Do you have a financial goal you're working toward?</label>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 {['Yes', 'No'].map(opt => (
                   <OptionBtn key={opt} selected={answers.has_goal === opt} onClick={() => set('has_goal', opt)}>{opt}</OptionBtn>
@@ -404,7 +404,7 @@ export default function Onboarding({ onComplete }) {
             </div>
             {answers.has_goal === 'Yes' && (
               <div>
-                <label style={{ display: 'block', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', marginBottom: 4 }}>Are you on track to hit it?</label>
+                <label style={{ display: 'block', color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)', marginBottom: 4 }}>Are you on track to hit it?</label>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                   {['Yes', 'Mostly', 'Not really'].map(opt => (
                     <OptionBtn key={opt} selected={answers.goal_on_track === opt} onClick={() => set('goal_on_track', opt)}>{opt}</OptionBtn>
@@ -418,7 +418,7 @@ export default function Onboarding({ onComplete }) {
         {/* Step 7: Biggest Goal */}
         {step === 7 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <label style={{ display: 'block', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', marginBottom: 4 }}>What is your biggest financial goal right now?</label>
+            <label style={{ display: 'block', color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)', marginBottom: 4 }}>What is your biggest financial goal right now?</label>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {GOAL_OPTIONS.map(opt => (
                 <OptionBtn key={opt} selected={answers.biggest_goal === opt} onClick={() => set('biggest_goal', opt)}>{opt}</OptionBtn>
@@ -432,7 +432,7 @@ export default function Onboarding({ onComplete }) {
           {step > 0 ? (
             <button onClick={handleBack} style={{
               padding: '0.6rem 1.5rem', borderRadius: 2, border: '1px solid var(--color-border)',
-              background: 'var(--color-surface)', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', cursor: 'pointer',
+              background: 'var(--color-surface)', color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)', cursor: 'pointer',
             }}>
               Back
             </button>
@@ -441,8 +441,8 @@ export default function Onboarding({ onComplete }) {
           {step < lastStep ? (
             <button onClick={handleNext} disabled={!canNext()} style={{
               padding: '0.6rem 1.5rem', borderRadius: 2, border: 'none',
-              background: canNext() ? 'var(--color-primary)' : 'var(--color-border)',
-              color: canNext() ? 'var(--color-accent)' : 'var(--color-text-faint)',
+              background: canNext() ? 'var(--color-navy)' : 'var(--color-border)',
+              color: canNext() ? 'var(--color-gold)' : 'var(--color-text-muted)',
               fontSize: 'var(--text-sm)', fontWeight: 600, cursor: canNext() ? 'pointer' : 'not-allowed',
               textTransform: 'uppercase', letterSpacing: '0.06em',
             }}>
@@ -451,8 +451,8 @@ export default function Onboarding({ onComplete }) {
           ) : (
             <button onClick={submit} disabled={!canNext() || loading} style={{
               padding: '0.6rem 1.5rem', borderRadius: 2, border: 'none',
-              background: canNext() ? 'var(--color-primary)' : 'var(--color-border)',
-              color: canNext() ? 'var(--color-accent)' : 'var(--color-text-faint)',
+              background: canNext() ? 'var(--color-navy)' : 'var(--color-border)',
+              color: canNext() ? 'var(--color-gold)' : 'var(--color-text-muted)',
               fontSize: 'var(--text-sm)', fontWeight: 600, cursor: canNext() ? 'pointer' : 'not-allowed',
               textTransform: 'uppercase', letterSpacing: '0.06em',
             }}>

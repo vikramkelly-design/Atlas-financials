@@ -9,7 +9,7 @@ export default function Navbar({ onMenuToggle, subtitle }) {
 
   return (
     <nav style={{
-      background: 'var(--color-primary)',
+      background: 'var(--color-navy)',
       height: 48,
       display: 'flex',
       alignItems: 'center',
@@ -20,7 +20,7 @@ export default function Navbar({ onMenuToggle, subtitle }) {
       left: 0,
       right: 0,
       zIndex: 100,
-      borderBottom: '1px solid var(--color-accent-15)',
+      borderBottom: '1px solid var(--color-gold-15)',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
         {/* Hamburger — visible on mobile only */}
@@ -31,7 +31,7 @@ export default function Navbar({ onMenuToggle, subtitle }) {
             aria-label="Toggle navigation menu"
             style={{
               display: 'none', background: 'none', border: 'none',
-              color: 'var(--color-accent)', fontSize: '1.25rem', cursor: 'pointer', padding: '0.25rem',
+              color: 'var(--color-gold)', fontSize: '1.25rem', cursor: 'pointer', padding: '0.25rem',
             }}
           >
             <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -40,9 +40,9 @@ export default function Navbar({ onMenuToggle, subtitle }) {
           </button>
         )}
         <span style={{
-          fontFamily: "var(--font-brand)",
+          fontFamily: "var(--font-serif)",
           fontSize: 28,
-          color: 'var(--color-accent)',
+          color: 'var(--color-gold)',
           lineHeight: 1,
         }}>
           Atlas
@@ -50,10 +50,10 @@ export default function Navbar({ onMenuToggle, subtitle }) {
         {subtitle && (
           <span className="nav-subtitle" style={{
             fontSize: 'var(--text-xs)',
-            color: 'var(--color-accent-40)',
+            color: 'var(--color-gold-40)',
             textTransform: 'uppercase',
             letterSpacing: '0.05em',
-            borderLeft: '1px solid var(--color-accent-20)',
+            borderLeft: '1px solid var(--color-gold-20)',
             paddingLeft: '0.75rem',
           }}>
             {subtitle}
@@ -61,7 +61,7 @@ export default function Navbar({ onMenuToggle, subtitle }) {
         )}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-        <span className="nav-username" style={{ color: 'var(--color-accent-60)', fontSize: 'var(--text-sm)', fontFamily: "var(--font-mono)" }}>
+        <span className="nav-username" style={{ color: 'var(--color-gold-60)', fontSize: 'var(--text-sm)', fontFamily: "var(--font-mono)" }}>
           {user.name || user.email || 'Guest'}
         </span>
         <button onClick={handleLogout} className="btn-nav-logout" aria-label="Log out">
