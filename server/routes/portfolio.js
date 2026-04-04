@@ -126,11 +126,12 @@ router.post('/:id/positions', async (req, res) => {
     const portfolio = db.prepare('SELECT * FROM portfolios WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
     if (!portfolio) return res.status(404).json({ success: false, error: 'Portfolio not found' });
 
-    let { ticker, shares, avgCost } = req.body;
+    let { ticker, shares, avgCost, source } = req.body;
     if (!ticker || !shares) return res.status(400).json({ success: false, error: 'ticker and shares are required' });
     ticker = ticker.toUpperCase().trim();
     shares = parseFloat(shares);
     if (shares <= 0) return res.status(400).json({ success: false, error: 'shares must be positive' });
+    const posSource = ['savings', 'stipend', 'gift', 'import'].includes(source) ? source : 'import';
 
     // If no avgCost provided, fetch current price
     if (!avgCost) {
@@ -147,7 +148,7 @@ router.post('/:id/positions', async (req, res) => {
       const newAvgCost = ((existing.avg_cost * existing.shares) + (avgCost * shares)) / newShares;
       db.prepare('UPDATE portfolio_positions SET shares = ?, avg_cost = ? WHERE id = ?').run(newShares, newAvgCost, existing.id);
     } else {
-      db.prepare('INSERT INTO portfolio_positions (portfolio_id, ticker, shares, avg_cost) VALUES (?, ?, ?, ?)').run(portfolio.id, ticker, shares, avgCost);
+      db.prepare('INSERT INTO portfolio_positions (portfolio_id, ticker, shares, avg_cost, source) VALUES (?, ?, ?, ?, ?)').run(portfolio.id, ticker, shares, avgCost, posSource);
     }
 
     const positions = db.prepare('SELECT * FROM portfolio_positions WHERE portfolio_id = ? ORDER BY created_at').all(portfolio.id);

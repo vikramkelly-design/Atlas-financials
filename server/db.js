@@ -346,6 +346,7 @@ try {
 // Portfolio source column & debt original_amount
 const migrate6 = [
   "ALTER TABLE portfolios ADD COLUMN source TEXT DEFAULT 'savings'",
+  "ALTER TABLE portfolio_positions ADD COLUMN source TEXT DEFAULT 'import'",
   'ALTER TABLE debts ADD COLUMN original_amount REAL DEFAULT 0',
 ];
 for (const sql of migrate6) {

@@ -24,6 +24,9 @@ export default function Portfolio() {
   const [addForm, setAddForm] = useState({ ticker: '', shares: '', avgCost: '' })
   const [addError, setAddError] = useState('')
   const [addLoading, setAddLoading] = useState(false)
+  const [addSource, setAddSource] = useState(null) // null = show source picker, 'import'|'savings'|'stipend'|'gift'
+  const [dryPowder, setDryPowder] = useState(0)
+  const [verdictMsg, setVerdictMsg] = useState(null) // { type: 'good'|'neutral'|'warn', text }
 
   // Create portfolio modal
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -71,7 +74,13 @@ export default function Portfolio() {
     }
   }
 
-  useEffect(() => { fetchPortfolios() }, [])
+  const fetchDryPowder = async () => {
+    try {
+      const res = await api.get('/api/savings')
+      setDryPowder(res.data.data?.dry_powder || 0)
+    } catch {}
+  }
+  useEffect(() => { fetchPortfolios(); fetchDryPowder() }, [])
   useEffect(() => { fetchPositions(); setAnalysis(null) }, [activeId])
 
   const tickers = useMemo(() => [...new Set(positions.map(p => p.ticker))], [positions])
@@ -137,6 +146,25 @@ export default function Portfolio() {
     })
   }
 
+  // Check verdict when ticker changes and source is savings
+  const checkVerdict = async (ticker) => {
+    if (!ticker || addSource !== 'savings') { setVerdictMsg(null); return }
+    try {
+      const res = await api.get(`/api/intrinsic/${ticker}`)
+      const v = res.data?.summary?.verdict
+      const upside = res.data?.summary?.upsidePct
+      if (v === 'UNDERVALUED') {
+        setVerdictMsg({ type: 'good', text: `${ticker} looks undervalued — ${upside ? upside.toFixed(0) + '% upside' : 'good time to buy'}.` })
+      } else if (v === 'FAIRLY VALUED') {
+        setVerdictMsg({ type: 'neutral', text: `${ticker} is fairly valued — priced close to intrinsic value.` })
+      } else if (v === 'OVERVALUED') {
+        setVerdictMsg({ type: 'warn', text: `${ticker} is above intrinsic value. Are you sure?` })
+      } else {
+        setVerdictMsg(null)
+      }
+    } catch { setVerdictMsg(null) }
+  }
+
   const addStock = async (e) => {
     e.preventDefault()
     setAddError('')
@@ -151,9 +179,13 @@ export default function Portfolio() {
         ticker,
         shares,
         avgCost: addForm.avgCost ? parseFloat(addForm.avgCost) : undefined,
+        source: addSource || 'import',
       })
       setAddForm({ ticker: '', shares: '', avgCost: '' })
+      setAddSource(null)
+      setVerdictMsg(null)
       fetchPositions()
+      if (addSource === 'savings') fetchDryPowder()
       toast('Position added', 'success')
     } catch (err) {
       toast(err.response?.data?.error || err.message || 'Something went wrong', 'error')
@@ -261,27 +293,82 @@ export default function Portfolio() {
 
       {activePortfolio && (
         <>
-          {/* Add Stock Form */}
+          {/* Add Stock — Source Selection + Form */}
           <div className="card" style={{ marginBottom: '1rem', padding: '1rem' }}>
             <h3 style={{ fontSize: 'var(--text-base)', marginBottom: '0.75rem' }}>Add Stock</h3>
-            <form onSubmit={addStock} style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-              <div>
-                <label style={{ fontSize: 'var(--text-sm)', textTransform: 'uppercase', color: 'var(--color-text-secondary)', display: 'block', marginBottom: 2 }}>Ticker</label>
-                <input className="input mono" value={addForm.ticker} onChange={e => setAddForm(p => ({ ...p, ticker: e.target.value.toUpperCase() }))} placeholder="AAPL" style={{ width: 100 }} />
+            {!addSource ? (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' }}>
+                <button onClick={() => setAddSource('import')} style={{
+                  padding: '0.6rem', borderRadius: 4, cursor: 'pointer', textAlign: 'left',
+                  border: '1px solid var(--color-border)', background: 'var(--color-surface)',
+                }}>
+                  <strong style={{ display: 'block', fontSize: 'var(--text-sm)' }}>I Already Own This</strong>
+                  <span className="text-faint" style={{ fontSize: 'var(--text-xs)' }}>Import existing holding</span>
+                </button>
+                <button onClick={() => setAddSource('savings')} style={{
+                  padding: '0.6rem', borderRadius: 4, cursor: 'pointer', textAlign: 'left',
+                  border: '1px solid var(--color-border)', background: 'var(--color-surface)',
+                }}>
+                  <strong style={{ display: 'block', fontSize: 'var(--text-sm)' }}>Buy With Dry Powder</strong>
+                  <span className="text-faint" style={{ fontSize: 'var(--text-xs)' }}>
+                    {formatCurrency(dryPowder)} available
+                  </span>
+                </button>
+                <button onClick={() => setAddSource('stipend')} style={{
+                  padding: '0.6rem', borderRadius: 4, cursor: 'pointer', textAlign: 'left',
+                  border: '1px solid var(--color-border)', background: 'var(--color-surface)',
+                }}>
+                  <strong style={{ display: 'block', fontSize: 'var(--text-sm)' }}>Work Stipend / RSUs</strong>
+                  <span className="text-faint" style={{ fontSize: 'var(--text-xs)' }}>Employer-provided</span>
+                </button>
+                <button onClick={() => setAddSource('gift')} style={{
+                  padding: '0.6rem', borderRadius: 4, cursor: 'pointer', textAlign: 'left',
+                  border: '1px solid var(--color-border)', background: 'var(--color-surface)',
+                }}>
+                  <strong style={{ display: 'block', fontSize: 'var(--text-sm)' }}>Gift / Inheritance</strong>
+                  <span className="text-faint" style={{ fontSize: 'var(--text-xs)' }}>Received from someone</span>
+                </button>
               </div>
-              <div>
-                <label style={{ fontSize: 'var(--text-sm)', textTransform: 'uppercase', color: 'var(--color-text-secondary)', display: 'block', marginBottom: 2 }}>Shares</label>
-                <input className="input" type="number" step="any" min="0" value={addForm.shares} onChange={e => setAddForm(p => ({ ...p, shares: e.target.value }))} placeholder="10" style={{ width: 90 }} />
-              </div>
-              <div>
-                <label style={{ fontSize: 'var(--text-sm)', textTransform: 'uppercase', color: 'var(--color-text-secondary)', display: 'block', marginBottom: 2 }}>Avg Cost <span className="text-faint">(optional)</span></label>
-                <input className="input" type="number" step="any" min="0" value={addForm.avgCost} onChange={e => setAddForm(p => ({ ...p, avgCost: e.target.value }))} placeholder="Auto" style={{ width: 100 }} />
-              </div>
-              <button type="submit" className="btn btn-primary" disabled={addLoading} style={{ fontSize: 'var(--text-sm)' }}>
-                {addLoading ? 'Adding...' : 'Add'}
-              </button>
-              {addError && <span style={{ color: 'var(--color-negative)', fontSize: 'var(--text-sm)' }}>{addError}</span>}
-            </form>
+            ) : (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <span className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>
+                    Source: {addSource === 'import' ? 'Import' : addSource === 'savings' ? 'Dry Powder' : addSource === 'stipend' ? 'Work Stipend' : 'Gift'}
+                  </span>
+                  <button className="btn btn-ghost" onClick={() => { setAddSource(null); setVerdictMsg(null) }} style={{ fontSize: 'var(--text-xs)', padding: '0.15rem 0.4rem' }}>Change</button>
+                </div>
+                <form onSubmit={addStock} style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                  <div>
+                    <label style={{ fontSize: 'var(--text-sm)', textTransform: 'uppercase', color: 'var(--color-text-secondary)', display: 'block', marginBottom: 2 }}>Ticker</label>
+                    <input className="input mono" value={addForm.ticker} onChange={e => {
+                      const v = e.target.value.toUpperCase()
+                      setAddForm(p => ({ ...p, ticker: v }))
+                      if (v.length >= 1 && addSource === 'savings') checkVerdict(v)
+                    }} placeholder="AAPL" style={{ width: 100 }} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 'var(--text-sm)', textTransform: 'uppercase', color: 'var(--color-text-secondary)', display: 'block', marginBottom: 2 }}>Shares</label>
+                    <input className="input" type="number" step="any" min="0" value={addForm.shares} onChange={e => setAddForm(p => ({ ...p, shares: e.target.value }))} placeholder="10" style={{ width: 90 }} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 'var(--text-sm)', textTransform: 'uppercase', color: 'var(--color-text-secondary)', display: 'block', marginBottom: 2 }}>Avg Cost <span className="text-faint">(optional)</span></label>
+                    <input className="input" type="number" step="any" min="0" value={addForm.avgCost} onChange={e => setAddForm(p => ({ ...p, avgCost: e.target.value }))} placeholder="Auto" style={{ width: 100 }} />
+                  </div>
+                  <button type="submit" className="btn btn-primary" disabled={addLoading} style={{ fontSize: 'var(--text-sm)' }}>
+                    {addLoading ? 'Adding...' : 'Add'}
+                  </button>
+                  {addError && <span style={{ color: 'var(--color-negative)', fontSize: 'var(--text-sm)' }}>{addError}</span>}
+                </form>
+                {verdictMsg && (
+                  <p style={{
+                    fontSize: 'var(--text-sm)', marginTop: '0.5rem',
+                    color: verdictMsg.type === 'good' ? 'var(--color-positive)' : verdictMsg.type === 'warn' ? 'var(--color-negative)' : 'var(--color-text-secondary)',
+                  }}>
+                    {verdictMsg.text}
+                  </p>
+                )}
+              </>
+            )}
           </div>
 
           {/* Summary Cards */}
@@ -319,7 +406,17 @@ export default function Portfolio() {
                       const weight = summary.totalValue > 0 && p.currentValue != null ? (p.currentValue / summary.totalValue) * 100 : null
                       return (
                         <tr key={p.id}>
-                          <td><strong>{p.ticker}</strong>{p.name && <><br /><span className="text-muted" style={{ fontSize: 'var(--text-sm)' }}>{p.name}</span></>}</td>
+                          <td>
+                            <strong>{p.ticker}</strong>
+                            {p.name && <><br /><span className="text-muted" style={{ fontSize: 'var(--text-sm)' }}>{p.name}</span></>}
+                            {p.source && p.source !== 'savings' && p.source !== 'import' && (
+                              <><br /><span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-gold-dim, var(--color-gold))' }}>
+                                {p.source === 'stipend' ? 'Work stipend' : 'Gift'}
+                              </span></>
+                            )}
+                            {p.source === 'savings' && <><br /><span className="text-faint" style={{ fontSize: 'var(--text-xs)' }}>From savings</span></>}
+                            {p.source === 'import' && <><br /><span className="text-faint" style={{ fontSize: 'var(--text-xs)' }}>Imported</span></>}
+                          </td>
                           <td className="mono">{p.shares}</td>
                           <td className="mono">{formatCurrency(p.avg_cost)}</td>
                           <td className="mono" style={{ fontWeight: 600 }}>{p.currentPrice ? formatCurrency(p.currentPrice) : '--'}</td>
