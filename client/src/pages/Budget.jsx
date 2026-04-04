@@ -588,6 +588,10 @@ export default function Budget() {
               {debts.map(d => {
                 const isExpanded = expandedDebt === d.id
                 const planData = debtPlan?.debts?.find(pd => pd.id === d.id)
+                const origAmt = d.original_amount || d.balance
+                const paidOff = origAmt > 0 ? Math.max(0, origAmt - d.balance) : 0
+                const debtPct = origAmt > 0 ? Math.min(100, (paidOff / origAmt) * 100) : 0
+                const isFullyPaid = d.balance <= 0
                 return (
                   <div key={d.id} style={{
                     borderBottom: '1px solid var(--color-border)',
@@ -610,11 +614,35 @@ export default function Budget() {
                         <span className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>{d.interest_rate}% APR</span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <span className="mono" style={{ fontSize: 'var(--text-base)', color: 'var(--color-negative)' }}>{formatCurrency(d.balance)}</span>
-                        <span className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>{formatCurrency(d.min_payment)}/mo</span>
+                        {isFullyPaid ? (
+                          <span className="mono" style={{ fontSize: 'var(--text-base)', color: 'var(--color-positive)', fontWeight: 600 }}>Paid off</span>
+                        ) : (
+                          <>
+                            <span className="mono" style={{ fontSize: 'var(--text-base)', color: 'var(--color-negative)' }}>{formatCurrency(d.balance)}</span>
+                            <span className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>{formatCurrency(d.min_payment)}/mo</span>
+                          </>
+                        )}
                         <button className="btn-paid-off" onClick={(e) => { e.stopPropagation(); deleteDebt(d.id) }}>
                           Paid Off
                         </button>
+                      </div>
+                    </div>
+                    {/* Progress bar */}
+                    <div style={{ padding: '0 0 0.6rem 0' }}>
+                      <div className="progress-bar" style={{ height: 6 }}>
+                        <div className="progress-bar-fill" style={{
+                          width: `${debtPct}%`,
+                          background: isFullyPaid ? 'var(--color-positive)' : 'var(--color-navy)',
+                          transition: 'width 0.8s ease',
+                        }} />
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.2rem' }}>
+                        <span className="text-faint" style={{ fontSize: 'var(--text-xs)' }}>
+                          {isFullyPaid ? 'Paid off' : `${debtPct.toFixed(0)}% paid`}
+                        </span>
+                        <span className="text-faint mono" style={{ fontSize: 'var(--text-xs)' }}>
+                          {formatCurrency(paidOff)} of {formatCurrency(origAmt)}
+                        </span>
                       </div>
                     </div>
 

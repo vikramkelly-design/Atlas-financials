@@ -23,8 +23,8 @@ router.post('/', (req, res) => {
     const interest_rate = validateRate(req.body.interest_rate, 'Interest rate', 0, 100);
     const min_payment = validatePositiveAmount(req.body.min_payment, 'Minimum payment');
     const result = db.prepare(
-      'INSERT INTO debts (user_id, name, balance, interest_rate, min_payment) VALUES (?, ?, ?, ?, ?)'
-    ).run(req.userId, name, balance, interest_rate, min_payment);
+      'INSERT INTO debts (user_id, name, balance, interest_rate, min_payment, original_amount) VALUES (?, ?, ?, ?, ?, ?)'
+    ).run(req.userId, name, balance, interest_rate, min_payment, balance);
     res.json({ success: true, data: { id: result.lastInsertRowid } });
   } catch (err) {
     if (err.status === 400) return res.status(400).json({ success: false, error: err.message });
@@ -37,6 +37,21 @@ router.delete('/:id', (req, res) => {
   try {
     db.prepare('DELETE FROM debts WHERE id = ? AND user_id = ?').run(req.params.id, req.userId);
     res.json({ success: true });
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
+// POST /api/debt/:id/payment — log a payment against a debt
+router.post('/:id/payment', (req, res) => {
+  try {
+    const debt = db.prepare('SELECT * FROM debts WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
+    if (!debt) return res.status(404).json({ success: false, error: 'Debt not found' });
+    const amount = parseFloat(req.body.amount);
+    if (!amount || amount <= 0) return res.status(400).json({ success: false, error: 'Amount must be positive' });
+    const newBalance = Math.max(0, debt.balance - amount);
+    db.prepare('UPDATE debts SET balance = ? WHERE id = ?').run(newBalance, debt.id);
+    res.json({ success: true, data: { id: debt.id, new_balance: newBalance, original_amount: debt.original_amount } });
   } catch (err) {
     sendError(res, err);
   }
