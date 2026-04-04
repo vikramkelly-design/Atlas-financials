@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Papa from 'papaparse'
 import useApi, { api } from '../hooks/useApi'
@@ -40,13 +40,10 @@ function getWeeksOfMonth(year, month) {
   const weeks = []
   const first = new Date(year, month, 1)
   const last = new Date(year, month + 1, 0)
-
-  // Start from Monday of the week containing the 1st
   let start = new Date(first)
   const dayOfWeek = start.getDay()
   const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
   start.setDate(start.getDate() + diff)
-
   while (start <= last || weeks.length === 0) {
     const end = new Date(start)
     end.setDate(end.getDate() + 6)
@@ -143,6 +140,161 @@ function BudgetCategoryCard({ cat, spent, limit, goalValue, onGoalChange, color 
   )
 }
 
+// --- Allocation Sliders Component ---
+function AllocationSliders({ spend, savings, invest, income, onUpdate, debts, onAiRecommend, aiLoading, aiReason }) {
+  const spendAmt = Math.round(income * (spend / 100) * 100) / 100
+  const savingsAmt = Math.round(income * (savings / 100) * 100) / 100
+  const investAmt = Math.round(income * (invest / 100) * 100) / 100
+  const totalDebtPayments = debts.reduce((s, d) => s + (d.min_payment || 0), 0)
+  const debtCovered = (spendAmt + savingsAmt) >= totalDebtPayments
+
+  const handleSlider = (which, newVal) => {
+    newVal = Math.max(0, Math.min(100, newVal))
+    let s = spend, sa = savings, inv = invest
+    if (which === 'spend') s = newVal
+    else if (which === 'savings') sa = newVal
+    else inv = newVal
+
+    // Adjust the other two proportionally
+    const remaining = 100 - newVal
+    if (which === 'spend') {
+      const otherTotal = sa + inv
+      if (otherTotal > 0) {
+        sa = Math.round(remaining * (sa / otherTotal))
+        inv = 100 - s - sa
+      } else {
+        sa = Math.round(remaining / 2)
+        inv = remaining - sa
+      }
+    } else if (which === 'savings') {
+      const otherTotal = s + inv
+      if (otherTotal > 0) {
+        s = Math.round(remaining * (s / otherTotal))
+        inv = 100 - s - sa
+      } else {
+        s = Math.round(remaining / 2)
+        inv = remaining - s
+      }
+    } else {
+      const otherTotal = s + sa
+      if (otherTotal > 0) {
+        s = Math.round(remaining * (s / otherTotal))
+        sa = 100 - s - inv
+      } else {
+        s = Math.round(remaining / 2)
+        sa = remaining - s
+      }
+    }
+
+    // Clamp
+    s = Math.max(0, Math.min(100, s))
+    sa = Math.max(0, Math.min(100, sa))
+    inv = Math.max(0, Math.min(100, inv))
+
+    // Fix rounding
+    const diff = 100 - s - sa - inv
+    if (diff !== 0) inv += diff
+
+    onUpdate(s, sa, inv)
+  }
+
+  const sliderTrack = (color) => ({
+    WebkitAppearance: 'none', width: '100%', height: 6, borderRadius: 3,
+    background: `linear-gradient(to right, ${color} 0%, ${color} var(--pct), var(--color-surface-2) var(--pct))`,
+    outline: 'none', cursor: 'pointer',
+  })
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+        <span className="label-caps">Allocation</span>
+        <button className="btn btn-ghost" onClick={onAiRecommend} disabled={aiLoading} style={{ fontSize: 'var(--text-sm)', padding: '0.25rem 0.6rem' }}>
+          {aiLoading ? 'Thinking...' : 'AI Recommended Split'}
+        </button>
+      </div>
+
+      {/* Spending Slider */}
+      <div style={{ marginBottom: '0.75rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.2rem' }}>
+          <span style={{ fontSize: 'var(--text-sm)', fontWeight: 500 }}>Spending</span>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline' }}>
+            <span className="mono" style={{ fontSize: 'var(--text-base)', fontWeight: 600 }}>{formatCurrency(spendAmt)}</span>
+            <span className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>{spend}%</span>
+          </div>
+        </div>
+        <input type="range" min="0" max="100" value={spend}
+          onChange={e => handleSlider('spend', parseInt(e.target.value))}
+          style={{ ...sliderTrack('var(--color-negative)'), '--pct': `${spend}%` }}
+        />
+      </div>
+
+      {/* Savings Slider */}
+      <div style={{ marginBottom: '0.75rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.2rem' }}>
+          <span style={{ fontSize: 'var(--text-sm)', fontWeight: 500 }}>Savings</span>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline' }}>
+            <span className="mono" style={{ fontSize: 'var(--text-base)', fontWeight: 600 }}>{formatCurrency(savingsAmt)}</span>
+            <span className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>{savings}%</span>
+          </div>
+        </div>
+        <input type="range" min="0" max="100" value={savings}
+          onChange={e => handleSlider('savings', parseInt(e.target.value))}
+          style={{ ...sliderTrack('var(--color-gold)'), '--pct': `${savings}%` }}
+        />
+      </div>
+
+      {/* Investing Slider */}
+      <div style={{ marginBottom: '0.75rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.2rem' }}>
+          <span style={{ fontSize: 'var(--text-sm)', fontWeight: 500 }}>Investing</span>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline' }}>
+            <span className="mono" style={{ fontSize: 'var(--text-base)', fontWeight: 600 }}>{formatCurrency(investAmt)}</span>
+            <span className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>{invest}%</span>
+          </div>
+        </div>
+        <input type="range" min="0" max="100" value={invest}
+          onChange={e => handleSlider('invest', parseInt(e.target.value))}
+          style={{ ...sliderTrack('var(--color-positive)'), '--pct': `${invest}%` }}
+        />
+      </div>
+
+      {/* Allocation bar */}
+      <div style={{ display: 'flex', height: 10, borderRadius: 5, overflow: 'hidden', marginBottom: '0.5rem' }}>
+        {spend > 0 && <div style={{ width: `${spend}%`, background: 'var(--color-negative)', transition: 'width 0.3s' }} />}
+        {savings > 0 && <div style={{ width: `${savings}%`, background: 'var(--color-gold)', transition: 'width 0.3s' }} />}
+        {invest > 0 && <div style={{ width: `${invest}%`, background: 'var(--color-positive)', transition: 'width 0.3s' }} />}
+      </div>
+
+      {aiReason && (
+        <p className="text-faint" style={{ fontSize: 'var(--text-sm)', marginBottom: '0.5rem', fontStyle: 'italic' }}>{aiReason}</p>
+      )}
+
+      {/* Debt coverage validation */}
+      {debts.length > 0 && totalDebtPayments > 0 && (
+        <div style={{
+          padding: '0.4rem 0.6rem', borderRadius: 4, marginBottom: '0.5rem',
+          background: debtCovered ? 'rgba(46,125,94,0.08)' : 'rgba(139,38,53,0.08)',
+          border: `1px solid ${debtCovered ? 'var(--color-positive)' : 'var(--color-negative)'}`,
+        }}>
+          {debtCovered ? (
+            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-positive)' }}>
+              Debts covered. {formatCurrency(spendAmt + savingsAmt - totalDebtPayments)} left after {formatCurrency(totalDebtPayments)}/mo in payments.
+            </p>
+          ) : (
+            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-negative)' }}>
+              Spending + Savings ({formatCurrency(spendAmt + savingsAmt)}) doesn't cover your {formatCurrency(totalDebtPayments)}/mo in debt payments. Adjust your split.
+            </p>
+          )}
+        </div>
+      )}
+
+      <p className="text-faint" style={{ fontSize: 'var(--text-xs)' }}>
+        Debts are paid from the Savings portion. Savings covers emergency fund, debt payoff, and short-term goals.
+      </p>
+    </div>
+  )
+}
+
 export default function Budget() {
   const navigate = useNavigate()
   const { get, post, patch, del } = useApi()
@@ -177,9 +329,36 @@ export default function Budget() {
   const [expandedDebt, setExpandedDebt] = useState(null)
   const [confirmDialog, setConfirmDialog] = useState({ open: false, title: '', message: '', onConfirm: () => {}, danger: false })
 
+  // Income & allocation state
+  const [incomeConfirmed, setIncomeConfirmed] = useState(null) // null = loading
+  const [incomeInput, setIncomeInput] = useState('')
+  const [spendPct, setSpendPct] = useState(60)
+  const [savingsPct, setSavingsPct] = useState(20)
+  const [investPct, setInvestPct] = useState(20)
+  const [monthlyIncome, setMonthlyIncome] = useState(0)
+  const [aiReason, setAiReason] = useState('')
+  const [aiSplitLoading, setAiSplitLoading] = useState(false)
+
+  // Savings tab state
+  const [savingsData, setSavingsData] = useState(null)
+  const [savingsDepositing, setSavingsDepositing] = useState(false)
+  const [graduating, setGraduating] = useState(false)
+
+  // Setup modal state
+  const [showSetup, setShowSetup] = useState(false)
+  const [setupStep, setSetupStep] = useState(0)
+  const [setupIncome, setSetupIncome] = useState('')
+  const [setupSpend, setSetupSpend] = useState(60)
+  const [setupSavings, setSetupSavings] = useState(20)
+  const [setupInvest, setSetupInvest] = useState(20)
+  const [setupGoalType, setSetupGoalType] = useState('emergency')
+  const [setupGoalName, setSetupGoalName] = useState('')
+  const [setupGoalTarget, setSetupGoalTarget] = useState('')
+
   const monthKey = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}`
   const monthLabel = new Date(viewYear, viewMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
   const weeks = getWeeksOfMonth(viewYear, viewMonth)
+  const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
 
   const fetchData = async () => {
     try {
@@ -194,7 +373,118 @@ export default function Budget() {
     } catch (err) { toast(err.message || 'Something went wrong', 'error') }
   }
 
+  // Check income confirmation for current month
+  const checkIncome = useCallback(async () => {
+    try {
+      const [logRes, savRes] = await Promise.all([
+        get(`/api/savings/income-log?month=${currentMonthKey}`),
+        get('/api/savings'),
+      ])
+      const data = logRes.data
+      setSavingsData(savRes.data)
+      setMonthlyIncome(data.income || data.last_month_income || savRes.data.monthly_income || 0)
+      setSpendPct(savRes.data.spend_pct || 60)
+      setSavingsPct(savRes.data.savings_pct || 20)
+      setInvestPct(savRes.data.invest_pct || 20)
+      if (data.confirmed) {
+        setIncomeConfirmed(true)
+        setIncomeInput(String(data.income))
+      } else {
+        setIncomeConfirmed(false)
+        setIncomeInput(String(data.last_month_income || savRes.data.monthly_income || ''))
+      }
+      // Show setup modal if user never set income
+      if ((savRes.data.monthly_income || 0) === 0 && !data.confirmed) {
+        setShowSetup(true)
+      }
+    } catch {
+      setIncomeConfirmed(true) // fail open
+    }
+  }, [currentMonthKey])
+
   useEffect(() => { fetchData() }, [viewYear, viewMonth])
+  useEffect(() => { checkIncome() }, [checkIncome])
+
+  const confirmIncome = async () => {
+    const amt = parseFloat(incomeInput)
+    if (!amt || amt <= 0) return
+    try {
+      await post('/api/savings/income-log', { month: currentMonthKey, income: amt })
+      setIncomeConfirmed(true)
+      setMonthlyIncome(amt)
+      toast('Income confirmed', 'success')
+    } catch (err) { toast(err.message || 'Something went wrong', 'error') }
+  }
+
+  const saveAllocation = async (s, sa, inv) => {
+    setSpendPct(s)
+    setSavingsPct(sa)
+    setInvestPct(inv)
+    try {
+      await post('/api/savings/setup', {
+        monthly_income: monthlyIncome,
+        spend_pct: s, savings_pct: sa, invest_pct: inv,
+        savings_goal_name: savingsData?.savings_goal_name || 'Emergency Fund',
+        savings_goal_target: savingsData?.savings_goal_target || 0,
+      })
+    } catch {}
+  }
+
+  const requestAiSplit = async () => {
+    setAiSplitLoading(true)
+    try {
+      const user = JSON.parse(localStorage.getItem('atlas_user') || '{}')
+      const totalDebtPayments = debts.reduce((s, d) => s + (d.min_payment || 0), 0)
+      const res = await post('/api/chat', {
+        message: `My monthly income after tax is $${monthlyIncome}. I'm ${user.age || 20} years old. My total monthly debt payments are $${totalDebtPayments}. ${savingsData?.emergency_fund_complete ? 'I already have my emergency fund complete.' : 'I do not have an emergency fund yet.'} Recommend ideal percentages for spending, savings, and investing. The spending and savings portions must cover all debt payments. Prioritize building an emergency fund if one does not exist. Maximize investing given my age and income. Respond ONLY with valid JSON: {"spending": number, "savings": number, "investing": number, "reasoning": "one sentence"}. No other text.`,
+        context: 'budget',
+      })
+      const text = res.data.reply || ''
+      const match = text.match(/\{[\s\S]*\}/)
+      if (match) {
+        const parsed = JSON.parse(match[0])
+        const s = parseInt(parsed.spending) || 60
+        const sa = parseInt(parsed.savings) || 20
+        const inv = parseInt(parsed.investing) || 20
+        const total = s + sa + inv
+        if (total === 100) {
+          saveAllocation(s, sa, inv)
+          setAiReason(parsed.reasoning || '')
+        }
+      }
+    } catch { toast('AI recommendation failed', 'error') }
+    setAiSplitLoading(false)
+  }
+
+  const fetchSavingsData = async () => {
+    try {
+      const res = await get('/api/savings')
+      setSavingsData(res.data)
+    } catch {}
+  }
+
+  const logSavingsDeposit = async () => {
+    if (!savingsData) return
+    setSavingsDepositing(true)
+    try {
+      await post('/api/savings/deposit', { amount: savingsData.savings_amt, note: `${currentMonthKey} savings deposit` })
+      await fetchSavingsData()
+      toast('Savings deposited', 'success')
+    } catch (err) { toast(err.message || 'Something went wrong', 'error') }
+    setSavingsDepositing(false)
+  }
+
+  const graduateToInvesting = async () => {
+    setGraduating(true)
+    try {
+      const res = await post('/api/savings/graduate', {})
+      setInvestPct(res.data.invest_pct)
+      setSavingsPct(0)
+      await fetchSavingsData()
+      toast('Savings allocation moved to investing', 'success')
+    } catch (err) { toast(err.message || 'Something went wrong', 'error') }
+    setGraduating(false)
+  }
 
   // Debt functions
   const fetchDebts = async () => {
@@ -295,7 +585,6 @@ export default function Budget() {
     return txnsInWeek(week).filter(t => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0)
   }
 
-  // Spending by category for the month
   const spendingByCategory = {}
   transactions.filter(t => t.amount < 0).forEach(t => {
     const cat = t.category || 'Other'
@@ -303,7 +592,6 @@ export default function Budget() {
   })
   const totalSpent = Object.values(spendingByCategory).reduce((s, v) => s + v, 0)
   const totalBudget = Object.values(goals).reduce((s, v) => s + (parseFloat(v) || 0), 0)
-  const availableToInvest = totalBudget > 0 ? totalBudget - totalSpent : 0
 
   const addTransaction = async () => {
     if (!addForm.date || !addForm.description || !addForm.amount) return
@@ -353,7 +641,6 @@ export default function Budget() {
     } catch (err) { toast(err.message || 'Something went wrong', 'error') }
   }
 
-  // Get days in a week that fall within the current month
   const getDaysInWeek = (week) => {
     const days = []
     const d = new Date(week.start)
@@ -409,40 +696,236 @@ export default function Budget() {
     })
   }
 
+  // Setup modal submission
+  const completeSetup = async () => {
+    const income = parseFloat(setupIncome)
+    if (!income || income <= 0) return
+    try {
+      const goalName = setupGoalType === 'emergency' ? 'Emergency Fund'
+        : setupGoalType === 'specific' ? (setupGoalName || 'My Goal')
+        : 'General Savings'
+      const goalTarget = setupGoalType === 'emergency'
+        ? Math.round(income * (setupSpend / 100) * 3 * 100) / 100
+        : setupGoalType === 'specific' ? (parseFloat(setupGoalTarget) || 0)
+        : 0
+      await post('/api/savings/setup', {
+        monthly_income: income,
+        spend_pct: setupSpend, savings_pct: setupSavings, invest_pct: setupInvest,
+        savings_goal_name: goalName, savings_goal_target: goalTarget,
+      })
+      await post('/api/savings/income-log', { month: currentMonthKey, income })
+      setShowSetup(false)
+      setIncomeConfirmed(true)
+      setMonthlyIncome(income)
+      setSpendPct(setupSpend)
+      setSavingsPct(setupSavings)
+      setInvestPct(setupInvest)
+      await fetchSavingsData()
+      toast('Budget set up', 'success')
+    } catch (err) { toast(err.message || 'Something went wrong', 'error') }
+  }
+
+  const handleSetupSlider = (which, newVal) => {
+    newVal = Math.max(0, Math.min(100, newVal))
+    let s = setupSpend, sa = setupSavings, inv = setupInvest
+    if (which === 'spend') s = newVal
+    else if (which === 'savings') sa = newVal
+    else inv = newVal
+    const remaining = 100 - newVal
+    if (which === 'spend') {
+      const ot = sa + inv; if (ot > 0) { sa = Math.round(remaining * (sa / ot)); inv = 100 - s - sa } else { sa = Math.round(remaining / 2); inv = remaining - sa }
+    } else if (which === 'savings') {
+      const ot = s + inv; if (ot > 0) { s = Math.round(remaining * (s / ot)); inv = 100 - s - sa } else { s = Math.round(remaining / 2); inv = remaining - s }
+    } else {
+      const ot = s + sa; if (ot > 0) { s = Math.round(remaining * (s / ot)); sa = 100 - s - inv } else { s = Math.round(remaining / 2); sa = remaining - s }
+    }
+    s = Math.max(0, Math.min(100, s)); sa = Math.max(0, Math.min(100, sa)); inv = Math.max(0, Math.min(100, inv))
+    const diff = 100 - s - sa - inv; if (diff !== 0) inv += diff
+    setSetupSpend(s); setSetupSavings(sa); setSetupInvest(inv)
+  }
+
+  // Emergency fund months to completion
+  const efMonths = savingsData && savingsData.savings_amt > 0 && savingsData.ef_target > savingsData.ef_balance
+    ? Math.ceil((savingsData.ef_target - savingsData.ef_balance) / savingsData.savings_amt)
+    : 0
+
   return (
     <div>
+      {/* ============ SETUP MODAL ============ */}
+      {showSetup && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }}>
+          <div className="card" style={{ maxWidth: 480, width: '100%', maxHeight: '90vh', overflow: 'auto' }} onClick={e => e.stopPropagation()}>
+            {/* Progress dots */}
+            <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: '1.5rem' }}>
+              {[0, 1, 2].map(i => (
+                <div key={i} style={{ width: 8, height: 8, borderRadius: '50%', background: i <= setupStep ? 'var(--color-gold)' : 'var(--color-border)' }} />
+              ))}
+            </div>
+
+            {/* Step 1: Income */}
+            {setupStep === 0 && (
+              <div>
+                <h2 style={{ fontSize: 'var(--text-xl)', marginBottom: '0.25rem' }}>What do you bring in each month?</h2>
+                <p className="text-faint" style={{ fontSize: 'var(--text-sm)', marginBottom: '1.5rem' }}>After taxes and deductions</p>
+                <div style={{ position: 'relative', marginBottom: '1.5rem' }}>
+                  <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', fontSize: 'var(--text-2xl)', color: 'var(--color-text-muted)' }}>$</span>
+                  <input className="input mono" type="number" value={setupIncome} onChange={e => setSetupIncome(e.target.value)}
+                    placeholder="0" autoFocus
+                    style={{ fontSize: 'var(--text-2xl)', padding: '0.75rem 1rem 0.75rem 2rem', width: '100%', textAlign: 'center' }}
+                  />
+                  <span style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>/month</span>
+                </div>
+                <button className="btn btn-primary" style={{ width: '100%' }} disabled={!setupIncome || parseFloat(setupIncome) <= 0}
+                  onClick={() => setSetupStep(1)}>
+                  Continue
+                </button>
+              </div>
+            )}
+
+            {/* Step 2: Allocation */}
+            {setupStep === 1 && (
+              <div>
+                <h2 style={{ fontSize: 'var(--text-xl)', marginBottom: '0.25rem' }}>How do you want to split it?</h2>
+                <p className="text-faint" style={{ fontSize: 'var(--text-sm)', marginBottom: '1rem' }}>Drag the sliders — they always add to 100%</p>
+                <AllocationSliders
+                  spend={setupSpend} savings={setupSavings} invest={setupInvest}
+                  income={parseFloat(setupIncome) || 0}
+                  onUpdate={(s, sa, inv) => { setSetupSpend(s); setSetupSavings(sa); setSetupInvest(inv) }}
+                  debts={debts}
+                  onAiRecommend={async () => {
+                    setAiSplitLoading(true)
+                    try {
+                      const user = JSON.parse(localStorage.getItem('atlas_user') || '{}')
+                      const totalDebtPayments = debts.reduce((s, d) => s + (d.min_payment || 0), 0)
+                      const res = await post('/api/chat', {
+                        message: `My monthly income after tax is $${setupIncome}. I'm ${user.age || 20} years old. My total monthly debt payments are $${totalDebtPayments}. I do not have an emergency fund yet. Recommend ideal percentages for spending, savings, and investing. The spending and savings portions must cover all debt payments. Prioritize building an emergency fund if one does not exist. Maximize investing given my age and income. Respond ONLY with valid JSON: {"spending": number, "savings": number, "investing": number, "reasoning": "one sentence"}. No other text.`,
+                        context: 'budget',
+                      })
+                      const text = res.data.reply || ''
+                      const match = text.match(/\{[\s\S]*\}/)
+                      if (match) {
+                        const parsed = JSON.parse(match[0])
+                        const s = parseInt(parsed.spending) || 60
+                        const sa = parseInt(parsed.savings) || 20
+                        const inv = parseInt(parsed.investing) || 20
+                        if (s + sa + inv === 100) {
+                          setSetupSpend(s); setSetupSavings(sa); setSetupInvest(inv)
+                          setAiReason(parsed.reasoning || '')
+                        }
+                      }
+                    } catch {}
+                    setAiSplitLoading(false)
+                  }}
+                  aiLoading={aiSplitLoading}
+                  aiReason={aiReason}
+                />
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+                  <button className="btn btn-ghost" onClick={() => setSetupStep(0)} style={{ flex: 1 }}>Back</button>
+                  <button className="btn btn-primary" onClick={() => setSetupStep(2)} style={{ flex: 1 }}>Continue</button>
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: Savings goal */}
+            {setupStep === 2 && (
+              <div>
+                <h2 style={{ fontSize: 'var(--text-xl)', marginBottom: '0.25rem' }}>What are you saving for?</h2>
+                <p className="text-faint" style={{ fontSize: 'var(--text-sm)', marginBottom: '1rem' }}>This sets your savings goal</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
+                  <button onClick={() => setSetupGoalType('emergency')} style={{
+                    padding: '0.75rem 1rem', borderRadius: 4, cursor: 'pointer', textAlign: 'left',
+                    border: setupGoalType === 'emergency' ? '2px solid var(--color-gold)' : '1px solid var(--color-border)',
+                    background: setupGoalType === 'emergency' ? 'var(--color-gold-15)' : 'var(--color-surface)',
+                  }}>
+                    <strong style={{ display: 'block' }}>Emergency Fund</strong>
+                    <span className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>
+                      Target: {formatCurrency(Math.round((parseFloat(setupIncome) || 0) * (setupSpend / 100) * 3))} (3 months of expenses)
+                    </span>
+                  </button>
+                  <button onClick={() => setSetupGoalType('specific')} style={{
+                    padding: '0.75rem 1rem', borderRadius: 4, cursor: 'pointer', textAlign: 'left',
+                    border: setupGoalType === 'specific' ? '2px solid var(--color-gold)' : '1px solid var(--color-border)',
+                    background: setupGoalType === 'specific' ? 'var(--color-gold-15)' : 'var(--color-surface)',
+                  }}>
+                    <strong style={{ display: 'block' }}>A Specific Goal</strong>
+                    <span className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>Name it and set a dollar target</span>
+                  </button>
+                  {setupGoalType === 'specific' && (
+                    <div style={{ display: 'flex', gap: '0.5rem', paddingLeft: '0.5rem' }}>
+                      <input className="input" placeholder="Goal name" value={setupGoalName} onChange={e => setSetupGoalName(e.target.value)} style={{ flex: 1 }} />
+                      <input className="input" type="number" placeholder="$0" value={setupGoalTarget} onChange={e => setSetupGoalTarget(e.target.value)} style={{ width: 100 }} />
+                    </div>
+                  )}
+                  <button onClick={() => setSetupGoalType('general')} style={{
+                    padding: '0.75rem 1rem', borderRadius: 4, cursor: 'pointer', textAlign: 'left',
+                    border: setupGoalType === 'general' ? '2px solid var(--color-gold)' : '1px solid var(--color-border)',
+                    background: setupGoalType === 'general' ? 'var(--color-gold-15)' : 'var(--color-surface)',
+                  }}>
+                    <strong style={{ display: 'block' }}>General Savings</strong>
+                    <span className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>No specific goal — just building a buffer</span>
+                  </button>
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button className="btn btn-ghost" onClick={() => setSetupStep(1)} style={{ flex: 1 }}>Back</button>
+                  <button className="btn btn-primary" onClick={completeSetup} style={{ flex: 1 }}>Finish Setup</button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ============ PAGE HEADER ============ */}
       <div style={{ marginBottom: '1rem' }}>
         <h1 style={{ fontSize: 'var(--text-3xl)', marginBottom: '0.15rem' }}>Budget</h1>
         <p className="label-caps">{monthLabel}</p>
       </div>
 
-      {/* Available to Invest card */}
-      {totalBudget > 0 && (
+      {/* ============ INCOME REFRESH BANNER ============ */}
+      {incomeConfirmed === false && !showSetup && (
         <div className="card" style={{ marginBottom: 'var(--space-lg)', borderLeft: '3px solid var(--color-gold)', paddingLeft: 'var(--space-md)' }}>
-          <span className="label-caps">Available to Invest This Month</span>
-          <div className="mono" style={{ fontSize: 'var(--text-2xl)', color: availableToInvest >= 0 ? 'var(--color-positive)' : 'var(--color-negative)', marginTop: 'var(--space-xs)' }}>
-            {formatCurrency(Math.abs(availableToInvest))}
-          </div>
-          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', marginTop: 'var(--space-xs)' }}>
-            {availableToInvest >= 0 ? 'After all budgeted expenses' : 'Over budget this month'}
+          <span className="label-caps">Confirm This Month's Income</span>
+          <p className="text-faint" style={{ fontSize: 'var(--text-sm)', marginTop: '0.25rem', marginBottom: '0.5rem' }}>
+            What did you bring in this month? Last month's income is pre-filled.
           </p>
-          {availableToInvest > 0 && (
-            <button className="btn btn-ghost" style={{ marginTop: 'var(--space-sm)', fontSize: 'var(--text-sm)' }} onClick={() => navigate('/plan')}>
-              Put this toward my plan →
-            </button>
-          )}
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <div style={{ position: 'relative', flex: 1 }}>
+              <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }}>$</span>
+              <input className="input mono" type="number" value={incomeInput} onChange={e => setIncomeInput(e.target.value)}
+                placeholder="0" style={{ paddingLeft: '1.5rem', width: '100%' }}
+                onKeyDown={e => e.key === 'Enter' && confirmIncome()}
+              />
+            </div>
+            <button className="btn btn-primary" onClick={confirmIncome}>Confirm</button>
+          </div>
         </div>
       )}
 
-      {/* Tabs */}
+      {/* ============ ALLOCATION SLIDERS ============ */}
+      {incomeConfirmed && monthlyIncome > 0 && (
+        <div className="card" style={{ marginBottom: 'var(--space-lg)' }}>
+          <AllocationSliders
+            spend={spendPct} savings={savingsPct} invest={investPct}
+            income={monthlyIncome}
+            onUpdate={saveAllocation}
+            debts={debts}
+            onAiRecommend={requestAiSplit}
+            aiLoading={aiSplitLoading}
+            aiReason={aiReason}
+          />
+        </div>
+      )}
+
+      {/* ============ TABS ============ */}
       <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '1.5rem', borderBottom: '2px solid var(--color-border)' }}>
         {[
           { key: 'calendar', label: 'Calendar' },
+          { key: 'savings', label: 'Savings' },
           { key: 'debt', label: 'Debt' },
           { key: 'import', label: 'Import' },
           { key: 'chat', label: 'AI Chat' },
         ].map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)} style={{
+          <button key={t.key} onClick={() => { setTab(t.key); if (t.key === 'savings') fetchSavingsData() }} style={{
             padding: '0.6rem 1.25rem', border: 'none',
             borderBottom: tab === t.key ? '2px solid var(--color-gold)' : '2px solid transparent',
             background: 'none', cursor: 'pointer', fontWeight: tab === t.key ? 600 : 400,
@@ -454,16 +937,150 @@ export default function Budget() {
         ))}
       </div>
 
-      {/* AI Chat Tab */}
+      {/* ============ SAVINGS TAB ============ */}
+      {tab === 'savings' && (
+        <>
+          {/* Section 1: Allocation summary */}
+          <div className="card" style={{ marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', height: 10, borderRadius: 5, overflow: 'hidden', marginBottom: '0.75rem' }}>
+              {spendPct > 0 && <div style={{ width: `${spendPct}%`, background: 'var(--color-negative)' }} />}
+              {savingsPct > 0 && <div style={{ width: `${savingsPct}%`, background: 'var(--color-gold)' }} />}
+              {investPct > 0 && <div style={{ width: `${investPct}%`, background: 'var(--color-positive)' }} />}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', textAlign: 'center' }}>
+              <div>
+                <p className="label-caps">Spending</p>
+                <span className="mono" style={{ fontSize: 'var(--text-xl)', display: 'block' }}>{formatCurrency(Math.round(monthlyIncome * spendPct / 100))}</span>
+                <span className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>{spendPct}%</span>
+              </div>
+              <div>
+                <p className="label-caps">Savings</p>
+                <span className="mono" style={{ fontSize: 'var(--text-xl)', display: 'block' }}>{formatCurrency(Math.round(monthlyIncome * savingsPct / 100))}</span>
+                <span className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>{savingsPct}%</span>
+              </div>
+              <div>
+                <p className="label-caps">Investing</p>
+                <span className="mono" style={{ fontSize: 'var(--text-xl)', display: 'block' }}>{formatCurrency(Math.round(monthlyIncome * investPct / 100))}</span>
+                <span className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>{investPct}%</span>
+              </div>
+            </div>
+            <p className="text-faint" style={{ fontSize: 'var(--text-xs)', textAlign: 'center', marginTop: '0.5rem' }}>
+              Debts are paid from the Savings portion. Savings covers emergency fund, debt payoff, and short-term goals.
+            </p>
+          </div>
+
+          {/* Section 2: Total saved + Emergency fund */}
+          <div className="card" style={{ marginBottom: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', alignItems: 'start' }}>
+              <div>
+                <p className="label-caps">Total Saved</p>
+                <span className="mono" style={{ fontSize: 'var(--text-3xl)', display: 'block', marginTop: '0.25rem' }}>
+                  {formatCurrency(savingsData?.savings_balance || 0)}
+                </span>
+              </div>
+              <div>
+                <p className="label-caps">{savingsData?.savings_goal_name || 'Emergency Fund'}</p>
+                <div className="progress-bar" style={{ height: 8, marginTop: '0.5rem' }}>
+                  <div className="progress-bar-fill" style={{
+                    width: `${savingsData?.ef_pct || 0}%`,
+                    background: (savingsData?.ef_pct || 0) >= 100 ? 'var(--color-positive)' : 'var(--color-gold)',
+                    transition: 'width 0.8s ease',
+                  }} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.25rem' }}>
+                  <span className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>{(savingsData?.ef_pct || 0).toFixed(0)}%</span>
+                  <span className="text-faint mono" style={{ fontSize: 'var(--text-sm)' }}>
+                    {formatCurrency(savingsData?.ef_balance || 0)} / {formatCurrency(savingsData?.ef_target || 0)}
+                  </span>
+                </div>
+                {efMonths > 0 && (
+                  <p className="text-faint" style={{ fontSize: 'var(--text-xs)', marginTop: '0.15rem' }}>
+                    {efMonths} month{efMonths !== 1 ? 's' : ''} to fully fund at current rate
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <button className="btn btn-primary" onClick={logSavingsDeposit} disabled={savingsDepositing || !savingsData?.savings_amt}
+              style={{ marginTop: '1rem', width: '100%' }}>
+              {savingsDepositing ? 'Depositing...' : `Log This Month's Savings (${formatCurrency(savingsData?.savings_amt || 0)})`}
+            </button>
+
+            {/* Graduation banner */}
+            {savingsData?.emergency_fund_complete && (
+              <div style={{
+                marginTop: '1rem', padding: '0.75rem', borderRadius: 4,
+                background: 'rgba(46,125,94,0.08)', border: '1px solid var(--color-positive)',
+              }}>
+                <p style={{ fontSize: 'var(--text-base)', fontWeight: 600, color: 'var(--color-positive)', marginBottom: '0.5rem' }}>
+                  Emergency fund complete!
+                </p>
+                <p className="text-faint" style={{ fontSize: 'var(--text-sm)', marginBottom: '0.75rem' }}>
+                  Your {formatCurrency(savingsData.ef_target)} target is funded. You can move your savings allocation to investing or set a new goal.
+                </p>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button className="btn btn-primary" onClick={graduateToInvesting} disabled={graduating} style={{ flex: 1 }}>
+                    {graduating ? 'Moving...' : 'Move to Investing'}
+                  </button>
+                  <button className="btn btn-ghost" onClick={() => setTab('calendar')} style={{ flex: 1 }}>Set New Goal</button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Section 3: Debt payoff progress */}
+          <div className="card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+              <h3 style={{ fontSize: 'var(--text-lg)' }}>Debt Payoff</h3>
+              <button className="btn btn-ghost" onClick={() => setTab('debt')} style={{ fontSize: 'var(--text-sm)', padding: '0.2rem 0.5rem' }}>
+                Manage
+              </button>
+            </div>
+            {debts.length > 0 ? debts.map(d => {
+              const origAmt = d.original_amount || d.balance
+              const paidOff = origAmt > 0 ? Math.max(0, origAmt - d.balance) : 0
+              const debtPct = origAmt > 0 ? Math.min(100, (paidOff / origAmt) * 100) : 0
+              const isFullyPaid = d.balance <= 0
+              return (
+                <div key={d.id} onClick={() => setTab('debt')} style={{
+                  padding: '0.6rem 0', borderBottom: '1px solid var(--color-border)', cursor: 'pointer',
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                    <span style={{ fontSize: 'var(--text-base)', fontWeight: 500 }}>{d.name}</span>
+                    <span className="mono" style={{ fontSize: 'var(--text-base)', color: isFullyPaid ? 'var(--color-positive)' : 'var(--color-text-primary)' }}>
+                      {isFullyPaid ? 'Paid off' : formatCurrency(d.balance)}
+                    </span>
+                  </div>
+                  <div className="progress-bar" style={{ height: 5 }}>
+                    <div className="progress-bar-fill" style={{
+                      width: `${debtPct}%`,
+                      background: isFullyPaid ? 'var(--color-positive)' : 'var(--color-navy)',
+                      transition: 'width 0.8s ease',
+                    }} />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.15rem' }}>
+                    <span className="text-faint" style={{ fontSize: 'var(--text-xs)' }}>{debtPct.toFixed(0)}% paid</span>
+                    <span className="text-faint mono" style={{ fontSize: 'var(--text-xs)' }}>{formatCurrency(d.min_payment)}/mo</span>
+                  </div>
+                </div>
+              )
+            }) : (
+              <p className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>No debts. Add debts in the Debt tab.</p>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* ============ AI CHAT TAB ============ */}
       {tab === 'chat' && (
         <PageChat
           context="budget"
-          systemPrompt={`You are Atlas, a financial coach helping a young investor understand their spending.\nThe user's budget data for ${monthLabel}:\n${CATEGORIES.filter(c => c !== 'Income' && c !== 'Transfer').map(c => `- ${c}: spent $${(spendingByCategory[c] || 0).toFixed(2)} of $${(goals[c] || 0)} budget (${goals[c] ? Math.round(((spendingByCategory[c] || 0) / goals[c]) * 100) : 0}%)`).join('\n')}\nTotal available to invest: $${availableToInvest.toFixed(2)}\nBe direct, specific, and encouraging. Reference their actual numbers. Keep responses under 4 sentences.`}
-          suggestedPrompts={['Where am I overspending this month?', 'How can I free up more to invest?', 'Is my budget realistic?']}
+          systemPrompt={`You are Atlas, a financial coach helping a young investor understand their spending.\nThe user's budget data for ${monthLabel}:\n${CATEGORIES.filter(c => c !== 'Income' && c !== 'Transfer').map(c => `- ${c}: spent $${(spendingByCategory[c] || 0).toFixed(2)} of $${(goals[c] || 0)} budget (${goals[c] ? Math.round(((spendingByCategory[c] || 0) / goals[c]) * 100) : 0}%)`).join('\n')}\nMonthly income: $${monthlyIncome}\nAllocation: ${spendPct}% spending, ${savingsPct}% savings, ${investPct}% investing\nBe direct, specific, and encouraging. Reference their actual numbers. Keep responses under 4 sentences.`}
+          suggestedPrompts={['Help me import my bank transactions', 'Where am I overspending this month?', 'How can I free up more to invest?']}
         />
       )}
 
-      {/* Debt Tab */}
+      {/* ============ DEBT TAB ============ */}
       {tab === 'debt' && (
         <>
           {/* Add Debt Form */}
@@ -576,7 +1193,7 @@ export default function Budget() {
             </div>
           )}
 
-          {/* Debts List - Clickable with Expandable Stats */}
+          {/* Debts List */}
           {debts.length > 0 && (
             <div className="card" style={{ marginBottom: '1rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
@@ -700,7 +1317,7 @@ export default function Budget() {
         </>
       )}
 
-      {/* Import Tab */}
+      {/* ============ IMPORT TAB ============ */}
       {tab === 'import' && (
         <>
           <div className="card" style={{ marginBottom: '1.5rem' }}>
@@ -804,7 +1421,7 @@ export default function Budget() {
         </>
       )}
 
-      {/* Calendar Tab */}
+      {/* ============ CALENDAR TAB ============ */}
       {tab === 'calendar' && (
         <>
           {/* Month Selector */}
@@ -850,7 +1467,6 @@ export default function Budget() {
                     borderRadius: 4,
                     overflow: 'hidden',
                   }}>
-                    {/* Week header */}
                     <div
                       onClick={() => setExpandedWeek(isOpen ? null : wi)}
                       style={{
@@ -872,10 +1488,8 @@ export default function Budget() {
                       </span>
                     </div>
 
-                    {/* Expanded week content */}
                     {isOpen && (
                       <div style={{ padding: '0.75rem 1rem', borderTop: '1px solid var(--color-border)' }}>
-                        {/* Existing transactions */}
                         {weekTxns.length > 0 && (
                           <div style={{ marginBottom: '1rem' }}>
                             {weekTxns.map(t => (
