@@ -52,6 +52,7 @@ app.use('/api/pulse', auth, require('./routes/pulse'));
 app.use('/api/badges', auth, require('./routes/badges'));
 app.use('/api/settings', auth, require('./routes/settings'));
 app.use('/api/plan', auth, require('./routes/plan'));
+app.use('/api/savings', auth, require('./routes/savings'));
 app.use('/api/digest', auth, require('./routes/digest'));
 
 // Health check
