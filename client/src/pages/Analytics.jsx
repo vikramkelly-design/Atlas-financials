@@ -19,7 +19,6 @@ export default function Analytics() {
   const [positions, setPositions] = useState([])
   const [prices, setPrices] = useState({})
   const [history, setHistory] = useState({ portfolio: [], sp500: [] })
-  const [networth, setNetworth] = useState(null)
   const [period, setPeriod] = useState('1m')
   const [loading, setLoading] = useState(true)
   const [histLoading, setHistLoading] = useState(false)
@@ -29,12 +28,8 @@ export default function Analytics() {
   useEffect(() => {
     (async () => {
       try {
-        const [pRes, nRes] = await Promise.all([
-          api.get('/api/portfolio'),
-          api.get('/api/networth'),
-        ])
+        const pRes = await api.get('/api/portfolio')
         setPortfolios(pRes.data.data)
-        setNetworth(nRes.data.data)
         if (pRes.data.data.length > 0) setActiveId(pRes.data.data[0].id)
       } catch (err) { setError(err.message) }
       setLoading(false)
@@ -43,17 +38,28 @@ export default function Analytics() {
 
   useEffect(() => {
     if (!activeId) return
+    let tickers = []
     ;(async () => {
       try {
         const res = await api.get(`/api/portfolio/${activeId}/positions`)
         setPositions(res.data.data)
-        const tickers = [...new Set(res.data.data.map(p => p.ticker))]
+        tickers = [...new Set(res.data.data.map(p => p.ticker))]
         if (tickers.length > 0) {
           const pRes = await api.get(`/api/markets/prices?tickers=${tickers.join(',')}`)
           setPrices(pRes.data.data)
         }
       } catch {}
     })()
+    // Auto-refresh prices every 60s
+    const interval = setInterval(async () => {
+      if (tickers.length > 0) {
+        try {
+          const pRes = await api.get(`/api/markets/prices?tickers=${tickers.join(',')}`)
+          setPrices(pRes.data.data)
+        } catch {}
+      }
+    }, 60000)
+    return () => clearInterval(interval)
   }, [activeId])
 
   useEffect(() => {
@@ -72,8 +78,11 @@ export default function Analytics() {
     return positions.map(pos => {
       const quote = prices[pos.ticker] || {}
       const currentPrice = quote.price || null
+      const costBasis = pos.shares * pos.avg_cost
       const currentValue = currentPrice != null ? pos.shares * currentPrice : null
-      return { ...pos, currentPrice, name: quote.name, currentValue }
+      const gain = currentValue != null ? currentValue - costBasis : null
+      const gainPct = gain != null && costBasis > 0 ? (gain / costBasis) * 100 : null
+      return { ...pos, currentPrice, name: quote.name, currentValue, costBasis, gain, gainPct }
     })
   }, [positions, prices])
 
@@ -128,9 +137,8 @@ export default function Analytics() {
         </div>
       ) : (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+          <div style={{ marginBottom: '1rem' }}>
             <PieChart enriched={enriched} totalValue={totalValue} />
-            <NetWorthCard networth={networth} portfolioValue={totalValue} />
           </div>
           <PerformanceChart history={history} period={period} setPeriod={setPeriod} loading={histLoading} />
           <ValueChart history={history} period={period} loading={histLoading} />
@@ -199,43 +207,6 @@ function PieChart({ enriched, totalValue }) {
 // ═══════════════════════════════════════════════════════════════
 // NET WORTH CARD
 // ═══════════════════════════════════════════════════════════════
-
-function NetWorthCard({ networth, portfolioValue }) {
-  const otherAssets = networth ? networth.totalAssets : 0
-  const liabilities = networth ? networth.totalLiabilities : 0
-  const totalNetWorth = portfolioValue + otherAssets - liabilities
-  const items = [
-    { label: 'Portfolio Value', value: portfolioValue, color: 'var(--color-gold)' },
-    { label: 'Other Assets', value: otherAssets, color: 'var(--color-positive)' },
-    { label: 'Liabilities', value: -liabilities, color: 'var(--color-negative)' },
-  ]
-  const maxAbs = Math.max(...items.map(i => Math.abs(i.value)), 1)
-
-  return (
-    <div className="card" style={{ padding: '1.25rem' }}>
-      <h2 style={{ fontSize: 'var(--text-lg)', marginBottom: '0.5rem' }}>Net Worth</h2>
-      <p className="mono" style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: numColor(totalNetWorth), marginBottom: '1rem' }}>
-        {formatCurrency(totalNetWorth)}
-      </p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-        {items.map(item => (
-          <div key={item.label}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-sm)', marginBottom: '0.15rem' }}>
-              <span>{item.label}</span>
-              <span className="mono" style={{ color: item.color, fontWeight: 600 }}>
-                {item.value < 0 ? '-' : ''}{formatCurrency(Math.abs(item.value))}
-              </span>
-            </div>
-            <div style={{ height: 8, background: 'var(--color-surface-2)', borderRadius: 4, overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: `${(Math.abs(item.value) / maxAbs) * 100}%`, background: item.color, borderRadius: 4, transition: 'width 0.3s' }} />
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
 
 // ═══════════════════════════════════════════════════════════════
 // HOVER HOOK — shared by both charts

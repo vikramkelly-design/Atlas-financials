@@ -2,6 +2,7 @@ const express = require('express');
 const { getYF } = require('../utils/yahoo');
 const { withCache } = require('../utils/cache');
 const { calculateIntrinsicSummary } = require('../utils/calculations');
+const db = require('../db');
 
 const router = express.Router();
 
@@ -114,6 +115,34 @@ router.post('/', async (req, res, next) => {
     res.json({ stocks, defaultTickers: DEFAULT_TICKERS });
   } catch (err) {
     next(err);
+  }
+});
+
+// GET /api/screener/tickers — get user's saved screener tickers
+router.get('/tickers', (req, res) => {
+  try {
+    const rows = db.prepare('SELECT ticker FROM screener_tickers WHERE user_id = ? ORDER BY added_at').all(req.userId);
+    const tickers = rows.map(r => r.ticker);
+    res.json({ success: true, data: tickers.length > 0 ? tickers : null });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/screener/tickers — save user's screener tickers (replace all)
+router.post('/tickers', (req, res) => {
+  try {
+    const { tickers } = req.body;
+    if (!Array.isArray(tickers)) return res.status(400).json({ success: false, error: 'tickers must be an array' });
+    const unique = [...new Set(tickers.map(t => t.toUpperCase()))];
+    db.prepare('DELETE FROM screener_tickers WHERE user_id = ?').run(req.userId);
+    const insert = db.prepare('INSERT INTO screener_tickers (user_id, ticker) VALUES (?, ?)');
+    for (const t of unique) {
+      insert.run(req.userId, t);
+    }
+    res.json({ success: true, data: unique });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 

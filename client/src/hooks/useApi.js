@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import axios from 'axios'
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+const API = import.meta.env.VITE_API_URL || ''
 
 export const api = axios.create({ baseURL: API })
 
@@ -12,14 +12,16 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// Handle 401 — redirect to login
+// Handle 401 — redirect to login (debounced to prevent multiple redirects)
+let redirecting = false
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401) {
+    if (err.response?.status === 401 && !redirecting) {
+      redirecting = true
       localStorage.removeItem('atlas_token')
       localStorage.removeItem('atlas_user')
-      window.location.href = '/login'
+      window.location.href = '/'
     }
     return Promise.reject(err)
   }

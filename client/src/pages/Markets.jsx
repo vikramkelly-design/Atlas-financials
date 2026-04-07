@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import useApi, { api } from '../hooks/useApi'
 import usePrices from '../hooks/usePrices'
@@ -434,7 +434,12 @@ function WatchlistTab() {
 function ScreenerTab() {
   const navigate = useNavigate()
   const [tickers, setTickers] = useState(DEFAULT_TICKERS)
-  const [inputTicker, setInputTicker] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState([])
+  const [searchLoading, setSearchLoading] = useState(false)
+  const [showDropdown, setShowDropdown] = useState(false)
+  const searchRef = useRef(null)
+  const searchTimeout = useRef(null)
   const [discountRate, setDiscountRate] = useState(0.10)
   const [stocks, setStocks] = useState([])
   const [loading, setLoading] = useState(false)
@@ -450,6 +455,10 @@ function ScreenerTab() {
   const [filterMinCap, setFilterMinCap] = useState('')
   const [filterMaxCap, setFilterMaxCap] = useState('')
 
+  const saveTickers = useCallback(async (tickerList) => {
+    try { await api.post('/api/screener/tickers', { tickers: tickerList }) } catch {}
+  }, [])
+
   const fetchScreener = useCallback(async (tickerList, dr) => {
     setLoading(true)
     setError(null)
@@ -463,21 +472,63 @@ function ScreenerTab() {
     setLoading(false)
   }, [])
 
-  useEffect(() => { fetchScreener(tickers, discountRate) }, [])
+  // Load saved tickers on mount, then fetch screener
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await api.get('/api/screener/tickers')
+        const saved = res.data.data
+        if (saved && saved.length > 0) {
+          setTickers(saved)
+          fetchScreener(saved, discountRate)
+        } else {
+          fetchScreener(DEFAULT_TICKERS, discountRate)
+        }
+      } catch {
+        fetchScreener(DEFAULT_TICKERS, discountRate)
+      }
+    })()
+  }, [])
 
-  const addTicker = () => {
-    const t = inputTicker.trim().toUpperCase()
-    if (!t || tickers.includes(t)) { setInputTicker(''); return }
+  const handleSearch = (query) => {
+    setSearchQuery(query)
+    if (searchTimeout.current) clearTimeout(searchTimeout.current)
+    if (!query.trim()) { setSearchResults([]); setShowDropdown(false); return }
+    searchTimeout.current = setTimeout(async () => {
+      setSearchLoading(true)
+      try {
+        const res = await api.get(`/api/markets/search?q=${encodeURIComponent(query.trim())}`)
+        setSearchResults(res.data.data || res.data || [])
+        setShowDropdown(true)
+      } catch { setSearchResults([]) }
+      setSearchLoading(false)
+    }, 300)
+  }
+
+  const addFromSearch = (ticker) => {
+    const t = ticker.toUpperCase()
+    if (tickers.includes(t)) { setSearchQuery(''); setShowDropdown(false); return }
     const updated = [...tickers, t]
     setTickers(updated)
-    setInputTicker('')
+    setSearchQuery('')
+    setSearchResults([])
+    setShowDropdown(false)
+    saveTickers(updated)
     fetchScreener(updated, discountRate)
   }
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e) => { if (searchRef.current && !searchRef.current.contains(e.target)) setShowDropdown(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
 
   const removeTicker = (t) => {
     const updated = tickers.filter(x => x !== t)
     setTickers(updated)
     setStocks(prev => prev.filter(s => s.ticker !== t))
+    saveTickers(updated)
   }
 
   const handleSort = (key) => {
@@ -562,15 +613,55 @@ function ScreenerTab() {
           ))}
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-          <input
-            className="input"
-            style={{ width: 140, flex: 'none' }}
-            value={inputTicker}
-            onChange={e => setInputTicker(e.target.value.toUpperCase())}
-            onKeyDown={e => e.key === 'Enter' && addTicker()}
-            placeholder="Add ticker..."
-          />
-          <button className="btn btn-primary" onClick={addTicker} style={{ fontSize: 'var(--text-sm)' }}>+ Add</button>
+          {/* Search by company name */}
+          <div ref={searchRef} style={{ position: 'relative', flex: '1 1 220px', maxWidth: 340 }}>
+            <input
+              className="input"
+              style={{ width: '100%' }}
+              value={searchQuery}
+              onChange={e => handleSearch(e.target.value)}
+              onFocus={() => { if (searchResults.length > 0) setShowDropdown(true) }}
+              placeholder="Search by company or ticker..."
+            />
+            {showDropdown && (searchResults.length > 0 || searchLoading) && (
+              <div style={{
+                position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
+                background: 'var(--color-surface)', border: '1px solid var(--color-border)',
+                borderRadius: '0 0 4px 4px', maxHeight: 240, overflowY: 'auto',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+              }}>
+                {searchLoading && (
+                  <div style={{ padding: '0.5rem 0.75rem', fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>Searching...</div>
+                )}
+                {searchResults.map((r, i) => {
+                  const ticker = (r.symbol || r.ticker || '').toUpperCase()
+                  const name = r.shortname || r.longname || r.name || ticker
+                  const alreadyAdded = tickers.includes(ticker)
+                  return (
+                    <div key={i} style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      padding: '0.45rem 0.75rem', borderBottom: '1px solid var(--color-border)',
+                      gap: '0.5rem',
+                    }}>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <span className="mono" style={{ fontWeight: 600, fontSize: 'var(--text-sm)' }}>{ticker}</span>
+                        <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', marginLeft: '0.4rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
+                      </div>
+                      {alreadyAdded ? (
+                        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>Added</span>
+                      ) : (
+                        <button
+                          onClick={() => addFromSearch(ticker)}
+                          className="btn btn-primary"
+                          style={{ fontSize: 'var(--text-xs)', padding: '0.2rem 0.5rem', whiteSpace: 'nowrap' }}
+                        >View</button>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
           <button className="btn btn-ghost" onClick={() => fetchScreener(tickers, discountRate)} disabled={loading} style={{ fontSize: 'var(--text-sm)' }}>
             {loading ? (
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}>
@@ -578,7 +669,7 @@ function ScreenerTab() {
               </svg>
             ) : 'Refresh All'}
           </button>
-          <button className="btn btn-ghost" onClick={() => { setTickers(DEFAULT_TICKERS); fetchScreener(DEFAULT_TICKERS, discountRate) }} style={{ fontSize: 'var(--text-sm)' }}>
+          <button className="btn btn-ghost" onClick={() => { setTickers(DEFAULT_TICKERS); saveTickers(DEFAULT_TICKERS); fetchScreener(DEFAULT_TICKERS, discountRate) }} style={{ fontSize: 'var(--text-sm)' }}>
             Reset Defaults
           </button>
 

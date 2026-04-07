@@ -142,60 +142,26 @@ function BudgetCategoryCard({ cat, spent, limit, goalValue, onGoalChange, color 
 
 // --- Allocation Sliders Component ---
 function AllocationSliders({ spend, savings, invest, income, onUpdate, debts, onAiRecommend, aiLoading, aiReason }) {
-  const spendAmt = Math.round(income * (spend / 100) * 100) / 100
-  const savingsAmt = Math.round(income * (savings / 100) * 100) / 100
-  const investAmt = Math.round(income * (invest / 100) * 100) / 100
+  const [localSpend, setLocalSpend] = useState(spend)
+  const [localSavings, setLocalSavings] = useState(savings)
+  const [localInvest, setLocalInvest] = useState(invest)
+
+  // Sync from parent when AI or external update changes props
+  useEffect(() => { setLocalSpend(spend) }, [spend])
+  useEffect(() => { setLocalSavings(savings) }, [savings])
+  useEffect(() => { setLocalInvest(invest) }, [invest])
+
+  const total = localSpend + localSavings + localInvest
+  const isValid = total === 100
+
+  const spendAmt = Math.round(income * (localSpend / 100) * 100) / 100
+  const savingsAmt = Math.round(income * (localSavings / 100) * 100) / 100
+  const investAmt = Math.round(income * (localInvest / 100) * 100) / 100
   const totalDebtPayments = debts.reduce((s, d) => s + (d.min_payment || 0), 0)
   const debtCovered = (spendAmt + savingsAmt) >= totalDebtPayments
 
-  const handleSlider = (which, newVal) => {
-    newVal = Math.max(0, Math.min(100, newVal))
-    let s = spend, sa = savings, inv = invest
-    if (which === 'spend') s = newVal
-    else if (which === 'savings') sa = newVal
-    else inv = newVal
-
-    // Adjust the other two proportionally
-    const remaining = 100 - newVal
-    if (which === 'spend') {
-      const otherTotal = sa + inv
-      if (otherTotal > 0) {
-        sa = Math.round(remaining * (sa / otherTotal))
-        inv = 100 - s - sa
-      } else {
-        sa = Math.round(remaining / 2)
-        inv = remaining - sa
-      }
-    } else if (which === 'savings') {
-      const otherTotal = s + inv
-      if (otherTotal > 0) {
-        s = Math.round(remaining * (s / otherTotal))
-        inv = 100 - s - sa
-      } else {
-        s = Math.round(remaining / 2)
-        inv = remaining - s
-      }
-    } else {
-      const otherTotal = s + sa
-      if (otherTotal > 0) {
-        s = Math.round(remaining * (s / otherTotal))
-        sa = 100 - s - inv
-      } else {
-        s = Math.round(remaining / 2)
-        sa = remaining - s
-      }
-    }
-
-    // Clamp
-    s = Math.max(0, Math.min(100, s))
-    sa = Math.max(0, Math.min(100, sa))
-    inv = Math.max(0, Math.min(100, inv))
-
-    // Fix rounding
-    const diff = 100 - s - sa - inv
-    if (diff !== 0) inv += diff
-
-    onUpdate(s, sa, inv)
+  const apply = () => {
+    if (isValid) onUpdate(localSpend, localSavings, localInvest)
   }
 
   const sliderTrack = (color) => ({
@@ -219,12 +185,12 @@ function AllocationSliders({ spend, savings, invest, income, onUpdate, debts, on
           <span style={{ fontSize: 'var(--text-sm)', fontWeight: 500 }}>Spending</span>
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline' }}>
             <span className="mono" style={{ fontSize: 'var(--text-base)', fontWeight: 600 }}>{formatCurrency(spendAmt)}</span>
-            <span className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>{spend}%</span>
+            <span className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>{localSpend}%</span>
           </div>
         </div>
-        <input type="range" min="0" max="100" value={spend}
-          onChange={e => handleSlider('spend', parseInt(e.target.value))}
-          style={{ ...sliderTrack('var(--color-negative)'), '--pct': `${spend}%` }}
+        <input type="range" min="0" max="100" value={localSpend}
+          onChange={e => setLocalSpend(parseInt(e.target.value))}
+          style={{ ...sliderTrack('var(--color-negative)'), '--pct': `${localSpend}%` }}
         />
       </div>
 
@@ -234,12 +200,12 @@ function AllocationSliders({ spend, savings, invest, income, onUpdate, debts, on
           <span style={{ fontSize: 'var(--text-sm)', fontWeight: 500 }}>Savings</span>
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline' }}>
             <span className="mono" style={{ fontSize: 'var(--text-base)', fontWeight: 600 }}>{formatCurrency(savingsAmt)}</span>
-            <span className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>{savings}%</span>
+            <span className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>{localSavings}%</span>
           </div>
         </div>
-        <input type="range" min="0" max="100" value={savings}
-          onChange={e => handleSlider('savings', parseInt(e.target.value))}
-          style={{ ...sliderTrack('var(--color-gold)'), '--pct': `${savings}%` }}
+        <input type="range" min="0" max="100" value={localSavings}
+          onChange={e => setLocalSavings(parseInt(e.target.value))}
+          style={{ ...sliderTrack('var(--color-gold)'), '--pct': `${localSavings}%` }}
         />
       </div>
 
@@ -249,20 +215,34 @@ function AllocationSliders({ spend, savings, invest, income, onUpdate, debts, on
           <span style={{ fontSize: 'var(--text-sm)', fontWeight: 500 }}>Investing</span>
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline' }}>
             <span className="mono" style={{ fontSize: 'var(--text-base)', fontWeight: 600 }}>{formatCurrency(investAmt)}</span>
-            <span className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>{invest}%</span>
+            <span className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>{localInvest}%</span>
           </div>
         </div>
-        <input type="range" min="0" max="100" value={invest}
-          onChange={e => handleSlider('invest', parseInt(e.target.value))}
-          style={{ ...sliderTrack('var(--color-positive)'), '--pct': `${invest}%` }}
+        <input type="range" min="0" max="100" value={localInvest}
+          onChange={e => setLocalInvest(parseInt(e.target.value))}
+          style={{ ...sliderTrack('var(--color-positive)'), '--pct': `${localInvest}%` }}
         />
       </div>
 
       {/* Allocation bar */}
       <div style={{ display: 'flex', height: 10, borderRadius: 5, overflow: 'hidden', marginBottom: '0.5rem' }}>
-        {spend > 0 && <div style={{ width: `${spend}%`, background: 'var(--color-negative)', transition: 'width 0.3s' }} />}
-        {savings > 0 && <div style={{ width: `${savings}%`, background: 'var(--color-gold)', transition: 'width 0.3s' }} />}
-        {invest > 0 && <div style={{ width: `${invest}%`, background: 'var(--color-positive)', transition: 'width 0.3s' }} />}
+        {localSpend > 0 && <div style={{ width: `${localSpend}%`, background: 'var(--color-negative)', transition: 'width 0.3s' }} />}
+        {localSavings > 0 && <div style={{ width: `${localSavings}%`, background: 'var(--color-gold)', transition: 'width 0.3s' }} />}
+        {localInvest > 0 && <div style={{ width: `${localInvest}%`, background: 'var(--color-positive)', transition: 'width 0.3s' }} />}
+      </div>
+
+      {/* Total indicator + Apply */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+        <span style={{
+          fontSize: 'var(--text-sm)', fontWeight: 600,
+          color: isValid ? 'var(--color-positive)' : 'var(--color-negative)',
+        }}>
+          Total: {total}%{!isValid && ` (need ${total < 100 ? `${100 - total}% more` : `${total - 100}% less`})`}
+        </span>
+        <button className="btn btn-primary" onClick={apply} disabled={!isValid}
+          style={{ fontSize: 'var(--text-sm)', padding: '0.3rem 0.75rem', opacity: isValid ? 1 : 0.4 }}>
+          Apply
+        </button>
       </div>
 
       {aiReason && (
@@ -332,6 +312,7 @@ export default function Budget() {
   // Income & allocation state
   const [incomeConfirmed, setIncomeConfirmed] = useState(null) // null = loading
   const [incomeInput, setIncomeInput] = useState('')
+  const [editingIncome, setEditingIncome] = useState(false)
   const [spendPct, setSpendPct] = useState(60)
   const [savingsPct, setSavingsPct] = useState(20)
   const [investPct, setInvestPct] = useState(20)
@@ -343,6 +324,14 @@ export default function Budget() {
   const [savingsData, setSavingsData] = useState(null)
   const [savingsDepositing, setSavingsDepositing] = useState(false)
   const [graduating, setGraduating] = useState(false)
+  const [buckets, setBuckets] = useState([])
+  const [newBucketName, setNewBucketName] = useState('')
+  const [newBucketTarget, setNewBucketTarget] = useState('')
+  const [debtPayId, setDebtPayId] = useState(null)
+  const [debtPayAmount, setDebtPayAmount] = useState('')
+  const [debtPaying, setDebtPaying] = useState(false)
+  const [bucketDepositId, setBucketDepositId] = useState(null)
+  const [bucketDepositAmt, setBucketDepositAmt] = useState('')
 
   // Setup modal state
   const [showSetup, setShowSetup] = useState(false)
@@ -484,6 +473,70 @@ export default function Budget() {
       toast('Savings allocation moved to investing', 'success')
     } catch (err) { toast(err.message || 'Something went wrong', 'error') }
     setGraduating(false)
+  }
+
+  // Bucket functions
+  const fetchBuckets = async () => {
+    try {
+      const res = await get('/api/savings/buckets')
+      setBuckets(res.data || [])
+    } catch {}
+  }
+
+  const createBucket = async () => {
+    if (!newBucketName.trim()) return
+    try {
+      await post('/api/savings/buckets', { name: newBucketName.trim(), target_amount: parseFloat(newBucketTarget) || 0 })
+      setNewBucketName('')
+      setNewBucketTarget('')
+      fetchBuckets()
+      toast('Bucket created', 'success')
+    } catch (err) { toast(err.response?.data?.error || err.message, 'error') }
+  }
+
+  const depositToBucket = async (bucketId) => {
+    const amt = parseFloat(bucketDepositAmt)
+    if (!amt || amt <= 0) return
+    try {
+      await post(`/api/savings/buckets/${bucketId}/deposit`, { amount: amt })
+      setBucketDepositId(null)
+      setBucketDepositAmt('')
+      fetchBuckets()
+      fetchSavingsData()
+      toast('Deposited to bucket', 'success')
+    } catch (err) { toast(err.response?.data?.error || err.message, 'error') }
+  }
+
+  const deleteBucket = (id) => {
+    const b = buckets.find(x => x.id === id)
+    setConfirmDialog({
+      open: true, danger: true,
+      title: 'Delete Bucket',
+      message: `Delete "${b?.name}"? Any funds will return to your savings balance.`,
+      onConfirm: async () => {
+        setConfirmDialog(d => ({ ...d, open: false }))
+        try {
+          await del(`/api/savings/buckets/${id}`)
+          fetchBuckets()
+          fetchSavingsData()
+          toast('Bucket deleted', 'success')
+        } catch (err) { toast(err.message, 'error') }
+      }
+    })
+  }
+
+  const payDebtFromSavings = async (debtId) => {
+    const amt = parseFloat(debtPayAmount)
+    if (!amt || amt <= 0) return
+    setDebtPaying(true)
+    try {
+      await post('/api/savings/pay-debt', { debt_id: debtId, amount: amt })
+      setDebtPayId(null)
+      setDebtPayAmount('')
+      await Promise.all([fetchSavingsData(), fetchDebts()])
+      toast('Debt payment applied', 'success')
+    } catch (err) { toast(err.response?.data?.error || err.message, 'error') }
+    setDebtPaying(false)
   }
 
   // Debt functions
@@ -727,22 +780,12 @@ export default function Budget() {
 
   const handleSetupSlider = (which, newVal) => {
     newVal = Math.max(0, Math.min(100, newVal))
-    let s = setupSpend, sa = setupSavings, inv = setupInvest
-    if (which === 'spend') s = newVal
-    else if (which === 'savings') sa = newVal
-    else inv = newVal
-    const remaining = 100 - newVal
-    if (which === 'spend') {
-      const ot = sa + inv; if (ot > 0) { sa = Math.round(remaining * (sa / ot)); inv = 100 - s - sa } else { sa = Math.round(remaining / 2); inv = remaining - sa }
-    } else if (which === 'savings') {
-      const ot = s + inv; if (ot > 0) { s = Math.round(remaining * (s / ot)); inv = 100 - s - sa } else { s = Math.round(remaining / 2); inv = remaining - s }
-    } else {
-      const ot = s + sa; if (ot > 0) { s = Math.round(remaining * (s / ot)); sa = 100 - s - inv } else { s = Math.round(remaining / 2); sa = remaining - s }
-    }
-    s = Math.max(0, Math.min(100, s)); sa = Math.max(0, Math.min(100, sa)); inv = Math.max(0, Math.min(100, inv))
-    const diff = 100 - s - sa - inv; if (diff !== 0) inv += diff
-    setSetupSpend(s); setSetupSavings(sa); setSetupInvest(inv)
+    if (which === 'spend') setSetupSpend(newVal)
+    else if (which === 'savings') setSetupSavings(newVal)
+    else setSetupInvest(newVal)
   }
+  const setupTotal = setupSpend + setupSavings + setupInvest
+  const setupValid = setupTotal === 100
 
   // Emergency fund months to completion
   const efMonths = savingsData && savingsData.savings_amt > 0 && savingsData.ef_target > savingsData.ef_balance
@@ -786,7 +829,7 @@ export default function Budget() {
             {setupStep === 1 && (
               <div>
                 <h2 style={{ fontSize: 'var(--text-xl)', marginBottom: '0.25rem' }}>How do you want to split it?</h2>
-                <p className="text-faint" style={{ fontSize: 'var(--text-sm)', marginBottom: '1rem' }}>Drag the sliders — they always add to 100%</p>
+                <p className="text-faint" style={{ fontSize: 'var(--text-sm)', marginBottom: '1rem' }}>Drag the sliders — they must add to 100%</p>
                 <AllocationSliders
                   spend={setupSpend} savings={setupSavings} invest={setupInvest}
                   income={parseFloat(setupIncome) || 0}
@@ -819,9 +862,14 @@ export default function Budget() {
                   aiLoading={aiSplitLoading}
                   aiReason={aiReason}
                 />
+                {!setupValid && (
+                  <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-negative)', marginTop: '0.5rem', textAlign: 'center' }}>
+                    Total is {setupTotal}% — must equal 100%
+                  </p>
+                )}
                 <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
                   <button className="btn btn-ghost" onClick={() => setSetupStep(0)} style={{ flex: 1 }}>Back</button>
-                  <button className="btn btn-primary" onClick={() => setSetupStep(2)} style={{ flex: 1 }}>Continue</button>
+                  <button className="btn btn-primary" onClick={() => setSetupStep(2)} disabled={!setupValid} style={{ flex: 1, opacity: setupValid ? 1 : 0.4 }}>Continue</button>
                 </div>
               </div>
             )}
@@ -876,30 +924,57 @@ export default function Budget() {
       )}
 
       {/* ============ PAGE HEADER ============ */}
-      <div style={{ marginBottom: '1rem' }}>
-        <h1 style={{ fontSize: 'var(--text-3xl)', marginBottom: '0.15rem' }}>Budget</h1>
-        <p className="label-caps">{monthLabel}</p>
-      </div>
-
-      {/* ============ INCOME REFRESH BANNER ============ */}
-      {incomeConfirmed === false && !showSetup && (
-        <div className="card" style={{ marginBottom: 'var(--space-lg)', borderLeft: '3px solid var(--color-gold)', paddingLeft: 'var(--space-md)' }}>
-          <span className="label-caps">Confirm This Month's Income</span>
-          <p className="text-faint" style={{ fontSize: 'var(--text-sm)', marginTop: '0.25rem', marginBottom: '0.5rem' }}>
-            What did you bring in this month? Last month's income is pre-filled.
-          </p>
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-            <div style={{ position: 'relative', flex: 1 }}>
-              <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }}>$</span>
-              <input className="input mono" type="number" value={incomeInput} onChange={e => setIncomeInput(e.target.value)}
-                placeholder="0" style={{ paddingLeft: '1.5rem', width: '100%' }}
-                onKeyDown={e => e.key === 'Enter' && confirmIncome()}
-              />
-            </div>
-            <button className="btn btn-primary" onClick={confirmIncome}>Confirm</button>
-          </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+        <div>
+          <h1 style={{ fontSize: 'var(--text-3xl)', marginBottom: '0.15rem' }}>Budget</h1>
+          <p className="label-caps">{monthLabel}</p>
         </div>
-      )}
+
+        {/* Income display / edit — top right */}
+        {incomeConfirmed !== null && !showSetup && (
+          <div style={{ textAlign: 'right' }}>
+            {(editingIncome || incomeConfirmed === false) ? (
+              <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                <div style={{ position: 'relative' }}>
+                  <span style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)' }}>$</span>
+                  <input className="input mono" type="number" value={incomeInput} onChange={e => setIncomeInput(e.target.value)}
+                    placeholder="0" style={{ paddingLeft: '1.4rem', width: 130, fontSize: 'var(--text-sm)', padding: '0.35rem 0.5rem 0.35rem 1.4rem' }}
+                    onKeyDown={e => { if (e.key === 'Enter') { confirmIncome(); setEditingIncome(false) } if (e.key === 'Escape') setEditingIncome(false) }}
+                    autoFocus
+                  />
+                </div>
+                <button className="btn btn-primary" style={{ fontSize: 'var(--text-sm)', padding: '0.35rem 0.6rem' }}
+                  onClick={() => { confirmIncome(); setEditingIncome(false) }}>
+                  {incomeConfirmed === false ? 'Confirm' : 'Save'}
+                </button>
+                {incomeConfirmed && (
+                  <button className="btn btn-ghost" style={{ fontSize: 'var(--text-sm)', padding: '0.35rem 0.5rem' }}
+                    onClick={() => { setIncomeInput(String(monthlyIncome)); setEditingIncome(false) }}>
+                    Cancel
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' }}
+                onClick={() => setEditingIncome(true)} title="Click to edit income">
+                <div>
+                  <span className="label-caps" style={{ display: 'block', marginBottom: '0.1rem' }}>Monthly Income</span>
+                  <span className="mono" style={{ fontSize: 'var(--text-xl)', fontWeight: 600 }}>{formatCurrency(monthlyIncome)}</span>
+                </div>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginTop: '0.8rem' }}>
+                  <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                  <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                </svg>
+              </div>
+            )}
+            {incomeConfirmed === false && (
+              <p className="text-faint" style={{ fontSize: 'var(--text-xs)', marginTop: '0.25rem' }}>
+                Confirm this month's income to get started
+              </p>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* ============ ALLOCATION SLIDERS ============ */}
       {incomeConfirmed && monthlyIncome > 0 && (
@@ -925,7 +1000,7 @@ export default function Budget() {
           { key: 'import', label: 'Import' },
           { key: 'chat', label: 'AI Chat' },
         ].map(t => (
-          <button key={t.key} onClick={() => { setTab(t.key); if (t.key === 'savings') fetchSavingsData() }} style={{
+          <button key={t.key} onClick={() => { setTab(t.key); if (t.key === 'savings') { fetchSavingsData(); fetchBuckets() } }} style={{
             padding: '0.6rem 1.25rem', border: 'none',
             borderBottom: tab === t.key ? '2px solid var(--color-gold)' : '2px solid transparent',
             background: 'none', cursor: 'pointer', fontWeight: tab === t.key ? 600 : 400,
@@ -1028,44 +1103,146 @@ export default function Budget() {
             )}
           </div>
 
-          {/* Section 3: Debt payoff progress */}
-          <div className="card">
+          {/* Section 3: Debt payoff from savings */}
+          <div className="card" style={{ marginBottom: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-              <h3 style={{ fontSize: 'var(--text-lg)' }}>Debt Payoff</h3>
+              <h3 style={{ fontSize: 'var(--text-lg)' }}>Pay Off Debt From Savings</h3>
               <button className="btn btn-ghost" onClick={() => setTab('debt')} style={{ fontSize: 'var(--text-sm)', padding: '0.2rem 0.5rem' }}>
-                Manage
+                Manage Debts
               </button>
             </div>
-            {debts.length > 0 ? debts.map(d => {
+            {debts.filter(d => d.balance > 0).length > 0 ? debts.filter(d => d.balance > 0).map(d => {
               const origAmt = d.original_amount || d.balance
               const paidOff = origAmt > 0 ? Math.max(0, origAmt - d.balance) : 0
               const debtPct = origAmt > 0 ? Math.min(100, (paidOff / origAmt) * 100) : 0
-              const isFullyPaid = d.balance <= 0
               return (
-                <div key={d.id} onClick={() => setTab('debt')} style={{
-                  padding: '0.6rem 0', borderBottom: '1px solid var(--color-border)', cursor: 'pointer',
-                }}>
+                <div key={d.id} style={{ padding: '0.6rem 0', borderBottom: '1px solid var(--color-border)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
                     <span style={{ fontSize: 'var(--text-base)', fontWeight: 500 }}>{d.name}</span>
-                    <span className="mono" style={{ fontSize: 'var(--text-base)', color: isFullyPaid ? 'var(--color-positive)' : 'var(--color-text-primary)' }}>
-                      {isFullyPaid ? 'Paid off' : formatCurrency(d.balance)}
-                    </span>
+                    <span className="mono" style={{ fontSize: 'var(--text-base)' }}>{formatCurrency(d.balance)}</span>
                   </div>
-                  <div className="progress-bar" style={{ height: 5 }}>
-                    <div className="progress-bar-fill" style={{
-                      width: `${debtPct}%`,
-                      background: isFullyPaid ? 'var(--color-positive)' : 'var(--color-navy)',
-                      transition: 'width 0.8s ease',
-                    }} />
+                  <div className="progress-bar" style={{ height: 5, marginBottom: '0.35rem' }}>
+                    <div className="progress-bar-fill" style={{ width: `${debtPct}%`, background: 'var(--color-navy)', transition: 'width 0.8s ease' }} />
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.15rem' }}>
-                    <span className="text-faint" style={{ fontSize: 'var(--text-xs)' }}>{debtPct.toFixed(0)}% paid</span>
-                    <span className="text-faint mono" style={{ fontSize: 'var(--text-xs)' }}>{formatCurrency(d.min_payment)}/mo</span>
-                  </div>
+                  {debtPayId === d.id ? (
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.25rem' }}>
+                      <div style={{ position: 'relative', flex: 1 }}>
+                        <span style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }}>$</span>
+                        <input className="input mono" type="number" step="0.01" value={debtPayAmount}
+                          onChange={e => setDebtPayAmount(e.target.value)} placeholder="0"
+                          style={{ paddingLeft: '1.25rem', width: '100%' }}
+                          onKeyDown={e => e.key === 'Enter' && payDebtFromSavings(d.id)} />
+                      </div>
+                      <button className="btn btn-primary" onClick={() => payDebtFromSavings(d.id)} disabled={debtPaying}
+                        style={{ fontSize: 'var(--text-sm)' }}>
+                        {debtPaying ? '...' : 'Pay'}
+                      </button>
+                      <button className="btn btn-ghost" onClick={() => setDebtPayId(null)} style={{ fontSize: 'var(--text-sm)' }}>Cancel</button>
+                    </div>
+                  ) : (
+                    <button className="btn btn-ghost" onClick={() => { setDebtPayId(d.id); setDebtPayAmount('') }}
+                      style={{ fontSize: 'var(--text-xs)', padding: '0.15rem 0.4rem', marginTop: '0.15rem' }}>
+                      Pay from savings
+                    </button>
+                  )}
                 </div>
               )
             }) : (
-              <p className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>No debts. Add debts in the Debt tab.</p>
+              <div style={{ padding: '0.75rem', borderRadius: 4, background: 'rgba(46,125,94,0.08)', border: '1px solid var(--color-positive)' }}>
+                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-positive)', fontWeight: 600 }}>
+                  {debts.length > 0 ? 'All debts paid off!' : 'No debts — you\'re debt free!'}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Section 4: Savings Buckets */}
+          <div className="card">
+            <h3 style={{ fontSize: 'var(--text-lg)', marginBottom: '0.75rem' }}>Savings Buckets</h3>
+            <p className="text-faint" style={{ fontSize: 'var(--text-xs)', marginBottom: '0.75rem' }}>
+              {debts.filter(d => d.balance > 0).length > 0
+                ? 'Pay off all debts before creating savings buckets.'
+                : 'Organize your savings into specific goals.'}
+            </p>
+
+            {/* Emergency Fund Bucket (pre-calculated) */}
+            {savingsData && (
+              <div style={{ padding: '0.75rem', borderRadius: 4, border: '1px solid var(--color-border)', marginBottom: '0.5rem', background: 'var(--color-surface-2)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                  <span style={{ fontWeight: 600, fontSize: 'var(--text-sm)' }}>Emergency Fund</span>
+                  <span className="mono text-faint" style={{ fontSize: 'var(--text-sm)' }}>
+                    {formatCurrency(savingsData.ef_balance || 0)} / {formatCurrency(savingsData.ef_target || 0)}
+                  </span>
+                </div>
+                <div className="progress-bar" style={{ height: 6 }}>
+                  <div className="progress-bar-fill" style={{
+                    width: `${savingsData.ef_pct || 0}%`,
+                    background: (savingsData.ef_pct || 0) >= 100 ? 'var(--color-positive)' : 'var(--color-gold)',
+                  }} />
+                </div>
+                <p className="text-faint" style={{ fontSize: 'var(--text-xs)', marginTop: '0.2rem' }}>
+                  3x monthly spending ({formatCurrency(savingsData.ef_target || 0)})
+                </p>
+              </div>
+            )}
+
+            {/* Custom Buckets */}
+            {buckets.map(b => {
+              const bPct = b.target_amount > 0 ? Math.min(100, (b.current_amount / b.target_amount) * 100) : (b.current_amount > 0 ? 100 : 0)
+              return (
+                <div key={b.id} style={{ padding: '0.75rem', borderRadius: 4, border: '1px solid var(--color-border)', marginBottom: '0.5rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                    <span style={{ fontWeight: 600, fontSize: 'var(--text-sm)' }}>{b.name}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span className="mono text-faint" style={{ fontSize: 'var(--text-sm)' }}>
+                        {formatCurrency(b.current_amount)}{b.target_amount > 0 ? ` / ${formatCurrency(b.target_amount)}` : ''}
+                      </span>
+                      <button onClick={() => deleteBucket(b.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', fontSize: 'var(--text-base)' }}>×</button>
+                    </div>
+                  </div>
+                  {b.target_amount > 0 && (
+                    <div className="progress-bar" style={{ height: 6, marginBottom: '0.25rem' }}>
+                      <div className="progress-bar-fill" style={{ width: `${bPct}%`, background: bPct >= 100 ? 'var(--color-positive)' : 'var(--color-gold)' }} />
+                    </div>
+                  )}
+                  {bucketDepositId === b.id ? (
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.25rem' }}>
+                      <div style={{ position: 'relative', flex: 1 }}>
+                        <span style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }}>$</span>
+                        <input className="input mono" type="number" step="0.01" value={bucketDepositAmt}
+                          onChange={e => setBucketDepositAmt(e.target.value)} placeholder="0"
+                          style={{ paddingLeft: '1.25rem', width: '100%' }}
+                          onKeyDown={e => e.key === 'Enter' && depositToBucket(b.id)} />
+                      </div>
+                      <button className="btn btn-primary" onClick={() => depositToBucket(b.id)} style={{ fontSize: 'var(--text-sm)' }}>Add</button>
+                      <button className="btn btn-ghost" onClick={() => setBucketDepositId(null)} style={{ fontSize: 'var(--text-sm)' }}>Cancel</button>
+                    </div>
+                  ) : (
+                    <button className="btn btn-ghost" onClick={() => { setBucketDepositId(b.id); setBucketDepositAmt('') }}
+                      style={{ fontSize: 'var(--text-xs)', padding: '0.15rem 0.4rem' }}>
+                      Add funds
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+
+            {/* Create new bucket */}
+            {debts.filter(d => d.balance > 0).length === 0 && (
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', alignItems: 'flex-end' }}>
+                <div style={{ flex: 1 }}>
+                  <label className="text-faint" style={{ fontSize: 'var(--text-xs)', display: 'block', marginBottom: 2 }}>Bucket Name</label>
+                  <input className="input" value={newBucketName} onChange={e => setNewBucketName(e.target.value)}
+                    placeholder="e.g. New Car" style={{ width: '100%' }} />
+                </div>
+                <div style={{ width: 100 }}>
+                  <label className="text-faint" style={{ fontSize: 'var(--text-xs)', display: 'block', marginBottom: 2 }}>Target $</label>
+                  <input className="input" type="number" value={newBucketTarget} onChange={e => setNewBucketTarget(e.target.value)}
+                    placeholder="0" style={{ width: '100%' }} />
+                </div>
+                <button className="btn btn-primary" onClick={createBucket} disabled={!newBucketName.trim()}
+                  style={{ fontSize: 'var(--text-sm)', height: 36 }}>Create</button>
+              </div>
             )}
           </div>
         </>
@@ -1430,6 +1607,36 @@ export default function Budget() {
             <h2 style={{ fontSize: 'var(--text-xl)', minWidth: 200, textAlign: 'center' }}>{monthLabel}</h2>
             <button className="btn btn-ghost" onClick={nextMonth} style={{ fontSize: 'var(--text-xl)', padding: '0.25rem 0.75rem' }}>&gt;</button>
           </div>
+
+          {/* Spending Allocation Bar */}
+          {monthlyIncome > 0 && spendPct > 0 && (() => {
+            const spendAllocation = Math.round(monthlyIncome * spendPct / 100)
+            const spendBarPct = spendAllocation > 0 ? Math.min(100, (totalSpent / spendAllocation) * 100) : 0
+            const isOver = totalSpent > spendAllocation
+            return (
+              <div className="card" style={{ marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <span className="label-caps">Spending Budget</span>
+                  <span className="mono" style={{ fontSize: 'var(--text-sm)', color: isOver ? 'var(--color-negative)' : 'var(--color-text-primary)' }}>
+                    {formatCurrency(totalSpent)} / {formatCurrency(spendAllocation)}
+                  </span>
+                </div>
+                <div className="progress-bar" style={{ height: 12, borderRadius: 6 }}>
+                  <div className="progress-bar-fill" style={{
+                    width: `${spendBarPct}%`,
+                    background: isOver ? 'var(--color-negative)' : spendBarPct > 85 ? 'var(--color-gold)' : 'var(--color-positive)',
+                    borderRadius: 6, transition: 'width 0.5s ease',
+                  }} />
+                </div>
+                <p className="text-faint" style={{ fontSize: 'var(--text-xs)', marginTop: '0.35rem' }}>
+                  {isOver
+                    ? `Over budget by ${formatCurrency(totalSpent - spendAllocation)}`
+                    : `${formatCurrency(spendAllocation - totalSpent)} remaining this month`
+                  }
+                </p>
+              </div>
+            )
+          })()}
 
           {/* Monthly Budget Goals */}
           <div className="card" style={{ marginBottom: '1.5rem' }}>

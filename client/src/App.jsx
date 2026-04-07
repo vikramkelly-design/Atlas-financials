@@ -6,9 +6,6 @@ import Budget from './pages/Budget'
 import Portfolio from './pages/Portfolio'
 import Markets from './pages/Markets'
 import Analytics from './pages/Analytics'
-import Atlas from './pages/Atlas'
-import MyScore from './pages/MyScore'
-// Badges merged into MyScore
 import Settings from './pages/Settings'
 import Landing from './pages/Landing'
 import ShareCard from './pages/ShareCard'
@@ -90,12 +87,8 @@ export default function App() {
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/markets" element={<Markets />} />
             <Route path="/markets/:ticker" element={<StockDetail />} />
-            <Route path="/atlas" element={<Atlas />} />
-            <Route path="/badges" element={<Navigate to="/score" replace />} />
-            <Route path="/score" element={<MyScore />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
-          <Route path="/challenges" element={<Navigate to="/score" replace />} />
           <Route path="/login" element={<Navigate to="/" replace />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

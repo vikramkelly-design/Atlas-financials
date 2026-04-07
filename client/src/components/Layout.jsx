@@ -10,10 +10,7 @@ const PAGE_TITLES = {
   '/portfolio': 'Portfolio',
   '/analytics': 'Analytics',
   '/markets': 'Markets',
-  '/atlas': 'Ask Atlas',
   '/plan': 'My Plan',
-  '/badges': 'Progress',
-  '/score': 'My Score',
   '/settings': 'Settings',
 }
 
@@ -24,8 +21,6 @@ const PAGE_SUBTITLES = {
   '/budget': 'Your monthly fuel',
   '/analytics': 'How you\'re doing',
   '/plan': 'Your road to the number',
-  '/atlas': 'Ask anything',
-  '/score': 'Your track record',
   '/settings': 'Preferences',
 }
 

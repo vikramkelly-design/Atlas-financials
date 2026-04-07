@@ -343,6 +343,21 @@ try {
   `);
 } catch {}
 
+// Savings buckets table
+try {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS savings_buckets (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      target_amount REAL DEFAULT 0,
+      current_amount REAL DEFAULT 0,
+      sort_order INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now'))
+    )
+  `);
+} catch {}
+
 // Portfolio source column & debt original_amount
 const migrate6 = [
   "ALTER TABLE portfolios ADD COLUMN source TEXT DEFAULT 'savings'",
@@ -355,6 +370,19 @@ for (const sql of migrate6) {
 // Backfill original_amount for existing debts
 try {
   db.exec('UPDATE debts SET original_amount = balance WHERE original_amount = 0');
+} catch {}
+
+// Screener tickers per user
+try {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS screener_tickers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      ticker TEXT NOT NULL,
+      added_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(user_id, ticker)
+    )
+  `);
 } catch {}
 
 // Performance indexes on user_id and foreign key columns

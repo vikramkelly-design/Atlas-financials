@@ -13,10 +13,11 @@ const PORT = process.env.PORT || 3001;
 // Security headers
 app.use(helmet());
 
-// Rate limiting
-const globalLimiter = rateLimit({ windowMs: 60000, max: 100, standardHeaders: true, legacyHeaders: false });
-const authLimiter = rateLimit({ windowMs: 60000, max: 5, message: { success: false, error: 'Too many attempts. Try again in a minute.' } });
-const aiLimiter = rateLimit({ windowMs: 60000, max: 10, message: { success: false, error: 'Too many AI requests. Try again in a minute.' } });
+// Rate limiting — disabled in development to prevent 429 errors during local work
+const isDev = process.env.NODE_ENV !== 'production';
+const globalLimiter = isDev ? (req, res, next) => next() : rateLimit({ windowMs: 60000, max: 300, standardHeaders: true, legacyHeaders: false });
+const authLimiter = isDev ? (req, res, next) => next() : rateLimit({ windowMs: 60000, max: 10, message: { success: false, error: 'Too many attempts. Try again in a minute.' } });
+const aiLimiter = isDev ? (req, res, next) => next() : rateLimit({ windowMs: 60000, max: 20, message: { success: false, error: 'Too many AI requests. Try again in a minute.' } });
 app.use(globalLimiter);
 
 // Middleware

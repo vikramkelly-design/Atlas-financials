@@ -47,6 +47,7 @@ router.get('/', (req, res) => {
         savings_amt: savingsAmt,
         invest_amt: investAmt,
         dry_powder: dryPowder,
+    free_cash: dryPowder,
         ef_balance: user.savings_balance,
         ef_target: efTarget,
         ef_pct: efPct,
@@ -189,6 +190,133 @@ router.post('/income-log', (req, res) => {
     db.prepare('UPDATE users SET monthly_income = ? WHERE id = ?').run(amt, req.userId);
 
     res.json({ success: true, data: { month, income: amt } });
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
+// POST /api/savings/pay-debt — transfer savings to pay off a debt
+router.post('/pay-debt', (req, res) => {
+  try {
+    const { debt_id, amount } = req.body;
+    const amt = parseFloat(amount);
+    if (!debt_id) return res.status(400).json({ success: false, error: 'debt_id required' });
+    if (!amt || amt <= 0) return res.status(400).json({ success: false, error: 'Amount must be positive' });
+
+    const user = db.prepare('SELECT savings_balance FROM users WHERE id = ?').get(req.userId);
+    if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+    if (user.savings_balance < amt) {
+      return res.status(400).json({ success: false, error: 'Insufficient savings balance' });
+    }
+
+    const debt = db.prepare('SELECT * FROM debts WHERE id = ? AND user_id = ?').get(debt_id, req.userId);
+    if (!debt) return res.status(404).json({ success: false, error: 'Debt not found' });
+
+    const payAmount = Math.min(amt, debt.balance);
+
+    db.prepare('UPDATE users SET savings_balance = savings_balance - ? WHERE id = ?').run(payAmount, req.userId);
+    db.prepare('UPDATE debts SET balance = MAX(0, balance - ?) WHERE id = ?').run(payAmount, debt_id);
+    db.prepare('INSERT INTO savings_transactions (user_id, amount, type, note) VALUES (?, ?, ?, ?)')
+      .run(req.userId, -payAmount, 'debt_payment', `Paid ${payAmount.toFixed(2)} toward ${debt.name}`);
+
+    const updatedDebt = db.prepare('SELECT * FROM debts WHERE id = ?').get(debt_id);
+    const updatedUser = db.prepare('SELECT savings_balance FROM users WHERE id = ?').get(req.userId);
+
+    res.json({
+      success: true,
+      data: {
+        new_savings_balance: updatedUser.savings_balance,
+        debt: updatedDebt,
+      }
+    });
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
+// ── Savings Buckets ──────────────────────────────────────────
+
+// GET /api/savings/buckets — list all savings buckets
+router.get('/buckets', (req, res) => {
+  try {
+    const buckets = db.prepare('SELECT * FROM savings_buckets WHERE user_id = ? ORDER BY sort_order, id').all(req.userId);
+    res.json({ success: true, data: buckets });
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
+// POST /api/savings/buckets — create a new bucket
+router.post('/buckets', (req, res) => {
+  try {
+    const { name, target_amount } = req.body;
+    if (!name) return res.status(400).json({ success: false, error: 'Name required' });
+
+    // Check if user has debts — must pay debts first
+    const debts = db.prepare('SELECT SUM(balance) as total FROM debts WHERE user_id = ? AND balance > 0').get(req.userId);
+    if (debts?.total > 0) {
+      return res.status(400).json({ success: false, error: 'Pay off all debts before creating savings buckets' });
+    }
+
+    const target = parseFloat(target_amount) || 0;
+    const result = db.prepare('INSERT INTO savings_buckets (user_id, name, target_amount) VALUES (?, ?, ?)')
+      .run(req.userId, name.trim(), target);
+    const bucket = db.prepare('SELECT * FROM savings_buckets WHERE id = ?').get(result.lastInsertRowid);
+    res.status(201).json({ success: true, data: bucket });
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
+// POST /api/savings/buckets/:id/deposit — add money to a bucket
+router.post('/buckets/:id/deposit', (req, res) => {
+  try {
+    const bucket = db.prepare('SELECT * FROM savings_buckets WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
+    if (!bucket) return res.status(404).json({ success: false, error: 'Bucket not found' });
+
+    const amt = parseFloat(req.body.amount);
+    if (!amt || amt <= 0) return res.status(400).json({ success: false, error: 'Amount must be positive' });
+
+    // Check debts — must be debt-free for non-emergency buckets
+    if (bucket.name !== 'Emergency Fund') {
+      const debts = db.prepare('SELECT SUM(balance) as total FROM debts WHERE user_id = ? AND balance > 0').get(req.userId);
+      if (debts?.total > 0) {
+        return res.status(400).json({ success: false, error: 'Pay off all debts before funding this bucket' });
+      }
+    }
+
+    // Check savings balance
+    const user = db.prepare('SELECT savings_balance FROM users WHERE id = ?').get(req.userId);
+    if (user.savings_balance < amt) {
+      return res.status(400).json({ success: false, error: 'Insufficient savings balance' });
+    }
+
+    db.prepare('UPDATE savings_buckets SET current_amount = current_amount + ? WHERE id = ?').run(amt, bucket.id);
+    db.prepare('UPDATE users SET savings_balance = savings_balance - ? WHERE id = ?').run(amt, req.userId);
+    db.prepare('INSERT INTO savings_transactions (user_id, amount, type, note) VALUES (?, ?, ?, ?)')
+      .run(req.userId, -amt, 'bucket_deposit', `Moved to bucket: ${bucket.name}`);
+
+    const updated = db.prepare('SELECT * FROM savings_buckets WHERE id = ?').get(bucket.id);
+    res.json({ success: true, data: updated });
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
+// DELETE /api/savings/buckets/:id — delete a bucket (returns money to savings)
+router.delete('/buckets/:id', (req, res) => {
+  try {
+    const bucket = db.prepare('SELECT * FROM savings_buckets WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
+    if (!bucket) return res.status(404).json({ success: false, error: 'Bucket not found' });
+
+    if (bucket.current_amount > 0) {
+      db.prepare('UPDATE users SET savings_balance = savings_balance + ? WHERE id = ?').run(bucket.current_amount, req.userId);
+      db.prepare('INSERT INTO savings_transactions (user_id, amount, type, note) VALUES (?, ?, ?, ?)')
+        .run(req.userId, bucket.current_amount, 'bucket_return', `Returned from deleted bucket: ${bucket.name}`);
+    }
+
+    db.prepare('DELETE FROM savings_buckets WHERE id = ?').run(bucket.id);
+    res.json({ success: true });
   } catch (err) {
     sendError(res, err);
   }
