@@ -10,14 +10,16 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// Handle 401 — redirect to login
+// Handle 401 — redirect to login (debounced to prevent multiple redirects)
+let redirecting = false
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401) {
+    if (err.response?.status === 401 && !redirecting) {
+      redirecting = true
       localStorage.removeItem('atlas_token')
       localStorage.removeItem('atlas_user')
-      window.location.href = '/login'
+      window.location.href = '/'
     }
     return Promise.reject(err)
   }

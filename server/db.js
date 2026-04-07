@@ -301,6 +301,90 @@ for (const sql of migrate4) {
   try { db.exec(sql); } catch {}
 }
 
+// Budget savings & income columns
+const migrate5 = [
+  'ALTER TABLE users ADD COLUMN savings_balance REAL DEFAULT 0',
+  'ALTER TABLE users ADD COLUMN savings_goal_name TEXT DEFAULT \'Emergency Fund\'',
+  'ALTER TABLE users ADD COLUMN savings_goal_target REAL DEFAULT 0',
+  'ALTER TABLE users ADD COLUMN savings_pct INTEGER DEFAULT 20',
+  'ALTER TABLE users ADD COLUMN spend_pct INTEGER DEFAULT 60',
+  'ALTER TABLE users ADD COLUMN invest_pct INTEGER DEFAULT 20',
+  'ALTER TABLE users ADD COLUMN monthly_income REAL DEFAULT 0',
+  'ALTER TABLE users ADD COLUMN emergency_fund_complete INTEGER DEFAULT 0',
+];
+for (const sql of migrate5) {
+  try { db.exec(sql); } catch {}
+}
+
+// Monthly income log table
+try {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS monthly_income_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      month TEXT NOT NULL,
+      income REAL NOT NULL,
+      created_at TEXT DEFAULT (datetime('now'))
+    )
+  `);
+} catch {}
+
+// Savings transactions table
+try {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS savings_transactions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      amount REAL NOT NULL,
+      type TEXT NOT NULL,
+      note TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    )
+  `);
+} catch {}
+
+// Savings buckets table
+try {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS savings_buckets (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      target_amount REAL DEFAULT 0,
+      current_amount REAL DEFAULT 0,
+      sort_order INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now'))
+    )
+  `);
+} catch {}
+
+// Portfolio source column & debt original_amount
+const migrate6 = [
+  "ALTER TABLE portfolios ADD COLUMN source TEXT DEFAULT 'savings'",
+  "ALTER TABLE portfolio_positions ADD COLUMN source TEXT DEFAULT 'import'",
+  'ALTER TABLE debts ADD COLUMN original_amount REAL DEFAULT 0',
+];
+for (const sql of migrate6) {
+  try { db.exec(sql); } catch {}
+}
+// Backfill original_amount for existing debts
+try {
+  db.exec('UPDATE debts SET original_amount = balance WHERE original_amount = 0');
+} catch {}
+
+// Screener tickers per user
+try {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS screener_tickers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      ticker TEXT NOT NULL,
+      added_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(user_id, ticker)
+    )
+  `);
+} catch {}
+
 // Performance indexes on user_id and foreign key columns
 const indexes = [
   'CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON transactions(user_id)',

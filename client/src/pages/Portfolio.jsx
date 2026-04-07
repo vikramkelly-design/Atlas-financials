@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { api } from '../hooks/useApi'
 import { formatCurrency, numColor } from '../components/NumberDisplay'
 import LoadingSpinner from '../components/LoadingSpinner'
@@ -20,10 +20,19 @@ export default function Portfolio() {
   const [analysis, setAnalysis] = useState(null)
   const [analysisLoading, setAnalysisLoading] = useState(false)
 
-  // Add stock form
-  const [addForm, setAddForm] = useState({ ticker: '', shares: '', avgCost: '' })
-  const [addError, setAddError] = useState('')
-  const [addLoading, setAddLoading] = useState(false)
+  // Search + stock detail popup
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState([])
+  const [searchLoading, setSearchLoading] = useState(false)
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false)
+  const [selectedStock, setSelectedStock] = useState(null) // { symbol, name, exchange, quote, iv }
+  const [stockDetailLoading, setStockDetailLoading] = useState(false)
+  const [orderForm, setOrderForm] = useState({ side: 'buy', shares: '', avgCost: '', source: 'import', targetPrice: '' })
+  const [orderError, setOrderError] = useState('')
+  const [orderLoading, setOrderLoading] = useState(false)
+  const [freeCash, setDryPowder] = useState(0)
+  const searchRef = useRef(null)
+  const searchTimeout = useRef(null)
 
   // Create portfolio modal
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -71,7 +80,13 @@ export default function Portfolio() {
     }
   }
 
-  useEffect(() => { fetchPortfolios() }, [])
+  const fetchFreeCash = async () => {
+    try {
+      const res = await api.get('/api/savings')
+      setDryPowder(res.data.data?.free_cash || 0)
+    } catch {}
+  }
+  useEffect(() => { fetchPortfolios(); fetchFreeCash() }, [])
   useEffect(() => { fetchPositions(); setAnalysis(null) }, [activeId])
 
   const tickers = useMemo(() => [...new Set(positions.map(p => p.ticker))], [positions])
@@ -137,28 +152,101 @@ export default function Portfolio() {
     })
   }
 
-  const addStock = async (e) => {
-    e.preventDefault()
-    setAddError('')
-    const ticker = addForm.ticker.trim().toUpperCase()
-    const shares = parseFloat(addForm.shares)
-    if (!ticker) return setAddError('Enter a ticker symbol')
-    if (!shares || shares <= 0) return setAddError('Enter valid number of shares')
-
-    setAddLoading(true)
+  // Search stocks by name or ticker
+  const searchStocks = async (query) => {
+    if (!query || query.length < 1) { setSearchResults([]); return }
+    setSearchLoading(true)
     try {
-      await api.post(`/api/portfolio/${activeId}/positions`, {
-        ticker,
-        shares,
-        avgCost: addForm.avgCost ? parseFloat(addForm.avgCost) : undefined,
-      })
-      setAddForm({ ticker: '', shares: '', avgCost: '' })
-      fetchPositions()
-      toast('Position added', 'success')
-    } catch (err) {
-      toast(err.response?.data?.error || err.message || 'Something went wrong', 'error')
+      const res = await api.get(`/api/markets/search?q=${encodeURIComponent(query)}`)
+      setSearchResults(res.data.data || [])
+      setShowSearchDropdown(true)
+    } catch { setSearchResults([]) }
+    setSearchLoading(false)
+  }
+
+  const handleSearchInput = (val) => {
+    setSearchQuery(val)
+    if (searchTimeout.current) clearTimeout(searchTimeout.current)
+    searchTimeout.current = setTimeout(() => searchStocks(val), 300)
+  }
+
+  // Open stock detail popup
+  const openStockDetail = async (stock) => {
+    setShowSearchDropdown(false)
+    setSearchQuery('')
+    setStockDetailLoading(true)
+    setSelectedStock({ symbol: stock.symbol, name: stock.name, exchange: stock.exchange })
+    setOrderForm({ side: 'buy', shares: '', avgCost: '', source: 'import', targetPrice: '' })
+    setOrderError('')
+    try {
+      const [priceRes, ivRes] = await Promise.all([
+        api.get(`/api/markets/prices?tickers=${stock.symbol}`),
+        api.get(`/api/intrinsic/${stock.symbol}`).catch(() => ({ data: {} })),
+      ])
+      const quote = priceRes.data.data?.[stock.symbol] || {}
+      const iv = ivRes.data || {}
+      setSelectedStock(prev => ({ ...prev, quote, iv }))
+    } catch {}
+    setStockDetailLoading(false)
+  }
+
+  // Close search dropdown on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (searchRef.current && !searchRef.current.contains(e.target)) setShowSearchDropdown(false)
     }
-    setAddLoading(false)
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  // Submit order from stock detail popup
+  const submitOrder = async () => {
+    setOrderError('')
+    const shares = parseFloat(orderForm.shares)
+    if (!shares || shares <= 0) return setOrderError('Enter valid number of shares')
+    if (!selectedStock?.symbol) return
+
+    setOrderLoading(true)
+    try {
+      if (orderForm.side === 'buy') {
+        const price = orderForm.avgCost ? parseFloat(orderForm.avgCost) : (selectedStock.quote?.price || 0)
+        const totalCost = price * shares
+        if (orderForm.source === 'savings' && totalCost > freeCash) {
+          setOrderLoading(false)
+          return setOrderError(`Not enough free cash. You have ${formatCurrency(freeCash)} but this order costs ${formatCurrency(totalCost)}`)
+        }
+        await api.post(`/api/portfolio/${activeId}/positions`, {
+          ticker: selectedStock.symbol,
+          shares,
+          avgCost: orderForm.avgCost ? parseFloat(orderForm.avgCost) : undefined,
+          source: orderForm.source || 'import',
+        })
+        toast(`Bought ${shares} shares of ${selectedStock.symbol}`, 'success')
+      } else if (orderForm.side === 'sell') {
+        const pos = positions.find(p => p.ticker === selectedStock.symbol)
+        if (!pos) return setOrderError(`You don't hold ${selectedStock.symbol}`)
+        if (shares > pos.shares) return setOrderError(`You only hold ${pos.shares} shares`)
+        await api.post(`/api/portfolio/${activeId}/orders`, {
+          ticker: selectedStock.symbol, side: 'sell', shares,
+          orderType: 'market',
+        })
+        toast(`Sold ${shares} shares of ${selectedStock.symbol}`, 'success')
+      } else if (orderForm.side === 'stop_loss') {
+        const tp = parseFloat(orderForm.targetPrice)
+        if (!tp || tp <= 0) return setOrderError('Enter a stop loss price')
+        await api.post(`/api/portfolio/${activeId}/orders`, {
+          ticker: selectedStock.symbol, side: 'sell', shares,
+          orderType: 'stop_loss', targetPrice: tp,
+        })
+        toast(`Stop loss set for ${selectedStock.symbol} at ${formatCurrency(tp)}`, 'success')
+      }
+      setSelectedStock(null)
+      fetchPositions()
+      if (orderForm.source === 'savings') fetchFreeCash()
+    } catch (err) {
+      setOrderError(err.response?.data?.error || err.message || 'Something went wrong')
+    }
+    setOrderLoading(false)
   }
 
   const removePosition = (posId) => {
@@ -261,28 +349,194 @@ export default function Portfolio() {
 
       {activePortfolio && (
         <>
-          {/* Add Stock Form */}
-          <div className="card" style={{ marginBottom: '1rem', padding: '1rem' }}>
-            <h3 style={{ fontSize: 'var(--text-base)', marginBottom: '0.75rem' }}>Add Stock</h3>
-            <form onSubmit={addStock} style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-              <div>
-                <label style={{ fontSize: 'var(--text-sm)', textTransform: 'uppercase', color: 'var(--color-text-secondary)', display: 'block', marginBottom: 2 }}>Ticker</label>
-                <input className="input mono" value={addForm.ticker} onChange={e => setAddForm(p => ({ ...p, ticker: e.target.value.toUpperCase() }))} placeholder="AAPL" style={{ width: 100 }} />
+          {/* Search Bar */}
+          <div ref={searchRef} style={{ position: 'relative', marginBottom: '1rem' }}>
+            <div className="card" style={{ padding: '0.75rem 1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+                <input
+                  className="input"
+                  value={searchQuery}
+                  onChange={e => handleSearchInput(e.target.value)}
+                  onFocus={() => { if (searchResults.length > 0) setShowSearchDropdown(true) }}
+                  placeholder="Search by company name or ticker..."
+                  style={{ border: 'none', background: 'transparent', flex: 1, padding: '0.25rem 0', fontSize: 'var(--text-base)' }}
+                />
+                {searchLoading && <span className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>...</span>}
               </div>
-              <div>
-                <label style={{ fontSize: 'var(--text-sm)', textTransform: 'uppercase', color: 'var(--color-text-secondary)', display: 'block', marginBottom: 2 }}>Shares</label>
-                <input className="input" type="number" step="any" min="0" value={addForm.shares} onChange={e => setAddForm(p => ({ ...p, shares: e.target.value }))} placeholder="10" style={{ width: 90 }} />
+            </div>
+            {showSearchDropdown && searchResults.length > 0 && (
+              <div style={{
+                position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100,
+                background: 'var(--color-surface)', border: '1px solid var(--color-border)',
+                borderRadius: '0 0 6px 6px', maxHeight: 280, overflowY: 'auto',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+              }}>
+                {searchResults.map(r => (
+                  <div key={r.symbol} onClick={() => openStockDetail(r)} style={{
+                    padding: '0.6rem 1rem', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    borderBottom: '1px solid var(--color-border)', transition: 'background 0.1s',
+                  }} onMouseEnter={e => e.currentTarget.style.background = 'var(--color-surface-2)'}
+                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                    <div>
+                      <span className="mono" style={{ fontWeight: 600, marginRight: '0.5rem' }}>{r.symbol}</span>
+                      <span className="text-muted" style={{ fontSize: 'var(--text-sm)' }}>{r.name}</span>
+                    </div>
+                    <span className="text-faint" style={{ fontSize: 'var(--text-xs)' }}>{r.exchange}</span>
+                  </div>
+                ))}
               </div>
-              <div>
-                <label style={{ fontSize: 'var(--text-sm)', textTransform: 'uppercase', color: 'var(--color-text-secondary)', display: 'block', marginBottom: 2 }}>Avg Cost <span className="text-faint">(optional)</span></label>
-                <input className="input" type="number" step="any" min="0" value={addForm.avgCost} onChange={e => setAddForm(p => ({ ...p, avgCost: e.target.value }))} placeholder="Auto" style={{ width: 100 }} />
-              </div>
-              <button type="submit" className="btn btn-primary" disabled={addLoading} style={{ fontSize: 'var(--text-sm)' }}>
-                {addLoading ? 'Adding...' : 'Add'}
-              </button>
-              {addError && <span style={{ color: 'var(--color-negative)', fontSize: 'var(--text-sm)' }}>{addError}</span>}
-            </form>
+            )}
           </div>
+
+          {/* Stock Detail Popup */}
+          {selectedStock && (
+            <div onClick={() => setSelectedStock(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
+              <div onClick={e => e.stopPropagation()} className="card" style={{ maxWidth: 520, width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+                {stockDetailLoading ? (
+                  <div style={{ padding: '2rem', textAlign: 'center' }}><LoadingSpinner height={60} /></div>
+                ) : (
+                  <>
+                    {/* Header */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                      <div>
+                        <h2 style={{ fontSize: 'var(--text-2xl)', marginBottom: '0.15rem' }}>{selectedStock.symbol}</h2>
+                        <p className="text-muted" style={{ fontSize: 'var(--text-sm)' }}>{selectedStock.name} · {selectedStock.exchange}</p>
+                      </div>
+                      <button onClick={() => setSelectedStock(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', fontSize: 'var(--text-xl)' }}>×</button>
+                    </div>
+
+                    {/* Price + Verdict */}
+                    <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                      <div>
+                        <p className="label-caps">Price</p>
+                        <span className="mono" style={{ fontSize: 'var(--text-2xl)', fontWeight: 700 }}>
+                          {selectedStock.quote?.price ? formatCurrency(selectedStock.quote.price) : '--'}
+                        </span>
+                      </div>
+                      {selectedStock.iv?.summary?.verdict && (
+                        <div>
+                          <p className="label-caps">Verdict</p>
+                          <span className={`badge ${selectedStock.iv.summary.verdict === 'UNDERVALUED' ? 'badge-success' : selectedStock.iv.summary.verdict === 'FAIRLY VALUED' ? 'badge-gold' : 'badge-danger'}`} style={{ fontSize: 'var(--text-sm)' }}>
+                            {selectedStock.iv.summary.verdict}
+                          </span>
+                        </div>
+                      )}
+                      {selectedStock.iv?.summary?.mosPrice && (
+                        <div>
+                          <p className="label-caps">Buy Below</p>
+                          <span className="mono" style={{ fontSize: 'var(--text-xl)', color: 'var(--color-gold)', fontWeight: 600 }}>
+                            {formatCurrency(selectedStock.iv.summary.mosPrice)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Key Stats */}
+                    {selectedStock.iv?.rawInputs && (() => {
+                      const ri = selectedStock.iv.rawInputs
+                      const fmtBig = (v) => !v ? '--' : v >= 1e12 ? `$${(v / 1e12).toFixed(1)}T` : v >= 1e9 ? `$${(v / 1e9).toFixed(1)}B` : `$${(v / 1e6).toFixed(0)}M`
+                      return (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', marginBottom: '1rem' }}>
+                          {[
+                            { label: 'P/E Ratio', val: ri.peRatio ? ri.peRatio.toFixed(1) : '--' },
+                            { label: 'EPS', val: ri.eps ? `$${ri.eps.toFixed(2)}` : '--' },
+                            { label: 'Book Value', val: ri.bookValuePerShare ? `$${ri.bookValuePerShare.toFixed(2)}` : '--' },
+                            { label: 'Free Cash Flow', val: fmtBig(ri.freeCashFlow) },
+                            { label: 'Net Income', val: fmtBig(ri.netIncome) },
+                            { label: 'Growth Rate', val: ri.growthRateRaw ? `${(ri.growthRateRaw * 100).toFixed(1)}%` : '--' },
+                          ].map(s => (
+                            <div key={s.label} style={{ padding: '0.5rem', background: 'var(--color-surface-2)', borderRadius: 4, textAlign: 'center' }}>
+                              <p className="text-faint" style={{ fontSize: 'var(--text-xs)', textTransform: 'uppercase', marginBottom: '0.15rem' }}>{s.label}</p>
+                              <span className="mono" style={{ fontSize: 'var(--text-sm)', fontWeight: 600 }}>{s.val}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )
+                    })()}
+
+                    {selectedStock.iv?.summary?.upsidePct != null && (
+                      <div style={{ padding: '0.6rem', borderRadius: 4, marginBottom: '1rem',
+                        background: selectedStock.iv.summary.upsidePct > 0 ? 'rgba(46,125,94,0.08)' : 'rgba(180,60,60,0.08)',
+                        border: `1px solid ${selectedStock.iv.summary.upsidePct > 0 ? 'var(--color-positive)' : 'var(--color-negative)'}`,
+                      }}>
+                        <span style={{ fontSize: 'var(--text-sm)', color: selectedStock.iv.summary.upsidePct > 0 ? 'var(--color-positive)' : 'var(--color-negative)' }}>
+                          {selectedStock.iv.summary.upsidePct > 0 ? `${selectedStock.iv.summary.upsidePct.toFixed(1)}% upside to intrinsic value` : `${Math.abs(selectedStock.iv.summary.upsidePct).toFixed(1)}% above intrinsic value`}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Order Form */}
+                    <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '1rem' }}>
+                      <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '0.75rem' }}>
+                        {['buy', 'sell', 'stop_loss'].map(side => (
+                          <button key={side} onClick={() => setOrderForm(f => ({ ...f, side }))}
+                            className={`btn ${orderForm.side === side ? 'btn-primary' : 'btn-ghost'}`}
+                            style={{ flex: 1, fontSize: 'var(--text-sm)' }}>
+                            {side === 'stop_loss' ? 'Stop Loss' : side.charAt(0).toUpperCase() + side.slice(1)}
+                          </button>
+                        ))}
+                      </div>
+
+                      {orderForm.side === 'buy' && (
+                        <div style={{ marginBottom: '0.75rem' }}>
+                          <label className="text-faint" style={{ fontSize: 'var(--text-sm)', display: 'block', marginBottom: '0.25rem', textTransform: 'uppercase' }}>Source</label>
+                          <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
+                            {[
+                              { key: 'import', label: 'Already Own' },
+                              { key: 'savings', label: `Free Cash (${formatCurrency(freeCash)})` },
+                              { key: 'stipend', label: 'Stipend/RSU' },
+                              { key: 'gift', label: 'Gift' },
+                            ].map(s => (
+                              <button key={s.key} onClick={() => setOrderForm(f => ({ ...f, source: s.key }))}
+                                className={`btn ${orderForm.source === s.key ? 'btn-primary' : 'btn-ghost'}`}
+                                style={{ fontSize: 'var(--text-xs)', padding: '0.25rem 0.5rem' }}>
+                                {s.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                        <div>
+                          <label className="text-faint" style={{ fontSize: 'var(--text-sm)', display: 'block', marginBottom: 2, textTransform: 'uppercase' }}>Shares</label>
+                          <input className="input" type="number" step="any" min="0" value={orderForm.shares}
+                            onChange={e => setOrderForm(f => ({ ...f, shares: e.target.value }))} placeholder="10" style={{ width: 100 }} />
+                        </div>
+                        {orderForm.side === 'buy' && (
+                          <div>
+                            <label className="text-faint" style={{ fontSize: 'var(--text-sm)', display: 'block', marginBottom: 2, textTransform: 'uppercase' }}>Avg Cost <span className="text-faint">(opt)</span></label>
+                            <input className="input" type="number" step="any" min="0" value={orderForm.avgCost}
+                              onChange={e => setOrderForm(f => ({ ...f, avgCost: e.target.value }))} placeholder="Auto" style={{ width: 100 }} />
+                          </div>
+                        )}
+                        {orderForm.side === 'stop_loss' && (
+                          <div>
+                            <label className="text-faint" style={{ fontSize: 'var(--text-sm)', display: 'block', marginBottom: 2, textTransform: 'uppercase' }}>Trigger Price</label>
+                            <input className="input" type="number" step="any" min="0" value={orderForm.targetPrice}
+                              onChange={e => setOrderForm(f => ({ ...f, targetPrice: e.target.value }))} placeholder="$0" style={{ width: 100 }} />
+                          </div>
+                        )}
+                        <button className="btn btn-primary" onClick={submitOrder} disabled={orderLoading} style={{ fontSize: 'var(--text-sm)' }}>
+                          {orderLoading ? 'Processing...' : orderForm.side === 'buy' ? 'Buy' : orderForm.side === 'sell' ? 'Sell' : 'Set Stop Loss'}
+                        </button>
+                      </div>
+                      {orderError && <p style={{ color: 'var(--color-negative)', fontSize: 'var(--text-sm)', marginTop: '0.5rem' }}>{orderError}</p>}
+
+                      {orderForm.side === 'buy' && selectedStock.quote?.price && orderForm.shares && (
+                        <p className="text-faint" style={{ fontSize: 'var(--text-sm)', marginTop: '0.5rem' }}>
+                          Estimated total: {formatCurrency(selectedStock.quote.price * parseFloat(orderForm.shares || 0))}
+                        </p>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Summary Cards */}
           {enriched.length > 0 && (
@@ -319,7 +573,17 @@ export default function Portfolio() {
                       const weight = summary.totalValue > 0 && p.currentValue != null ? (p.currentValue / summary.totalValue) * 100 : null
                       return (
                         <tr key={p.id}>
-                          <td><strong>{p.ticker}</strong>{p.name && <><br /><span className="text-muted" style={{ fontSize: 'var(--text-sm)' }}>{p.name}</span></>}</td>
+                          <td>
+                            <strong>{p.ticker}</strong>
+                            {p.name && <><br /><span className="text-muted" style={{ fontSize: 'var(--text-sm)' }}>{p.name}</span></>}
+                            {p.source && p.source !== 'savings' && p.source !== 'import' && (
+                              <><br /><span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-gold-dim, var(--color-gold))' }}>
+                                {p.source === 'stipend' ? 'Work stipend' : 'Gift'}
+                              </span></>
+                            )}
+                            {p.source === 'savings' && <><br /><span className="text-faint" style={{ fontSize: 'var(--text-xs)' }}>From savings</span></>}
+                            {p.source === 'import' && <><br /><span className="text-faint" style={{ fontSize: 'var(--text-xs)' }}>Imported</span></>}
+                          </td>
                           <td className="mono">{p.shares}</td>
                           <td className="mono">{formatCurrency(p.avg_cost)}</td>
                           <td className="mono" style={{ fontWeight: 600 }}>{p.currentPrice ? formatCurrency(p.currentPrice) : '--'}</td>

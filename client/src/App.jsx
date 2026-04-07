@@ -6,14 +6,10 @@ import Budget from './pages/Budget'
 import Portfolio from './pages/Portfolio'
 import Markets from './pages/Markets'
 import Analytics from './pages/Analytics'
-import Atlas from './pages/Atlas'
-import MyScore from './pages/MyScore'
-// Badges merged into MyScore
 import Settings from './pages/Settings'
 import Landing from './pages/Landing'
 import ShareCard from './pages/ShareCard'
 import ForgotPassword from './pages/ForgotPassword'
-import Onboarding from './pages/Onboarding'
 import Plan from './pages/Plan'
 import StockDetail from './pages/StockDetail'
 import NotFound from './pages/NotFound'
@@ -39,24 +35,16 @@ export default function App() {
     }
     return null
   })
-  const [onboarded, setOnboarded] = useState(null) // null = loading, true/false
   const [showSplash, setShowSplash] = useState(false)
   const [earnedBadge, setEarnedBadge] = useState(null)
 
   useEffect(() => {
-    if (!user) { setOnboarded(null); return }
-    api.get('/api/insights/onboarding-status')
-      .then(res => {
-        const completed = res.data.data.completed
-        setOnboarded(completed)
-        if (completed) setShowSplash(true)
-      })
-      .catch(() => setOnboarded(true)) // if check fails, skip onboarding
+    if (!user) return
+    setShowSplash(true)
   }, [user])
 
   const handleSplashComplete = () => {
     setShowSplash(false)
-    // Check for new badges after splash
     api.post('/api/badges/check')
       .then(res => {
         const newBadges = res.data.data?.newBadges
@@ -73,24 +61,14 @@ export default function App() {
           <Routes>
             <Route path="/share/score/:token" element={<ShareCard />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="*" element={<Landing onAuth={(u) => { setUser(u); setOnboarded(null) }} />} />
+            <Route path="*" element={<Landing onAuth={(u) => { setUser(u) }} />} />
           </Routes>
         </BrowserRouter>
       </ToastProvider>
     )
   }
 
-  // Still checking onboarding status
-  if (onboarded === null) {
-    return <SplashScreen onComplete={() => {}} />
-  }
-
-  // Show onboarding quiz for new users
-  if (!onboarded) {
-    return <Onboarding onComplete={() => { setOnboarded(true); setShowSplash(true) }} />
-  }
-
-  // Show splash after login or onboarding completion
+  // Show splash after login
   if (showSplash) {
     return <SplashScreen onComplete={handleSplashComplete} />
   }
@@ -109,12 +87,8 @@ export default function App() {
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/markets" element={<Markets />} />
             <Route path="/markets/:ticker" element={<StockDetail />} />
-            <Route path="/atlas" element={<Atlas />} />
-            <Route path="/badges" element={<Navigate to="/score" replace />} />
-            <Route path="/score" element={<MyScore />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
-          <Route path="/challenges" element={<Navigate to="/score" replace />} />
           <Route path="/login" element={<Navigate to="/" replace />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
