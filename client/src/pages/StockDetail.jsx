@@ -188,42 +188,6 @@ export default function StockDetail() {
         </div>
       )}
 
-      {/* Action Buttons */}
-      <div style={{ display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap' }}>
-        <button className="btn btn-primary" onClick={addToWatchlist} disabled={addingWatchlist}>
-          {addingWatchlist ? 'Adding...' : 'Add to Watchlist'}
-        </button>
-        <button className="btn btn-ghost" onClick={() => setShowPortfolioForm(!showPortfolioForm)}>
-          {showPortfolioForm ? 'Cancel' : 'Add to Portfolio'}
-        </button>
-      </div>
-
-      {showPortfolioForm && (
-        <div className="card" style={{ marginTop: 'var(--space-md)', maxWidth: 400 }}>
-          <div style={{ display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap' }}>
-            <input
-              className="input"
-              type="number"
-              placeholder="Shares"
-              value={portfolioForm.shares}
-              onChange={e => setPortfolioForm(p => ({ ...p, shares: e.target.value }))}
-              style={{ flex: 1, minWidth: 80 }}
-            />
-            <input
-              className="input"
-              type="number"
-              step="0.01"
-              placeholder="Avg cost"
-              value={portfolioForm.avgCost}
-              onChange={e => setPortfolioForm(p => ({ ...p, avgCost: e.target.value }))}
-              style={{ flex: 1, minWidth: 80 }}
-            />
-            <button className="btn btn-primary" onClick={addToPortfolio} disabled={addingPortfolio}>
-              {addingPortfolio ? 'Adding...' : 'Add'}
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
