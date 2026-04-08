@@ -385,6 +385,17 @@ try {
   `);
 } catch {}
 
+// Screener cache — stores nightly batch results
+try {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS screener_cache (
+      ticker TEXT PRIMARY KEY,
+      data TEXT NOT NULL,
+      refreshed_at TEXT DEFAULT (datetime('now'))
+    )
+  `);
+} catch {}
+
 // Performance indexes on user_id and foreign key columns
 const indexes = [
   'CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON transactions(user_id)',

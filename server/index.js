@@ -6,6 +6,7 @@ const rateLimit = require('express-rate-limit');
 const { getCacheStats, clearCache } = require('./utils/cache');
 const { startOrderExecutor } = require('./services/orderExecutor');
 const auth = require('./middleware/auth');
+const { scheduleNightlyScreener } = require('./services/nightlyScreener');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -77,6 +78,7 @@ app.use((err, req, res, next) => {
 const server = app.listen(PORT, () => {
   console.log(`Atlas server running on port ${PORT}`);
   startOrderExecutor();
+  scheduleNightlyScreener();
 });
 
 server.on('error', (err) => {
