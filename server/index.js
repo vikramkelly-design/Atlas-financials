@@ -7,6 +7,7 @@ const { getCacheStats, clearCache } = require('./utils/cache');
 const { startOrderExecutor } = require('./services/orderExecutor');
 const auth = require('./middleware/auth');
 const { scheduleNightlyScreener } = require('./services/nightlyScreener');
+const { schedulePortfolioRefresh } = require('./services/portfolioRefresh');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -79,6 +80,7 @@ const server = app.listen(PORT, () => {
   console.log(`Atlas server running on port ${PORT}`);
   startOrderExecutor();
   scheduleNightlyScreener();
+  schedulePortfolioRefresh();
 });
 
 server.on('error', (err) => {
