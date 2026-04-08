@@ -505,16 +505,17 @@ function ScreenerTab() {
                   borderLeft: isTracked ? '3px solid var(--color-gold)' : '3px solid transparent',
                   background: stock.verdict === 'UNDERVALUED' ? 'color-mix(in srgb, var(--color-positive) 4%, transparent)' : stock.verdict === 'OVERVALUED' ? 'color-mix(in srgb, var(--color-negative) 4%, transparent)' : undefined
                 }}>
-                  <td style={{ padding: '0.4rem', textAlign: 'center' }}>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); toggleTracked(stock.ticker) }}
-                      style={{
-                        background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1,
-                        fontSize: 'var(--text-base)', color: isTracked ? 'var(--color-gold)' : 'var(--color-text-muted)',
-                        opacity: isTracked ? 1 : 0.4, transition: 'all 0.15s ease',
-                      }}
+                  <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center', width: 36 }}
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleTracked(stock.ticker) }}
+                  >
+                    <span style={{
+                      cursor: 'pointer', display: 'inline-block', lineHeight: 1,
+                      fontSize: '1.1rem', color: isTracked ? 'var(--color-gold)' : 'var(--color-text-muted)',
+                      opacity: isTracked ? 1 : 0.35, transition: 'all 0.15s ease',
+                      userSelect: 'none',
+                    }}
                       title={isTracked ? 'Untrack stock' : 'Track stock'}
-                    >{isTracked ? '\u2605' : '\u2606'}</button>
+                    >{isTracked ? '\u2605' : '\u2606'}</span>
                   </td>
                   {COLUMNS.map(col => (
                     <td key={col.key} style={{ whiteSpace: 'nowrap' }}>
