@@ -1,8 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import useApi, { api } from '../hooks/useApi'
-import usePrices from '../hooks/usePrices'
-import { formatCurrency, formatPercent, formatMarketCap, numColor } from '../components/NumberDisplay'
+import { formatCurrency } from '../components/NumberDisplay'
 import LoadingSpinner from '../components/LoadingSpinner'
 import ErrorBanner from '../components/ErrorBanner'
 import LearnTooltip from '../components/LearnTooltip'
@@ -133,7 +132,6 @@ export default function Markets() {
         {[
           { key: 'screener', label: 'Screener' },
           { key: 'analyzer', label: 'Analyzer' },
-          { key: 'watchlist', label: 'Watchlist' },
         ].map(t => (
           <button key={t.key} onClick={() => setTab(t.key)} style={{
             padding: '0.6rem 1.25rem', border: 'none', borderBottom: tab === t.key ? '2px solid var(--color-gold)' : '2px solid transparent',
@@ -148,297 +146,10 @@ export default function Markets() {
 
       {tab === 'screener' && <ScreenerTab />}
       {tab === 'analyzer' && <AnalyzerTab />}
-      {tab === 'watchlist' && <WatchlistTab />}
     </div>
   )
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// TAB 1: WATCHLIST
-// ═══════════════════════════════════════════════════════════════════════════════
-
-function WatchlistTab() {
-  const { get } = useApi()
-  const [watchlist, setWatchlist] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [tickerInput, setTickerInput] = useState('')
-  const [searchResults, setSearchResults] = useState([])
-  const [searchTimer, setSearchTimer] = useState(null)
-  const [digests, setDigests] = useState({})
-  const [detailModal, setDetailModal] = useState(null)
-  const [detailData, setDetailData] = useState(null)
-  const [detailLoading, setDetailLoading] = useState(false)
-  const [explanation, setExplanation] = useState(null)
-  const [explainLoading, setExplainLoading] = useState(false)
-
-  const tickers = watchlist.map(w => w.ticker)
-  const { prices } = usePrices(tickers)
-
-  const fetchWatchlist = async () => {
-    setLoading(true)
-    try {
-      const res = await get('/api/watchlist')
-      setWatchlist(res.data)
-    } catch (err) { setError(err.message) }
-    setLoading(false)
-  }
-
-  useEffect(() => { fetchWatchlist() }, [])
-
-  useEffect(() => {
-    const fetchDigests = async () => {
-      for (const w of watchlist) {
-        if (!digests[w.ticker]) {
-          try {
-            const res = await api.get(`/api/markets/digest/${w.ticker}`)
-            setDigests(prev => ({ ...prev, [w.ticker]: res.data.data.digest }))
-          } catch { /* skip */ }
-        }
-      }
-    }
-    if (watchlist.length > 0) fetchDigests()
-  }, [watchlist])
-
-  const searchTicker = async (q) => {
-    if (!q || q.length < 1) { setSearchResults([]); return }
-    try {
-      const res = await api.get(`/api/markets/search?q=${q}`)
-      setSearchResults(res.data.data || [])
-    } catch { setSearchResults([]) }
-  }
-
-  const onInputChange = (val) => {
-    setTickerInput(val.toUpperCase())
-    clearTimeout(searchTimer)
-    setSearchTimer(setTimeout(() => searchTicker(val), 300))
-  }
-
-  const addToWatchlist = async (ticker) => {
-    try {
-      await api.post('/api/watchlist', { ticker: ticker.toUpperCase() })
-      setTickerInput('')
-      setSearchResults([])
-      fetchWatchlist()
-    } catch (err) { console.error(err) }
-  }
-
-  const removeFromWatchlist = async (ticker) => {
-    try {
-      await api.delete(`/api/watchlist/${ticker}`)
-      fetchWatchlist()
-    } catch (err) { console.error(err) }
-  }
-
-  const openDetail = async (ticker) => {
-    setDetailModal(ticker)
-    setDetailLoading(true)
-    setDetailData(null)
-    setExplanation(null)
-    try {
-      const [quoteRes, ivRes] = await Promise.allSettled([
-        api.get(`/api/quote/${ticker}`),
-        api.get(`/api/intrinsic/${ticker}`)
-      ])
-      const q = quoteRes.status === 'fulfilled' ? quoteRes.value.data.data || quoteRes.value.data : null
-      const iv = ivRes.status === 'fulfilled' ? ivRes.value.data.data || ivRes.value.data : null
-      setDetailData({ quote: q, iv })
-    } catch (err) { console.error(err) }
-    setDetailLoading(false)
-  }
-
-  const fetchExplanation = async (ticker) => {
-    setExplainLoading(true)
-    try {
-      const res = await api.get(`/api/markets/explain/${ticker}`)
-      setExplanation(res.data.data.explanation)
-    } catch (err) { console.error(err) }
-    setExplainLoading(false)
-  }
-
-  if (loading) return <LoadingSpinner height={200} />
-  if (error) return <ErrorBanner message={error} onRetry={fetchWatchlist} />
-
-  return (
-    <div>
-      {/* Add ticker */}
-      <div style={{ position: 'relative', maxWidth: 300, marginBottom: '1.5rem' }}>
-        <input
-          className="input"
-          placeholder="Add ticker to watchlist..."
-          value={tickerInput}
-          onChange={e => onInputChange(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter' && tickerInput) addToWatchlist(tickerInput) }}
-        />
-        {searchResults.length > 0 && (
-          <div style={{
-            position: 'absolute', top: '100%', left: 0, right: 0,
-            background: 'var(--color-surface)', border: '1px solid var(--color-border)',
-            borderRadius: 4, zIndex: 50, maxHeight: 200, overflowY: 'auto'
-          }}>
-            {searchResults.map(r => (
-              <div key={r.symbol} onClick={() => addToWatchlist(r.symbol)}
-                style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', fontSize: 'var(--text-base)', borderBottom: '1px solid var(--color-border)', transition: 'background 0.15s ease' }}
-                onMouseEnter={e => e.currentTarget.style.background = 'var(--color-surface-2)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-              >
-                <strong>{r.symbol}</strong> <span className="text-muted">{r.name}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Watchlist cards */}
-      {watchlist.length > 0 ? (
-        <div className="grid-3">
-          {watchlist.map(w => {
-            const q = prices[w.ticker] || {}
-            return (
-              <div key={w.ticker} className="card" style={{ position: 'relative' }}>
-                <button onClick={() => removeFromWatchlist(w.ticker)} style={{
-                  position: 'absolute', top: 8, right: 10, background: 'none', border: 'none',
-                  color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: 'var(--text-lg)'
-                }}>x</button>
-
-                <h3 style={{ fontSize: 'var(--text-xl)', marginBottom: 0 }}>{w.ticker}</h3>
-                <p className="text-muted" style={{ fontSize: 'var(--text-sm)', marginBottom: '0.75rem' }}>{q.name || '--'}</p>
-
-                <span className="mono" style={{ fontSize: 'var(--text-xl)' }}>
-                  {q.price ? formatCurrency(q.price) : '--'}
-                </span>
-
-                {q.change !== undefined && (
-                  <p className="mono" style={{ fontSize: 'var(--text-base)', color: numColor(q.change) }}>
-                    {q.change >= 0 ? '+' : ''}{formatCurrency(q.change)} ({formatPercent(q.changePercent)})
-                  </p>
-                )}
-
-                <div style={{ marginTop: '0.75rem', fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }}>
-                  {[['52W High', q.high52 ? formatCurrency(q.high52) : '--'],
-                    ['52W Low', q.low52 ? formatCurrency(q.low52) : '--'],
-                    ['Mkt Cap', formatMarketCap(q.marketCap)]
-                  ].map(([label, val]) => (
-                    <div key={label} style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span>{label}</span>
-                      <span className="mono">{val}</span>
-                    </div>
-                  ))}
-                </div>
-
-                {digests[w.ticker] && (
-                  <p style={{ marginTop: '0.75rem', fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', fontStyle: 'italic', lineHeight: 1.4 }}>
-                    {digests[w.ticker]}
-                  </p>
-                )}
-
-                <button onClick={() => openDetail(w.ticker)} className="btn btn-ghost" style={{ marginTop: '0.75rem', width: '100%', fontSize: 'var(--text-sm)' }}>
-                  View details
-                </button>
-              </div>
-            )
-          })}
-        </div>
-      ) : (
-        <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
-          <p className="text-muted">Your watchlist is empty. Add tickers above to get started.</p>
-        </div>
-      )}
-
-      {/* Stock Detail Modal */}
-      {detailModal && (
-        <div onClick={() => setDetailModal(null)} style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex',
-          alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: '2rem'
-        }}>
-          <div onClick={e => e.stopPropagation()} style={{
-            background: 'var(--color-surface)', borderRadius: 8, border: '1px solid var(--color-border)',
-            maxWidth: 700, width: '100%', maxHeight: '85vh', overflowY: 'auto', padding: '2rem', position: 'relative'
-          }}>
-            <button onClick={() => setDetailModal(null)} style={{
-              position: 'absolute', top: 12, right: 16, background: 'none', border: 'none',
-              fontSize: 'var(--text-xl)', cursor: 'pointer', color: 'var(--color-text-secondary)'
-            }}>x</button>
-
-            {detailLoading ? <LoadingSpinner /> : detailData ? (
-              <>
-                <h2 style={{ fontSize: 'var(--text-2xl)', marginBottom: 0 }}>
-                  {detailData.quote?.companyName || detailData.quote?.name || detailModal}
-                </h2>
-                <p className="text-muted" style={{ fontSize: 'var(--text-base)', marginBottom: '1rem' }}>
-                  {detailData.quote?.sector || ''}{detailData.quote?.industry ? ` · ${detailData.quote.industry}` : ''}
-                </p>
-
-                {/* IV Summary */}
-                {detailData.iv?.summary && (
-                  <div className="card" style={{ marginBottom: '1.25rem', padding: '1rem', background: 'var(--color-surface-2)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                      <span style={{ fontWeight: 600, fontSize: 'var(--text-base)' }}>Intrinsic Value</span>
-                      {verdictBadge(detailData.iv.summary.verdict)}
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', fontSize: 'var(--text-sm)' }}>
-                      <div>
-                        <div className="text-muted">Buy Below (30% MoS)</div>
-                        <div className="mono" style={{ fontWeight: 700, color: 'var(--color-gold)' }}>
-                          {detailData.iv.summary.mosPrice != null ? formatCurrency(detailData.iv.summary.mosPrice) : 'N/A'}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-muted">Raw IV</div>
-                        <div className="mono">{detailData.iv.summary.rawIV != null ? formatCurrency(detailData.iv.summary.rawIV) : 'N/A'}</div>
-                      </div>
-                      <div>
-                        <div className="text-muted">Current Price</div>
-                        <div className="mono">{formatCurrency(detailData.iv.currentPrice || detailData.quote?.currentPrice)}</div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Key Stats */}
-                <h3 style={{ fontSize: 'var(--text-lg)', marginBottom: '0.75rem' }}>Key Statistics</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '1.25rem' }}>
-                  {[
-                    ['P/E Ratio', detailData.quote?.peRatio != null ? fmtNum(detailData.quote.peRatio) + 'x' : null],
-                    ['Forward P/E', detailData.quote?.forwardPE != null ? fmtNum(detailData.quote.forwardPE) + 'x' : null],
-                    ['PEG Ratio', detailData.quote?.pegRatio != null ? fmtNum(detailData.quote.pegRatio, 2) : null],
-                    ['EPS', detailData.quote?.eps != null ? formatCurrency(detailData.quote.eps) : null],
-                    ['Revenue (TTM)', detailData.quote?.revenue ? fmtLarge(detailData.quote.revenue) : null],
-                    ['Free Cash Flow', detailData.quote?.freeCashFlow ? fmtLarge(detailData.quote.freeCashFlow) : null],
-                    ['Profit Margin', detailData.quote?.profitMargin != null ? fmtPct(detailData.quote.profitMargin) : null],
-                    ['Debt/Equity', detailData.quote?.debtToEquity != null ? fmtNum(detailData.quote.debtToEquity, 2) : null],
-                    ['ROE', detailData.quote?.returnOnEquity != null ? fmtPct(detailData.quote.returnOnEquity) : null],
-                    ['Div Yield', detailData.quote?.dividendYield != null ? fmtPct(detailData.quote.dividendYield) : null],
-                  ].map(([label, val]) => (
-                    <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.35rem 0', borderBottom: '1px solid var(--color-border)' }}>
-                      <span className="text-muted" style={{ fontSize: 'var(--text-sm)' }}>{label}</span>
-                      <span className="mono" style={{ fontSize: 'var(--text-base)' }}>{val || '--'}</span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* AI Explainer */}
-                {explanation ? (
-                  <div style={{ padding: '1rem', background: 'var(--color-gold-light)', borderRadius: 8 }}>
-                    <p style={{ fontSize: 'var(--text-base)', lineHeight: 1.6 }}>{explanation}</p>
-                  </div>
-                ) : (
-                  <button className="btn btn-ghost" onClick={() => fetchExplanation(detailModal)} disabled={explainLoading}>
-                    {explainLoading ? 'Loading...' : 'What does this company do?'}
-                  </button>
-                )}
-              </>
-            ) : (
-              <p className="text-muted">Could not load data.</p>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
 // TAB 2: SCREENER
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -455,6 +166,7 @@ function ScreenerTab() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [lastRefreshed, setLastRefreshed] = useState(null)
+  const [trackedTickers, setTrackedTickers] = useState(new Set())
 
   const [sortKey, setSortKey] = useState('buyBelowPrice')
   const [sortDir, setSortDir] = useState('desc')
@@ -484,7 +196,27 @@ function ScreenerTab() {
     setLoading(false)
   }, [])
 
-  // On mount: load user's saved tickers + cached screener data
+  // Load tracked (starred) stocks
+  const loadTracked = useCallback(async () => {
+    try {
+      const res = await api.get('/api/screener/tracked')
+      setTrackedTickers(new Set(res.data.data || []))
+    } catch {}
+  }, [])
+
+  const toggleTracked = useCallback(async (ticker) => {
+    try {
+      const res = await api.post('/api/screener/tracked', { ticker })
+      setTrackedTickers(prev => {
+        const next = new Set(prev)
+        if (res.data.tracked) next.add(ticker)
+        else next.delete(ticker)
+        return next
+      })
+    } catch {}
+  }, [])
+
+  // On mount: load user's saved tickers + cached screener data + tracked stocks
   useEffect(() => {
     (async () => {
       try {
@@ -493,6 +225,7 @@ function ScreenerTab() {
         if (saved && saved.length > 0) setTickers(saved)
       } catch {}
       loadCachedData()
+      loadTracked()
     })()
   }, [])
 
@@ -565,6 +298,11 @@ function ScreenerTab() {
     if (maxCap != null) arr = arr.filter(s => s.marketCap != null && s.marketCap <= maxCap)
 
     arr.sort((a, b) => {
+      // Tracked stocks always sort to the top
+      const aTracked = trackedTickers.has(a.ticker) ? 0 : 1
+      const bTracked = trackedTickers.has(b.ticker) ? 0 : 1
+      if (aTracked !== bTracked) return aTracked - bTracked
+
       const aVal = a[sortKey], bVal = b[sortKey]
       if (aVal == null && bVal == null) return 0
       if (aVal == null) return 1
@@ -573,7 +311,7 @@ function ScreenerTab() {
       return sortDir === 'asc' ? aVal - bVal : bVal - aVal
     })
     return arr
-  }, [userStocks, sortKey, sortDir, filterVerdict, filterMaxPE, filterMinROE, filterMinCap, filterMaxCap])
+  }, [userStocks, sortKey, sortDir, filterVerdict, filterMaxPE, filterMinROE, filterMinCap, filterMaxCap, trackedTickers])
 
   const undervalued = userStocks.filter(s => s.verdict === 'UNDERVALUED').length
   const fair = userStocks.filter(s => s.verdict === 'FAIRLY VALUED').length
@@ -733,6 +471,7 @@ function ScreenerTab() {
         <table style={{ fontSize: 'var(--text-sm)' }}>
           <thead>
             <tr>
+              <th style={{ width: 28, padding: '0.4rem' }}></th>
               {COLUMNS.map(col => (
                 <th key={col.key} style={{ whiteSpace: 'nowrap', userSelect: 'none' }}>
                   <span onClick={() => handleSort(col.key)} style={{ cursor: 'pointer' }}>
@@ -747,21 +486,36 @@ function ScreenerTab() {
             {loading && stocks.length === 0 ? (
               Array.from({ length: 8 }).map((_, i) => (
                 <tr key={i}>
+                  <td><div className="skeleton" style={{ height: 14, width: 14 }} /></td>
                   {COLUMNS.map(c => <td key={c.key}><div className="skeleton" style={{ height: 14, width: '70%' }} /></td>)}
                 </tr>
               ))
             ) : filteredSorted.length === 0 ? (
               <tr>
-                <td colSpan={COLUMNS.length} style={{ textAlign: 'center', padding: '2rem' }}>
+                <td colSpan={COLUMNS.length + 1} style={{ textAlign: 'center', padding: '2rem' }}>
                   <span className="text-muted">{stocks.length === 0 ? 'No data loaded yet.' : 'No stocks match current filters.'}</span>
                 </td>
               </tr>
             ) : (
-              filteredSorted.map(stock => (
+              filteredSorted.map(stock => {
+                const isTracked = trackedTickers.has(stock.ticker)
+                return (
                 <tr key={stock.ticker} onClick={() => navigate(`/markets/${stock.ticker}`)} style={{
                   cursor: 'pointer',
+                  borderLeft: isTracked ? '3px solid var(--color-gold)' : '3px solid transparent',
                   background: stock.verdict === 'UNDERVALUED' ? 'color-mix(in srgb, var(--color-positive) 4%, transparent)' : stock.verdict === 'OVERVALUED' ? 'color-mix(in srgb, var(--color-negative) 4%, transparent)' : undefined
                 }}>
+                  <td style={{ padding: '0.4rem', textAlign: 'center' }}>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); toggleTracked(stock.ticker) }}
+                      style={{
+                        background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1,
+                        fontSize: 'var(--text-base)', color: isTracked ? 'var(--color-gold)' : 'var(--color-text-muted)',
+                        opacity: isTracked ? 1 : 0.4, transition: 'all 0.15s ease',
+                      }}
+                      title={isTracked ? 'Untrack stock' : 'Track stock'}
+                    >{isTracked ? '\u2605' : '\u2606'}</button>
+                  </td>
                   {COLUMNS.map(col => (
                     <td key={col.key} style={{ whiteSpace: 'nowrap' }}>
                       {stock.error && col.key !== 'ticker'
@@ -771,7 +525,8 @@ function ScreenerTab() {
                     </td>
                   ))}
                 </tr>
-              ))
+                )
+              })
             )}
           </tbody>
         </table>

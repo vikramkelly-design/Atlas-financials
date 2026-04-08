@@ -385,6 +385,19 @@ try {
   `);
 } catch {}
 
+// Tracked (starred) stocks per user
+try {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS tracked_stocks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      ticker TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(user_id, ticker)
+    )
+  `);
+} catch {}
+
 // Screener cache — stores nightly batch results
 try {
   db.exec(`

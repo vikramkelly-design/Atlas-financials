@@ -105,4 +105,33 @@ router.post('/tickers', (req, res) => {
   }
 });
 
+// GET /api/screener/tracked — get user's tracked (starred) stocks
+router.get('/tracked', (req, res) => {
+  try {
+    const rows = db.prepare('SELECT ticker FROM tracked_stocks WHERE user_id = ? ORDER BY created_at').all(req.userId);
+    res.json({ success: true, data: rows.map(r => r.ticker) });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/screener/tracked — toggle a tracked stock (star/unstar)
+router.post('/tracked', (req, res) => {
+  try {
+    const ticker = (req.body.ticker || '').toUpperCase().trim();
+    if (!ticker) return res.status(400).json({ success: false, error: 'Ticker required' });
+
+    const existing = db.prepare('SELECT id FROM tracked_stocks WHERE user_id = ? AND ticker = ?').get(req.userId, ticker);
+    if (existing) {
+      db.prepare('DELETE FROM tracked_stocks WHERE id = ?').run(existing.id);
+      res.json({ success: true, tracked: false });
+    } else {
+      db.prepare('INSERT INTO tracked_stocks (user_id, ticker) VALUES (?, ?)').run(req.userId, ticker);
+      res.json({ success: true, tracked: true });
+    }
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 module.exports = router;
