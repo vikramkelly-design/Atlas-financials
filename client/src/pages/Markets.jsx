@@ -103,7 +103,18 @@ function InfoTip({ text }) {
   )
 }
 
-const DEFAULT_TICKERS = ['AAPL','MSFT','GOOGL','AMZN','TSLA','NVDA','META','BRK-B','JPM','V','WMT','JNJ','PG','KO','DIS']
+const SP100_TICKERS = [
+  'AAPL','MSFT','NVDA','AMZN','META','GOOGL','TSLA','BRK-B','JPM','LLY',
+  'AVGO','V','UNH','XOM','MA','COST','HD','PG','JNJ','ABBV',
+  'BAC','MRK','CRM','CVX','WMT','KO','NFLX','PEP','TMO','ACN',
+  'MCD','CSCO','ABT','LIN','DHR','TXN','NEE','PM','ORCL','IBM',
+  'AMGN','QCOM','GE','RTX','HON','SPGI','UPS','CAT','GS','BLK',
+  'MS','AMAT','BKNG','ISRG','AXP','SYK','VRTX','ADI','GILD','MMC',
+  'TJX','PLD','MDLZ','ADP','CB','SCHW','C','CVS','REGN','ZTS',
+  'ETN','MO','BSX','DE','SO','DUK','BMY','SBUX','EOG','ELV',
+  'PGR','AON','ITW','NOC','FI','APH','CME','MCO','WM','CL',
+  'HUM','USB','TGT','NSC','FDX','EMR','PSA','D','OXY',
+]
 
 // ─── MAIN COMPONENT ─────────────────────────────────────────────────────────
 
@@ -433,18 +444,17 @@ function WatchlistTab() {
 
 function ScreenerTab() {
   const navigate = useNavigate()
-  const [tickers, setTickers] = useState(DEFAULT_TICKERS)
+  const [tickers, setTickers] = useState(SP100_TICKERS)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState([])
   const [searchLoading, setSearchLoading] = useState(false)
   const [showDropdown, setShowDropdown] = useState(false)
   const searchRef = useRef(null)
   const searchTimeout = useRef(null)
-  const [discountRate, setDiscountRate] = useState(0.10)
   const [stocks, setStocks] = useState([])
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [lastFetched, setLastFetched] = useState(null)
+  const [lastRefreshed, setLastRefreshed] = useState(null)
 
   const [sortKey, setSortKey] = useState('buyBelowPrice')
   const [sortDir, setSortDir] = useState('desc')
@@ -459,34 +469,30 @@ function ScreenerTab() {
     try { await api.post('/api/screener/tickers', { tickers: tickerList }) } catch {}
   }, [])
 
-  const fetchScreener = useCallback(async (tickerList, dr) => {
+  // Load cached screener data from DB (no live API calls)
+  const loadCachedData = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const res = await api.post('/api/screener', { tickers: tickerList, discountRate: dr })
-      setStocks(res.data.data?.stocks || res.data.stocks || [])
-      setLastFetched(new Date())
+      const res = await api.get('/api/screener')
+      const allStocks = res.data.stocks || []
+      setStocks(allStocks)
+      setLastRefreshed(res.data.lastRefreshed || null)
     } catch (err) {
       setError(err.response?.data?.error || err.message)
     }
     setLoading(false)
   }, [])
 
-  // Load saved tickers on mount, then fetch screener
+  // On mount: load user's saved tickers + cached screener data
   useEffect(() => {
     (async () => {
       try {
         const res = await api.get('/api/screener/tickers')
         const saved = res.data.data
-        if (saved && saved.length > 0) {
-          setTickers(saved)
-          fetchScreener(saved, discountRate)
-        } else {
-          fetchScreener(DEFAULT_TICKERS, discountRate)
-        }
-      } catch {
-        fetchScreener(DEFAULT_TICKERS, discountRate)
-      }
+        if (saved && saved.length > 0) setTickers(saved)
+      } catch {}
+      loadCachedData()
     })()
   }, [])
 
@@ -505,7 +511,7 @@ function ScreenerTab() {
     }, 300)
   }
 
-  const addFromSearch = (ticker) => {
+  const addFromSearch = async (ticker) => {
     const t = ticker.toUpperCase()
     if (tickers.includes(t)) { setSearchQuery(''); setShowDropdown(false); return }
     const updated = [...tickers, t]
@@ -514,7 +520,13 @@ function ScreenerTab() {
     setSearchResults([])
     setShowDropdown(false)
     saveTickers(updated)
-    fetchScreener(updated, discountRate)
+    // Fetch this single ticker on-demand (saves to cache for future nightly refreshes)
+    try {
+      const res = await api.post('/api/screener/fetch-single', { ticker: t })
+      if (res.data.data) {
+        setStocks(prev => [...prev, res.data.data])
+      }
+    } catch { /* will appear on next nightly refresh */ }
   }
 
   // Close dropdown on outside click
@@ -536,8 +548,14 @@ function ScreenerTab() {
     else { setSortKey(key); setSortDir('desc') }
   }
 
+  // Filter to only the user's selected tickers
+  const userStocks = useMemo(() => {
+    const tickerSet = new Set(tickers)
+    return stocks.filter(s => tickerSet.has(s.ticker))
+  }, [stocks, tickers])
+
   const filteredSorted = useMemo(() => {
-    let arr = [...stocks]
+    let arr = [...userStocks]
     if (filterVerdict) arr = arr.filter(s => s.verdict === filterVerdict)
     if (filterMaxPE !== '') arr = arr.filter(s => s.peRatio == null || s.peRatio <= parseFloat(filterMaxPE))
     if (filterMinROE !== '') arr = arr.filter(s => s.returnOnEquity != null && s.returnOnEquity * 100 >= parseFloat(filterMinROE))
@@ -555,19 +573,19 @@ function ScreenerTab() {
       return sortDir === 'asc' ? aVal - bVal : bVal - aVal
     })
     return arr
-  }, [stocks, sortKey, sortDir, filterVerdict, filterMaxPE, filterMinROE, filterMinCap, filterMaxCap])
+  }, [userStocks, sortKey, sortDir, filterVerdict, filterMaxPE, filterMinROE, filterMinCap, filterMaxCap])
 
-  const undervalued = stocks.filter(s => s.verdict === 'UNDERVALUED').length
-  const fair = stocks.filter(s => s.verdict === 'FAIRLY VALUED').length
-  const over = stocks.filter(s => s.verdict === 'OVERVALUED').length
+  const undervalued = userStocks.filter(s => s.verdict === 'UNDERVALUED').length
+  const fair = userStocks.filter(s => s.verdict === 'FAIRLY VALUED').length
+  const over = userStocks.filter(s => s.verdict === 'OVERVALUED').length
 
   // Persist screener timestamp for sidebar live dot
   useEffect(() => {
-    if (stocks.length > 0) {
+    if (userStocks.length > 0) {
       localStorage.setItem('atlas_undervalued_count', String(undervalued))
       localStorage.setItem('atlas_screener_ts', String(Date.now()))
     }
-  }, [undervalued, stocks.length])
+  }, [undervalued, userStocks.length])
 
   return (
     <div>
@@ -589,7 +607,7 @@ function ScreenerTab() {
             className={`badge badge-danger-strong${filterVerdict === 'OVERVALUED' ? ' badge-active' : ''}`}
             style={{ cursor: 'pointer' }}
           >{over} Overvalued</button>
-          {lastFetched && <span className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>Updated {lastFetched.toLocaleTimeString()}</span>}
+          {lastRefreshed && <span className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>Last updated {new Date(lastRefreshed + 'Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at {new Date(lastRefreshed + 'Z').toLocaleTimeString()}</span>}
         </div>
       )}
       <p className="text-faint" style={{ fontSize: 'var(--text-xs)', marginBottom: '1rem' }}>
@@ -662,29 +680,16 @@ function ScreenerTab() {
               </div>
             )}
           </div>
-          <button className="btn btn-ghost" onClick={() => fetchScreener(tickers, discountRate)} disabled={loading} style={{ fontSize: 'var(--text-sm)' }}>
+          <button className="btn btn-ghost" onClick={loadCachedData} disabled={loading} style={{ fontSize: 'var(--text-sm)' }}>
             {loading ? (
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}>
                 <path d="M21 12a9 9 0 11-6.219-8.56" />
               </svg>
-            ) : 'Refresh All'}
+            ) : 'Reload'}
           </button>
-          <button className="btn btn-ghost" onClick={() => { setTickers(DEFAULT_TICKERS); saveTickers(DEFAULT_TICKERS); fetchScreener(DEFAULT_TICKERS, discountRate) }} style={{ fontSize: 'var(--text-sm)' }}>
+          <button className="btn btn-ghost" onClick={() => { setTickers(SP100_TICKERS); saveTickers(SP100_TICKERS) }} style={{ fontSize: 'var(--text-sm)' }}>
             Reset Defaults
           </button>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: 'auto' }}>
-            <span className="text-muted" style={{ fontSize: 'var(--text-sm)' }}>Discount Rate</span>
-            <input
-              type="range" min={0.08} max={0.15} step={0.005}
-              value={discountRate}
-              onChange={e => setDiscountRate(parseFloat(e.target.value))}
-              style={{ width: 120 }}
-            />
-            <span className="mono" style={{ fontSize: 'var(--text-sm)', width: 40 }}>{(discountRate * 100).toFixed(1)}%</span>
-            <button className="btn btn-primary" style={{ fontSize: 'var(--text-sm)', padding: '0.3rem 0.6rem' }}
-              onClick={() => fetchScreener(tickers, discountRate)}>Apply</button>
-          </div>
         </div>
       </div>
 
@@ -721,7 +726,7 @@ function ScreenerTab() {
         </button>
       </div>
 
-      {error && <ErrorBanner message={error} onRetry={() => fetchScreener(tickers, discountRate)} />}
+      {error && <ErrorBanner message={error} onRetry={loadCachedData} />}
 
       {/* Table */}
       <div className="table-wrapper">
@@ -772,17 +777,9 @@ function ScreenerTab() {
         </table>
       </div>
 
-      {loading && (
-        <p className="text-muted" style={{ fontSize: 'var(--text-sm)', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}>
-            <path d="M21 12a9 9 0 11-6.219-8.56" />
-          </svg>
-          Fetching data for {tickers.length} stocks...
-        </p>
-      )}
       {!loading && (
         <p className="text-faint" style={{ fontSize: 'var(--text-sm)', marginTop: '0.75rem' }}>
-          Showing {filteredSorted.length} of {stocks.length} stocks · Data cached for 15 minutes · Not financial advice
+          Showing {filteredSorted.length} of {userStocks.length} stocks · Data refreshed nightly at 2am · Not financial advice
         </p>
       )}
     </div>

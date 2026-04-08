@@ -8,6 +8,8 @@ const { getCacheStats, clearCache } = require('./utils/cache');
 const { startOrderExecutor } = require('./services/orderExecutor');
 const auth = require('./middleware/auth');
 const { scheduleBackup, runImmediateBackup } = require('./backup');
+const { scheduleNightlyScreener } = require('./services/nightlyScreener');
+const { schedulePortfolioRefresh } = require('./services/portfolioRefresh');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -84,6 +86,8 @@ const server = app.listen(PORT, () => {
   startOrderExecutor();
   scheduleBackup();
   runImmediateBackup();
+  scheduleNightlyScreener();
+  schedulePortfolioRefresh();
 });
 
 server.on('error', (err) => {
