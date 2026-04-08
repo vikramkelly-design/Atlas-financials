@@ -207,13 +207,18 @@ function ScreenerTab() {
   const toggleTracked = useCallback(async (ticker) => {
     try {
       const res = await api.post('/api/screener/tracked', { ticker })
-      setTrackedTickers(prev => {
-        const next = new Set(prev)
-        if (res.data.tracked) next.add(ticker)
-        else next.delete(ticker)
-        return next
-      })
-    } catch {}
+      if (res.data.tracked) {
+        setTrackedTickers(prev => new Set([...prev, ticker]))
+      } else {
+        setTrackedTickers(prev => {
+          const next = new Set(prev)
+          next.delete(ticker)
+          return next
+        })
+      }
+    } catch (err) {
+      console.error('[Track] Failed:', err.response?.data || err.message)
+    }
   }, [])
 
   // On mount: load user's saved tickers + cached screener data + tracked stocks
@@ -500,16 +505,16 @@ function ScreenerTab() {
               filteredSorted.map(stock => {
                 const isTracked = trackedTickers.has(stock.ticker)
                 return (
-                <tr key={stock.ticker} onClick={() => navigate(`/markets/${stock.ticker}`)} style={{
+                <tr key={stock.ticker} style={{
                   cursor: 'pointer',
                   borderLeft: isTracked ? '3px solid var(--color-gold)' : '3px solid transparent',
                   background: stock.verdict === 'UNDERVALUED' ? 'color-mix(in srgb, var(--color-positive) 4%, transparent)' : stock.verdict === 'OVERVALUED' ? 'color-mix(in srgb, var(--color-negative) 4%, transparent)' : undefined
                 }}>
-                  <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center', width: 36 }}
-                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleTracked(stock.ticker) }}
+                  <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center', width: 36, cursor: 'pointer' }}
+                    onClick={() => toggleTracked(stock.ticker)}
                   >
                     <span style={{
-                      cursor: 'pointer', display: 'inline-block', lineHeight: 1,
+                      display: 'inline-block', lineHeight: 1,
                       fontSize: '1.1rem', color: isTracked ? 'var(--color-gold)' : 'var(--color-text-muted)',
                       opacity: isTracked ? 1 : 0.35, transition: 'all 0.15s ease',
                       userSelect: 'none',
@@ -518,7 +523,7 @@ function ScreenerTab() {
                     >{isTracked ? '\u2605' : '\u2606'}</span>
                   </td>
                   {COLUMNS.map(col => (
-                    <td key={col.key} style={{ whiteSpace: 'nowrap' }}>
+                    <td key={col.key} style={{ whiteSpace: 'nowrap' }} onClick={() => navigate(`/markets/${stock.ticker}`)}>
                       {stock.error && col.key !== 'ticker'
                         ? (col.key === 'currentPrice' ? <span style={{ color: 'var(--color-negative)', fontSize: 'var(--text-sm)' }}>{stock.error}</span> : '—')
                         : <ScreenerCell col={col.key} stock={stock} />
