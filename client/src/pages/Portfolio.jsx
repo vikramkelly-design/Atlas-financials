@@ -10,8 +10,7 @@ import EmptyState from '../components/EmptyState'
 
 export default function Portfolio() {
   const { toast } = useToast()
-  const [portfolios, setPortfolios] = useState([])
-  const [activeId, setActiveId] = useState(null)
+  const [portfolio, setPortfolio] = useState(null)
   const [positions, setPositions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -27,38 +26,30 @@ export default function Portfolio() {
   const [showSearchDropdown, setShowSearchDropdown] = useState(false)
   const [selectedStock, setSelectedStock] = useState(null) // { symbol, name, exchange, quote, iv }
   const [stockDetailLoading, setStockDetailLoading] = useState(false)
-  const [orderForm, setOrderForm] = useState({ side: 'buy', shares: '', avgCost: '', source: 'import', targetPrice: '' })
+  const [orderForm, setOrderForm] = useState({ side: 'buy', shares: '', avgCost: '', source: 'import', targetPrice: '', assetType: 'stock' })
   const [orderError, setOrderError] = useState('')
   const [orderLoading, setOrderLoading] = useState(false)
   const [freeCash, setDryPowder] = useState(0)
   const searchRef = useRef(null)
   const searchTimeout = useRef(null)
 
-  // Create portfolio modal
-  const [showCreateModal, setShowCreateModal] = useState(false)
-  const [createName, setCreateName] = useState('')
   const [tab, setTab] = useState('portfolio')
   const [confirmDialog, setConfirmDialog] = useState({ open: false, title: '', message: '', onConfirm: null, danger: false })
-
-  const activePortfolio = portfolios.find(p => p.id === activeId) || null
 
   const fetchPortfolios = async () => {
     try {
       const res = await api.get('/api/portfolio')
-      setPortfolios(res.data.data)
-      if (res.data.data.length > 0 && !activeId) {
-        setActiveId(res.data.data[0].id)
-      }
+      setPortfolio(res.data.data.length > 0 ? res.data.data[0] : null)
     } catch (err) { setError(err.message) }
     setLoading(false)
   }
 
   const fetchPositions = async () => {
-    if (!activeId) { setPositions([]); return }
+    if (!portfolio) { setPositions([]); return }
     try {
-      const res = await api.get(`/api/portfolio/${activeId}/positions`)
+      const res = await api.get(`/api/portfolio/${portfolio.id}/positions`)
       setPositions(res.data.data)
-    } catch {}
+    } catch (e) { console.warn('Fetch positions failed:', e.message) }
   }
 
   const fetchPrices = async (tickers) => {
@@ -66,16 +57,21 @@ export default function Portfolio() {
     try {
       const res = await api.get(`/api/markets/prices?tickers=${tickers.join(',')}`)
       setPrices(res.data.data)
-    } catch {}
+    } catch (e) { console.warn('Fetch prices failed:', e.message) }
   }
 
   const fetchIVData = async (tickers) => {
-    for (const ticker of tickers) {
+    // Only fetch IV for individual stocks, not ETFs/index funds
+    const stockTickers = tickers.filter(t => {
+      const pos = positions.find(p => p.ticker === t)
+      return !pos || pos.asset_type !== 'etf'
+    })
+    for (const ticker of stockTickers) {
       if (!ivData[ticker]) {
         try {
           const res = await api.get(`/api/intrinsic/${ticker}`)
           setIvData(prev => ({ ...prev, [ticker]: res.data }))
-        } catch {}
+        } catch (e) { console.warn(`IV fetch failed for ${ticker}:`, e.message) }
       }
     }
   }
@@ -84,10 +80,10 @@ export default function Portfolio() {
     try {
       const res = await api.get('/api/savings')
       setDryPowder(res.data.data?.free_cash || 0)
-    } catch {}
+    } catch (e) { console.warn('Fetch free cash failed:', e.message) }
   }
   useEffect(() => { fetchPortfolios(); fetchFreeCash() }, [])
-  useEffect(() => { fetchPositions(); setAnalysis(null) }, [activeId])
+  useEffect(() => { fetchPositions(); setAnalysis(null) }, [portfolio?.id])
 
   const tickers = useMemo(() => [...new Set(positions.map(p => p.ticker))], [positions])
   useEffect(() => {
@@ -103,15 +99,16 @@ export default function Portfolio() {
   const enriched = useMemo(() => {
     return positions.map(pos => {
       const quote = prices[pos.ticker] || {}
-      const iv = ivData[pos.ticker] || {}
+      const isEtf = pos.asset_type === 'etf'
+      const iv = isEtf ? {} : (ivData[pos.ticker] || {})
       const currentPrice = quote.price || null
       const costBasis = pos.shares * pos.avg_cost
       const currentValue = currentPrice != null ? pos.shares * currentPrice : null
       const gain = currentValue != null ? currentValue - costBasis : null
       const gainPct = gain != null && costBasis > 0 ? (gain / costBasis) * 100 : null
-      const mosPrice = iv.summary?.mosPrice || null
-      const verdict = iv.summary?.verdict || null
-      return { ...pos, currentPrice, name: quote.name, costBasis, currentValue, gain, gainPct, mosPrice, verdict }
+      const mosPrice = isEtf ? null : (iv.summary?.mosPrice || null)
+      const verdict = isEtf ? null : (iv.summary?.verdict || null)
+      return { ...pos, currentPrice, name: quote.name, costBasis, currentValue, gain, gainPct, mosPrice, verdict, isEtf }
     })
   }, [positions, prices, ivData])
 
@@ -124,32 +121,10 @@ export default function Portfolio() {
   }, [enriched])
 
   const createPortfolio = async () => {
-    if (!createName.trim()) return
     try {
-      await api.post('/api/portfolio', { name: createName.trim(), initialDeposit: 0 })
-      setCreateName('')
-      setShowCreateModal(false)
+      await api.post('/api/portfolio', { name: 'My Portfolio', initialDeposit: 0 })
       fetchPortfolios()
-    } catch {}
-  }
-
-  const deletePortfolio = async (id) => {
-    const portfolio = portfolios.find(p => p.id === id)
-    setConfirmDialog({
-      open: true, danger: true,
-      title: 'Delete Portfolio',
-      message: `Are you sure you want to delete "${portfolio?.name || 'this portfolio'}"? All holdings will be removed.`,
-      onConfirm: async () => {
-        setConfirmDialog(d => ({ ...d, open: false }))
-        try {
-          await api.delete(`/api/portfolio/${id}`)
-          const remaining = portfolios.filter(p => p.id !== id)
-          setPortfolios(remaining)
-          if (activeId === id && remaining.length > 0) setActiveId(remaining[0].id)
-          else if (remaining.length === 0) setActiveId(null)
-        } catch {}
-      }
-    })
+    } catch (e) { console.warn('Create portfolio failed:', e.message) }
   }
 
   // Search stocks by name or ticker
@@ -170,24 +145,32 @@ export default function Portfolio() {
     searchTimeout.current = setTimeout(() => searchStocks(val), 300)
   }
 
+  // Asset type picker state — shown before stock detail
+  const [pendingStock, setPendingStock] = useState(null) // stock waiting for asset type choice
+
   // Open stock detail popup
-  const openStockDetail = async (stock) => {
+  const openStockDetail = async (stock, assetType) => {
     setShowSearchDropdown(false)
     setSearchQuery('')
+    const isEtf = assetType === 'etf'
     setStockDetailLoading(true)
-    setSelectedStock({ symbol: stock.symbol, name: stock.name, exchange: stock.exchange })
-    setOrderForm({ side: 'buy', shares: '', avgCost: '', source: 'import', targetPrice: '' })
+    setSelectedStock({ symbol: stock.symbol, name: stock.name, exchange: stock.exchange, isEtf })
+    setOrderForm({ side: 'buy', shares: '', avgCost: '', source: 'import', targetPrice: '', assetType: isEtf ? 'etf' : 'stock' })
     setOrderError('')
     try {
-      const [priceRes, ivRes] = await Promise.all([
-        api.get(`/api/markets/prices?tickers=${stock.symbol}`),
-        api.get(`/api/intrinsic/${stock.symbol}`).catch(() => ({ data: {} })),
-      ])
-      const quote = priceRes.data.data?.[stock.symbol] || {}
-      const iv = ivRes.data || {}
+      const fetches = [api.get(`/api/markets/prices?tickers=${stock.symbol}`)]
+      if (!isEtf) fetches.push(api.get(`/api/intrinsic/${stock.symbol}`).catch(() => ({ data: {} })))
+      const results = await Promise.all(fetches)
+      const quote = results[0].data.data?.[stock.symbol] || {}
+      const iv = isEtf ? {} : (results[1]?.data || {})
       setSelectedStock(prev => ({ ...prev, quote, iv }))
-    } catch {}
+    } catch (e) { console.warn('Stock detail fetch failed:', e.message) }
     setStockDetailLoading(false)
+  }
+
+  // When user picks a search result, ask for asset type first
+  const handleSearchSelect = (stock) => {
+    setPendingStock(stock)
   }
 
   // Close search dropdown on outside click
@@ -215,18 +198,19 @@ export default function Portfolio() {
           setOrderLoading(false)
           return setOrderError(`Not enough free cash. You have ${formatCurrency(freeCash)} but this order costs ${formatCurrency(totalCost)}`)
         }
-        await api.post(`/api/portfolio/${activeId}/positions`, {
+        await api.post(`/api/portfolio/${portfolio.id}/positions`, {
           ticker: selectedStock.symbol,
           shares,
           avgCost: orderForm.avgCost ? parseFloat(orderForm.avgCost) : undefined,
           source: orderForm.source || 'import',
+          assetType: orderForm.assetType || 'stock',
         })
         toast(`Bought ${shares} shares of ${selectedStock.symbol}`, 'success')
       } else if (orderForm.side === 'sell') {
         const pos = positions.find(p => p.ticker === selectedStock.symbol)
         if (!pos) return setOrderError(`You don't hold ${selectedStock.symbol}`)
         if (shares > pos.shares) return setOrderError(`You only hold ${pos.shares} shares`)
-        await api.post(`/api/portfolio/${activeId}/orders`, {
+        await api.post(`/api/portfolio/${portfolio.id}/orders`, {
           ticker: selectedStock.symbol, side: 'sell', shares,
           orderType: 'market',
         })
@@ -234,7 +218,7 @@ export default function Portfolio() {
       } else if (orderForm.side === 'stop_loss') {
         const tp = parseFloat(orderForm.targetPrice)
         if (!tp || tp <= 0) return setOrderError('Enter a stop loss price')
-        await api.post(`/api/portfolio/${activeId}/orders`, {
+        await api.post(`/api/portfolio/${portfolio.id}/orders`, {
           ticker: selectedStock.symbol, side: 'sell', shares,
           orderType: 'stop_loss', targetPrice: tp,
         })
@@ -258,9 +242,9 @@ export default function Portfolio() {
       onConfirm: async () => {
         setConfirmDialog(d => ({ ...d, open: false }))
         try {
-          await api.delete(`/api/portfolio/${activeId}/positions/${posId}`)
+          await api.delete(`/api/portfolio/${portfolio.id}/positions/${posId}`)
           fetchPositions()
-        } catch {}
+        } catch (e) { console.warn('Delete position failed:', e.message) }
       }
     })
   }
@@ -268,9 +252,9 @@ export default function Portfolio() {
   const fetchAnalysis = async () => {
     setAnalysisLoading(true)
     try {
-      const res = await api.get(`/api/portfolio/${activeId}/analysis`)
+      const res = await api.get(`/api/portfolio/${portfolio.id}/analysis`)
       setAnalysis(res.data.data.analysis)
-    } catch {}
+    } catch (e) { console.warn('Portfolio analysis failed:', e.message) }
     setAnalysisLoading(false)
   }
 
@@ -305,49 +289,13 @@ export default function Portfolio() {
       {tab === 'chat' && <PageChat context="portfolio" />}
 
       {tab === 'portfolio' && <>
-      {/* Create Portfolio Modal */}
-      {showCreateModal && (
-        <div onClick={() => setShowCreateModal(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
-          <div onClick={e => e.stopPropagation()} className="card" style={{ maxWidth: 400, width: '100%' }}>
-            <h3 style={{ fontSize: 'var(--text-xl)', marginBottom: '1rem' }}>New Portfolio</h3>
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ fontSize: 'var(--text-sm)', textTransform: 'uppercase', color: 'var(--color-text-secondary)' }}>Portfolio Name</label>
-              <input className="input" value={createName} onChange={e => setCreateName(e.target.value)} placeholder="e.g. My Investments"
-                autoFocus onKeyDown={e => e.key === 'Enter' && createPortfolio()} />
-            </div>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button className="btn btn-ghost" onClick={() => setShowCreateModal(false)} style={{ flex: 1 }}>Cancel</button>
-              <button className="btn btn-primary" onClick={createPortfolio} disabled={!createName.trim()} style={{ flex: 1 }}>Create</button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Refresh */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
         <button className="btn btn-ghost" onClick={() => { fetchPortfolios(); fetchPositions(); if (tickers.length > 0) fetchPrices(tickers) }} style={{ fontSize: 'var(--text-sm)' }}>Refresh</button>
       </div>
 
-      {/* Portfolio tabs */}
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-        {portfolios.map(p => (
-          <div key={p.id} onClick={() => setActiveId(p.id)} style={{
-            padding: '0.4rem 0.75rem', borderRadius: 4, cursor: 'pointer', fontSize: 'var(--text-base)',
-            background: p.id === activeId ? 'var(--color-navy)' : 'var(--color-surface)',
-            color: p.id === activeId ? 'var(--color-gold)' : 'var(--color-text-primary)',
-            border: '1px solid ' + (p.id === activeId ? 'var(--color-navy)' : 'var(--color-border)'),
-            display: 'flex', alignItems: 'center', gap: '0.5rem'
-          }}>
-            {p.name}
-            {p.id === activeId && portfolios.length > 1 && (
-              <button onClick={(e) => { e.stopPropagation(); deletePortfolio(p.id) }} style={{ background: 'none', border: 'none', color: p.id === activeId ? 'var(--color-gold)' : 'var(--color-text-muted)', cursor: 'pointer', fontSize: 'var(--text-base)', lineHeight: 1 }}>x</button>
-            )}
-          </div>
-        ))}
-        <button onClick={() => setShowCreateModal(true)} style={{ padding: '0.4rem 0.6rem', background: 'none', border: '1px dashed var(--color-border-dark)', borderRadius: 4, cursor: 'pointer', color: 'var(--color-text-secondary)', fontSize: 'var(--text-base)' }}>+ New</button>
-      </div>
-
-      {activePortfolio && (
+      {portfolio && (
         <>
           {/* Search Bar */}
           <div ref={searchRef} style={{ position: 'relative', marginBottom: '1rem' }}>
@@ -375,7 +323,7 @@ export default function Portfolio() {
                 boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
               }}>
                 {searchResults.map(r => (
-                  <div key={r.symbol} onClick={() => openStockDetail(r)} style={{
+                  <div key={r.symbol} onClick={() => handleSearchSelect(r)} style={{
                     padding: '0.6rem 1rem', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                     borderBottom: '1px solid var(--color-border)', transition: 'background 0.1s',
                   }} onMouseEnter={e => e.currentTarget.style.background = 'var(--color-surface-2)'}
@@ -390,6 +338,26 @@ export default function Portfolio() {
               </div>
             )}
           </div>
+
+          {/* Asset Type Picker */}
+          {pendingStock && (
+            <div onClick={() => setPendingStock(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
+              <div onClick={e => e.stopPropagation()} className="card" style={{ maxWidth: 380, width: '100%' }}>
+                <h3 style={{ fontSize: 'var(--text-xl)', marginBottom: '0.25rem' }}>Add {pendingStock.symbol}</h3>
+                <p className="text-muted" style={{ fontSize: 'var(--text-sm)', marginBottom: '1.25rem' }}>{pendingStock.name}</p>
+                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginBottom: '0.75rem' }}>What type of holding is this?</p>
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <button className="btn btn-primary" onClick={() => { const s = pendingStock; setPendingStock(null); openStockDetail(s, 'stock') }} style={{ flex: 1, padding: '0.75rem' }}>
+                    Individual Stock
+                  </button>
+                  <button className="btn btn-primary" onClick={() => { const s = pendingStock; setPendingStock(null); openStockDetail(s, 'etf') }} style={{ flex: 1, padding: '0.75rem' }}>
+                    Index Fund / ETF
+                  </button>
+                </div>
+                <button className="btn btn-ghost" onClick={() => setPendingStock(null)} style={{ width: '100%', marginTop: '0.5rem', fontSize: 'var(--text-sm)' }}>Cancel</button>
+              </div>
+            </div>
+          )}
 
           {/* Stock Detail Popup */}
           {selectedStock && (
@@ -416,7 +384,13 @@ export default function Portfolio() {
                           {selectedStock.quote?.price ? formatCurrency(selectedStock.quote.price) : '--'}
                         </span>
                       </div>
-                      {selectedStock.iv?.summary?.verdict && (
+                      {selectedStock.isEtf && (
+                        <div>
+                          <p className="label-caps">Type</p>
+                          <span className="badge badge-gold" style={{ fontSize: 'var(--text-sm)' }}>Index Fund / ETF</span>
+                        </div>
+                      )}
+                      {!selectedStock.isEtf && selectedStock.iv?.summary?.verdict && (
                         <div>
                           <p className="label-caps">Verdict</p>
                           <span className={`badge ${selectedStock.iv.summary.verdict === 'UNDERVALUED' ? 'badge-success' : selectedStock.iv.summary.verdict === 'FAIRLY VALUED' ? 'badge-gold' : 'badge-danger'}`} style={{ fontSize: 'var(--text-sm)' }}>
@@ -424,7 +398,7 @@ export default function Portfolio() {
                           </span>
                         </div>
                       )}
-                      {selectedStock.iv?.summary?.mosPrice && (
+                      {!selectedStock.isEtf && selectedStock.iv?.summary?.mosPrice && (
                         <div>
                           <p className="label-caps">Buy Below</p>
                           <span className="mono" style={{ fontSize: 'var(--text-xl)', color: 'var(--color-gold)', fontWeight: 600 }}>
@@ -435,7 +409,7 @@ export default function Portfolio() {
                     </div>
 
                     {/* Key Stats */}
-                    {selectedStock.iv?.rawInputs && (() => {
+                    {!selectedStock.isEtf && selectedStock.iv?.rawInputs && (() => {
                       const ri = selectedStock.iv.rawInputs
                       const fmtBig = (v) => !v ? '--' : v >= 1e12 ? `$${(v / 1e12).toFixed(1)}T` : v >= 1e9 ? `$${(v / 1e9).toFixed(1)}B` : `$${(v / 1e6).toFixed(0)}M`
                       return (
@@ -457,7 +431,7 @@ export default function Portfolio() {
                       )
                     })()}
 
-                    {selectedStock.iv?.summary?.upsidePct != null && (
+                    {!selectedStock.isEtf && selectedStock.iv?.summary?.upsidePct != null && (
                       <div style={{ padding: '0.6rem', borderRadius: 4, marginBottom: '1rem',
                         background: selectedStock.iv.summary.upsidePct > 0 ? 'rgba(46,125,94,0.08)' : 'rgba(180,60,60,0.08)',
                         border: `1px solid ${selectedStock.iv.summary.upsidePct > 0 ? 'var(--color-positive)' : 'var(--color-negative)'}`,
@@ -575,6 +549,7 @@ export default function Portfolio() {
                         <tr key={p.id}>
                           <td>
                             <strong>{p.ticker}</strong>
+                            {p.isEtf && <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-gold)', marginLeft: '0.35rem', fontWeight: 600 }}>ETF</span>}
                             {p.name && <><br /><span className="text-muted" style={{ fontSize: 'var(--text-sm)' }}>{p.name}</span></>}
                             {p.source && p.source !== 'savings' && p.source !== 'import' && (
                               <><br /><span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-gold-dim, var(--color-gold))' }}>
@@ -596,9 +571,9 @@ export default function Portfolio() {
                               </div>
                             ) : '--'}
                           </td>
-                          <td className="mono" style={{ color: 'var(--color-gold)', fontWeight: 600 }}>{p.mosPrice ? formatCurrency(p.mosPrice) : '--'}</td>
+                          <td className="mono" style={{ color: 'var(--color-gold)', fontWeight: 600 }}>{p.isEtf ? 'N/A' : (p.mosPrice ? formatCurrency(p.mosPrice) : '--')}</td>
                           <td>
-                            {p.verdict && p.verdict !== 'N/A' ? (
+                            {p.isEtf ? <span className="text-muted">N/A</span> : p.verdict && p.verdict !== 'N/A' ? (
                               <span className={`badge ${p.verdict === 'UNDERVALUED' ? 'badge-success' : p.verdict === 'FAIRLY VALUED' ? 'badge-gold' : 'badge-danger'}`}>{p.verdict}</span>
                             ) : '--'}
                           </td>
@@ -665,13 +640,13 @@ export default function Portfolio() {
         </>
       )}
 
-      {portfolios.length === 0 && (
+      {!portfolio && (
         <EmptyState
           icon="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
-          title="No Portfolios"
-          description="Create a portfolio to start tracking your holdings and performance."
+          title="No Portfolio Yet"
+          description="Create your portfolio to start tracking your holdings and performance."
           actionLabel="Create Portfolio"
-          onAction={() => setShowCreateModal(true)}
+          onAction={createPortfolio}
         />
       )}
 

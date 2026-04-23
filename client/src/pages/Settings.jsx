@@ -1,28 +1,43 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { api } from '../hooks/useApi'
 import { useToast } from '../components/Toast'
-import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingSpinner from '../components/LoadingSpinner'
+import CollapsibleSection from '../components/CollapsibleSection'
+
+function getInitials(name) {
+  if (!name) return '?'
+  const parts = name.trim().split(/\s+/)
+  if (parts.length === 1) return parts[0][0].toUpperCase()
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+}
 
 export default function Settings() {
   const { toast } = useToast()
   const [loading, setLoading] = useState(true)
-  const [profile, setProfile] = useState({ name: '', email: '' })
+  const [profile, setProfile] = useState({ name: '', email: '', created_at: null })
   const [passwords, setPasswords] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' })
-  const [debtStrategy, setDebtStrategy] = useState('avalanche')
   const [saving, setSaving] = useState({})
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deletePassword, setDeletePassword] = useState('')
+  const deleteInputRef = useRef(null)
+
+  useEffect(() => { window.scrollTo(0, 0) }, [])
 
   useEffect(() => {
     api.get('/api/settings')
-      .then(res => {
-        setProfile(res.data.data.profile)
-        setDebtStrategy(res.data.data.preferences.debt_strategy)
-      })
+      .then(res => setProfile(res.data.data.profile))
       .catch(() => toast('Failed to load settings', 'error'))
       .finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => {
+    if (deleteOpen) {
+      deleteInputRef.current?.focus()
+      const handleEsc = (e) => { if (e.key === 'Escape') { setDeleteOpen(false); setDeletePassword('') } }
+      document.addEventListener('keydown', handleEsc)
+      return () => document.removeEventListener('keydown', handleEsc)
+    }
+  }, [deleteOpen])
 
   const saveProfile = async () => {
     if (!profile.name || !profile.email) return toast('Name and email are required', 'error')
@@ -30,7 +45,6 @@ export default function Settings() {
     try {
       await api.patch('/api/settings/profile', profile)
       toast('Profile updated', 'success')
-      // Update stored user
       const stored = JSON.parse(localStorage.getItem('atlas_user') || '{}')
       localStorage.setItem('atlas_user', JSON.stringify({ ...stored, name: profile.name, email: profile.email }))
     } catch (err) {
@@ -57,16 +71,6 @@ export default function Settings() {
     setSaving(s => ({ ...s, password: false }))
   }
 
-  const saveStrategy = async (val) => {
-    setDebtStrategy(val)
-    try {
-      await api.patch('/api/settings/preferences', { debt_strategy: val })
-      toast('Strategy updated', 'success')
-    } catch {
-      toast('Failed to save', 'error')
-    }
-  }
-
   const deleteAccount = async () => {
     if (!deletePassword) return toast('Password required', 'error')
     try {
@@ -83,98 +87,209 @@ export default function Settings() {
 
   if (loading) return <LoadingSpinner />
 
-  const sectionStyle = { marginBottom: 'var(--space-xl)' }
-  const labelStyle = { display: 'block', color: 'var(--color-text-muted)', fontSize: 'var(--text-xs)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 3 }
-  const fieldStyle = { marginBottom: 'var(--space-md)' }
+  const passwordMismatch = passwords.confirmPassword && passwords.newPassword !== passwords.confirmPassword
+  const passwordTooShort = passwords.newPassword && passwords.newPassword.length > 0 && passwords.newPassword.length < 6
+
+  const memberSince = profile.created_at
+    ? new Date(profile.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+    : null
 
   return (
-    <div style={{ maxWidth: 560 }}>
-      {/* Profile */}
-      <div className="card" style={sectionStyle}>
-        <h3 style={{ fontSize: 'var(--text-lg)', marginBottom: 'var(--space-md)', color: 'var(--color-text-primary)' }}>Profile</h3>
-        <div style={fieldStyle}>
-          <label style={labelStyle}>Name</label>
-          <input className="input" value={profile.name} onChange={e => setProfile(p => ({ ...p, name: e.target.value }))} />
-        </div>
-        <div style={fieldStyle}>
-          <label style={labelStyle}>Email</label>
-          <input className="input" type="email" value={profile.email} onChange={e => setProfile(p => ({ ...p, email: e.target.value }))} />
-        </div>
-        <button className="btn btn-primary" onClick={saveProfile} disabled={saving.profile}>
-          {saving.profile ? 'Saving...' : 'Save'}
-        </button>
-      </div>
+    <div style={{ maxWidth: '65ch' }}>
 
-      {/* Change Password */}
-      <div className="card" style={sectionStyle}>
-        <h3 style={{ fontSize: 'var(--text-lg)', marginBottom: 'var(--space-md)', color: 'var(--color-text-primary)' }}>Change Password</h3>
-        <div style={fieldStyle}>
-          <label style={labelStyle}>Current Password</label>
-          <input className="input" type="password" value={passwords.currentPassword}
-            onChange={e => setPasswords(p => ({ ...p, currentPassword: e.target.value }))} />
-        </div>
-        <div style={fieldStyle}>
-          <label style={labelStyle}>New Password</label>
-          <input className="input" type="password" value={passwords.newPassword}
-            onChange={e => setPasswords(p => ({ ...p, newPassword: e.target.value }))} />
-        </div>
-        <div style={fieldStyle}>
-          <label style={labelStyle}>Confirm New Password</label>
-          <input className="input" type="password" value={passwords.confirmPassword}
-            onChange={e => setPasswords(p => ({ ...p, confirmPassword: e.target.value }))} />
-        </div>
-        <button className="btn btn-primary" onClick={changePassword} disabled={saving.password}>
-          {saving.password ? 'Updating...' : 'Update Password'}
-        </button>
-      </div>
-
-      {/* Preferences */}
-      <div className="card" style={sectionStyle}>
-        <h3 style={{ fontSize: 'var(--text-lg)', marginBottom: 'var(--space-md)', color: 'var(--color-text-primary)' }}>Preferences</h3>
-        <div>
-          <label style={labelStyle}>Debt Payoff Strategy</label>
-          <div style={{ display: 'flex', gap: 'var(--space-sm)', marginTop: 'var(--space-xs)' }}>
-            {['avalanche', 'snowball'].map(s => (
-              <button key={s} className={`btn ${debtStrategy === s ? 'btn-primary' : 'btn-ghost'}`}
-                onClick={() => saveStrategy(s)} style={{ textTransform: 'capitalize' }}>
-                {s}
-              </button>
-            ))}
-          </div>
-          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginTop: 'var(--space-xs)' }}>
-            {debtStrategy === 'avalanche' ? 'Pay highest interest rate first — saves the most money.' : 'Pay smallest balance first — builds momentum faster.'}
-          </p>
-        </div>
-      </div>
-
-      {/* Danger Zone */}
-      <div className="card" style={{ borderColor: 'var(--color-negative)' }}>
-        <h3 style={{ fontSize: 'var(--text-lg)', marginBottom: 'var(--space-sm)', color: 'var(--color-negative)' }}>Danger Zone</h3>
-        <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-secondary)', marginBottom: 'var(--space-md)' }}>
-          Permanently delete your account and all data. This cannot be undone.
-        </p>
-        <button className="btn btn-danger" onClick={() => setDeleteOpen(true)}>Delete Account</button>
-      </div>
-
-      {/* Delete Confirmation */}
-      {deleteOpen && (
-        <div onClick={() => setDeleteOpen(false)} style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999,
+      {/* ── ACCOUNT HEADER ── */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 'var(--space-lg)',
+        marginBottom: 'var(--space-2xl)',
+        paddingBottom: 'var(--space-xl)',
+        borderBottom: '1px solid var(--color-border)',
+      }}>
+        <div style={{
+          width: 56, height: 56, borderRadius: '50%',
+          background: 'var(--color-gold)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontFamily: 'var(--font-serif)', fontSize: 'var(--text-xl)',
+          color: 'var(--color-navy)', fontWeight: 600,
+          flexShrink: 0,
         }}>
+          {getInitials(profile.name)}
+        </div>
+        <div>
+          <h1 style={{
+            fontFamily: 'var(--font-serif)',
+            fontSize: 'var(--text-xl)',
+            fontWeight: 400,
+            color: 'var(--color-text-primary)',
+            letterSpacing: '-0.01em',
+            lineHeight: 1.2,
+          }}>{profile.name || 'Your Account'}</h1>
+          <p style={{
+            fontSize: 'var(--text-sm)',
+            color: 'var(--color-text-muted)',
+            marginTop: 2,
+          }}>{profile.email}</p>
+          {memberSince && (
+            <p style={{
+              fontSize: 'var(--text-xs)',
+              color: 'var(--color-text-muted)',
+              marginTop: 4,
+              opacity: 0.7,
+            }}>Member since {memberSince}</p>
+          )}
+        </div>
+      </div>
+
+      {/* ── PROFILE SECTION ── */}
+      <CollapsibleSection title="Profile" sectionKey="settings-profile" defaultOpen={true}>
+        <div className="card">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+            <div>
+              <label className="label-caps" style={{ marginBottom: 4, display: 'block' }}>Name</label>
+              <input className="input" value={profile.name}
+                onChange={e => setProfile(p => ({ ...p, name: e.target.value }))} />
+            </div>
+            <div>
+              <label className="label-caps" style={{ marginBottom: 4, display: 'block' }}>Email</label>
+              <input className="input" type="email" value={profile.email}
+                onChange={e => setProfile(p => ({ ...p, email: e.target.value }))} />
+            </div>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 'var(--space-lg)' }}>
+            <button className="btn btn-primary" onClick={saveProfile} disabled={saving.profile}>
+              {saving.profile ? 'Saving...' : 'Save'}
+            </button>
+          </div>
+        </div>
+      </CollapsibleSection>
+
+      {/* ── SECURITY SECTION ── */}
+      <CollapsibleSection title="Security" sectionKey="settings-security" defaultOpen={false}>
+        <div className="card">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+            <div>
+              <label className="label-caps" style={{ marginBottom: 4, display: 'block' }}>Current Password</label>
+              <input className="input" type="password" value={passwords.currentPassword}
+                onChange={e => setPasswords(p => ({ ...p, currentPassword: e.target.value }))} />
+            </div>
+            <div>
+              <label className="label-caps" style={{ marginBottom: 4, display: 'block' }}>New Password</label>
+              <input className="input" type="password" value={passwords.newPassword}
+                onChange={e => setPasswords(p => ({ ...p, newPassword: e.target.value }))}
+                style={passwordTooShort ? { borderColor: 'var(--color-negative)' } : {}} />
+              {passwordTooShort && (
+                <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-negative)', marginTop: 4 }}>
+                  Must be at least 6 characters
+                </p>
+              )}
+            </div>
+            <div>
+              <label className="label-caps" style={{ marginBottom: 4, display: 'block' }}>Confirm New Password</label>
+              <input className="input" type="password" value={passwords.confirmPassword}
+                onChange={e => setPasswords(p => ({ ...p, confirmPassword: e.target.value }))}
+                style={passwordMismatch ? { borderColor: 'var(--color-negative)' } : {}} />
+              {passwordMismatch && (
+                <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-negative)', marginTop: 4 }}>
+                  Passwords do not match
+                </p>
+              )}
+            </div>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 'var(--space-lg)' }}>
+            <button className="btn btn-primary" onClick={changePassword} disabled={saving.password}>
+              {saving.password ? 'Updating...' : 'Update Password'}
+            </button>
+          </div>
+        </div>
+      </CollapsibleSection>
+
+      {/* ── DANGER ZONE ── */}
+      <div style={{ marginTop: 'var(--space-3xl)' }}>
+        <p className="label-caps" style={{
+          marginBottom: 'var(--space-md)',
+          color: 'var(--color-negative)',
+        }}>Danger Zone</p>
+
+        <div style={{
+          background: 'var(--color-negative-light)',
+          border: '1px solid var(--color-negative)',
+          borderRadius: 'var(--radius-sm)',
+          padding: 'var(--space-lg)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-lg)' }}>
+            <div>
+              <h3 style={{
+                fontSize: 'var(--text-base)',
+                fontWeight: 500,
+                color: 'var(--color-negative)',
+                marginBottom: 'var(--space-xs)',
+              }}>Delete Account</h3>
+              <p style={{
+                fontSize: 'var(--text-sm)',
+                color: 'var(--color-text-secondary)',
+                lineHeight: 1.5,
+              }}>
+                Permanently delete your account and all data. This cannot be undone.
+              </p>
+            </div>
+            <button className="btn btn-danger" onClick={() => setDeleteOpen(true)}
+              style={{ flexShrink: 0 }}>
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteOpen && (
+        <div
+          onClick={() => { setDeleteOpen(false); setDeletePassword('') }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-dialog-title"
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 1000,
+          }}
+        >
           <div onClick={e => e.stopPropagation()} style={{
-            background: 'var(--color-surface)', border: '1px solid var(--color-negative)', borderRadius: 2,
-            padding: 'var(--space-lg)', maxWidth: 380, width: '90%',
+            background: 'var(--color-surface)',
+            border: '1px solid var(--color-negative)',
+            borderRadius: 'var(--radius-sm)',
+            padding: 'var(--space-lg)',
+            maxWidth: 380, width: '90%',
           }}>
-            <h3 style={{ fontSize: 'var(--text-lg)', marginBottom: 'var(--space-sm)', color: 'var(--color-negative)' }}>Delete Account</h3>
-            <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-secondary)', marginBottom: 'var(--space-md)' }}>
-              Enter your password to confirm deletion.
+            <h3 id="delete-dialog-title" style={{
+              fontSize: 'var(--text-lg)',
+              fontWeight: 500,
+              marginBottom: 'var(--space-xs)',
+              color: 'var(--color-negative)',
+            }}>Delete your account?</h3>
+            <p style={{
+              fontSize: 'var(--text-sm)',
+              color: 'var(--color-text-secondary)',
+              marginBottom: 'var(--space-md)',
+              lineHeight: 1.5,
+            }}>
+              This will permanently erase all your data — budget, savings, debts, portfolio, and settings. Enter your password to confirm.
             </p>
-            <input className="input" type="password" placeholder="Password" value={deletePassword}
-              onChange={e => setDeletePassword(e.target.value)} style={{ marginBottom: 'var(--space-md)' }} />
+            <input
+              ref={deleteInputRef}
+              className="input"
+              type="password"
+              placeholder="Your password"
+              value={deletePassword}
+              onChange={e => setDeletePassword(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && deletePassword) deleteAccount() }}
+              style={{ marginBottom: 'var(--space-md)' }}
+            />
             <div style={{ display: 'flex', gap: 'var(--space-sm)', justifyContent: 'flex-end' }}>
-              <button className="btn btn-ghost" onClick={() => { setDeleteOpen(false); setDeletePassword('') }}>Cancel</button>
-              <button className="btn btn-danger" onClick={deleteAccount}>Delete Forever</button>
+              <button className="btn btn-ghost" onClick={() => { setDeleteOpen(false); setDeletePassword('') }}>
+                Cancel
+              </button>
+              <button className="btn btn-danger" onClick={deleteAccount} disabled={!deletePassword}>
+                Delete Forever
+              </button>
             </div>
           </div>
         </div>

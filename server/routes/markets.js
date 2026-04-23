@@ -13,7 +13,7 @@ router.get('/search', async (req, res, next) => {
     const yf = await getYF();
     const result = await yf.search(q);
     const results = (result.quotes || [])
-      .filter(item => item.quoteType === 'EQUITY')
+      .filter(item => ['EQUITY', 'ETF', 'MUTUALFUND', 'INDEX'].includes(item.quoteType))
       .slice(0, 8)
       .map(item => ({
         symbol: item.symbol,

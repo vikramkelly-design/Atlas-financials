@@ -7,7 +7,7 @@ const { sendError } = require('../utils/errors');
 // GET /api/settings — profile + preferences
 router.get('/', (req, res) => {
   try {
-    const user = db.prepare('SELECT id, name, email FROM users WHERE id = ?').get(req.userId);
+    const user = db.prepare('SELECT id, name, email, created_at FROM users WHERE id = ?').get(req.userId);
     if (!user) return res.status(404).json({ success: false, error: 'User not found' });
 
     let settings = db.prepare('SELECT * FROM user_settings WHERE user_id = ?').get(req.userId);
@@ -19,7 +19,7 @@ router.get('/', (req, res) => {
     res.json({
       success: true,
       data: {
-        profile: { name: user.name, email: user.email },
+        profile: { name: user.name, email: user.email, created_at: user.created_at },
         preferences: { debt_strategy: settings.debt_strategy },
       }
     });

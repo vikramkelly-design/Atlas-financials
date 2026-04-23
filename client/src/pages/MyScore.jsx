@@ -91,7 +91,7 @@ export default function MyScore() {
             else break
           }
         }
-      } catch {}
+      } catch (e) { console.warn('Budget goals fetch failed', e) }
 
       setCredentials(CREDENTIALS.map(cred => {
         switch (cred.id) {
@@ -243,7 +243,7 @@ export default function MyScore() {
                 const url = `${window.location.origin}/share/score/${res.data.data.token}`
                 navigator.clipboard.writeText(url).catch(() => {})
                 toast('Share link copied to clipboard!', 'success')
-              } catch {}
+              } catch (e) { console.warn('Share score failed', e) }
               setSharing(false)
             }}
             disabled={sharing}
@@ -272,9 +272,11 @@ export default function MyScore() {
         <div style={{ maxWidth: 350, margin: '0 auto 1rem' }}>
           <div style={{ height: 12, borderRadius: 6, background: 'var(--color-surface-2)', overflow: 'hidden' }}>
             <div style={{
-              width: `${score.score}%`, height: '100%', borderRadius: 6,
+              width: '100%', height: '100%', borderRadius: 6,
               background: score.score >= 70 ? 'var(--color-positive)' : score.score >= 50 ? 'var(--color-gold)' : 'var(--color-negative)',
-              transition: 'width 0.5s',
+              transition: 'transform 0.5s',
+              transform: `scaleX(${score.score / 100})`,
+              transformOrigin: 'left',
             }} />
           </div>
         </div>
@@ -356,7 +358,7 @@ function TrackRecord({ credentials, earnedCount }) {
             <div key={cred.id} className="card" style={{
               display: 'flex', alignItems: 'center', gap: 'var(--space-md)',
               padding: '0.85rem 1.15rem',
-              borderLeft: '3px solid var(--color-gold)',
+              background: 'var(--color-gold-15)',
             }}>
               <span style={{ fontSize: 22, flexShrink: 0 }}>{cred.icon}</span>
               <div style={{ flex: 1 }}>

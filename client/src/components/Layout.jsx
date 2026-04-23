@@ -11,6 +11,8 @@ const PAGE_TITLES = {
   '/analytics': 'Analytics',
   '/markets': 'Markets',
   '/plan': 'My Plan',
+  '/savings': 'Savings',
+  '/debt': 'Debt Payoff',
   '/settings': 'Settings',
 }
 
@@ -18,7 +20,9 @@ const PAGE_SUBTITLES = {
   '/': 'Your financial picture',
   '/markets': 'What\'s worth buying',
   '/portfolio': 'What you own',
-  '/budget': 'Your monthly fuel',
+  '/budget': 'Where your money goes',
+  '/savings': 'Build your safety net',
+  '/debt': 'Crush what you owe',
   '/analytics': 'How you\'re doing',
   '/plan': 'Your road to the number',
   '/settings': 'Preferences',

@@ -24,14 +24,29 @@ router.get('/', (req, res) => {
       : (user.savings_goal_target || 0);
     const efPct = efTarget > 0 ? Math.min(100, Math.round((user.savings_balance / efTarget) * 10000) / 100) : 0;
 
-    // Dry powder = invest allocation + unspent budget rollover this month
+    // Dry powder = invest allocation + unspent budget - stock purchases from savings this month
     const now = new Date();
     const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const monthStart = `${monthKey}-01`;
+    const nextMonth = now.getMonth() === 11
+      ? `${now.getFullYear() + 1}-01-01`
+      : `${now.getFullYear()}-${String(now.getMonth() + 2).padStart(2, '0')}-01`;
+
     const txns = db.prepare(
       'SELECT COALESCE(SUM(CASE WHEN amount < 0 THEN ABS(amount) ELSE 0 END), 0) as spent FROM transactions WHERE user_id = ? AND month = ?'
     ).get(req.userId, monthKey);
     const unspent = Math.max(0, spendAmt - (txns?.spent || 0));
-    const dryPowder = Math.round((investAmt + unspent) * 100) / 100;
+
+    // Sum stock purchases made from savings/investing money this month
+    const investSpent = db.prepare(`
+      SELECT COALESCE(SUM(pt.total), 0) as total
+      FROM portfolio_transactions pt
+      JOIN portfolios p ON p.id = pt.portfolio_id
+      WHERE p.user_id = ? AND pt.source = 'savings' AND pt.type = 'buy'
+        AND pt.created_at >= ? AND pt.created_at < ?
+    `).get(req.userId, monthStart, nextMonth);
+
+    const dryPowder = Math.max(0, Math.round((investAmt + unspent - (investSpent?.total || 0)) * 100) / 100);
 
     res.json({
       success: true,
@@ -47,7 +62,8 @@ router.get('/', (req, res) => {
         savings_amt: savingsAmt,
         invest_amt: investAmt,
         dry_powder: dryPowder,
-    free_cash: dryPowder,
+        free_cash: dryPowder,
+        invest_spent: Math.round((investSpent?.total || 0) * 100) / 100,
         ef_balance: user.savings_balance,
         ef_target: efTarget,
         ef_pct: efPct,
@@ -94,10 +110,36 @@ router.post('/setup', (req, res) => {
 });
 
 // POST /api/savings/deposit — add savings deposit
+// GET /api/savings/deposited?month=YYYY-MM — check if savings already logged this month
+router.get('/deposited', (req, res) => {
+  try {
+    const month = req.query.month;
+    if (!month) return res.status(400).json({ success: false, error: 'month query param required' });
+    const row = db.prepare(
+      "SELECT id FROM savings_transactions WHERE user_id = ? AND type = 'deposit' AND note LIKE ?"
+    ).get(req.userId, `${month}%`);
+    res.json({ success: true, data: { deposited: !!row } });
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
 router.post('/deposit', (req, res) => {
   try {
     const amount = parseFloat(req.body.amount);
     if (!amount || amount <= 0) return res.status(400).json({ success: false, error: 'Amount must be positive' });
+
+    // Block duplicate monthly deposits
+    const note = req.body.note || 'Monthly savings deposit';
+    const monthMatch = note.match(/^(\d{4}-\d{2})/);
+    if (monthMatch) {
+      const existing = db.prepare(
+        "SELECT id FROM savings_transactions WHERE user_id = ? AND type = 'deposit' AND note LIKE ?"
+      ).get(req.userId, `${monthMatch[1]}%`);
+      if (existing) {
+        return res.status(409).json({ success: false, error: 'Savings already logged for this month' });
+      }
+    }
 
     db.prepare('UPDATE users SET savings_balance = savings_balance + ? WHERE id = ?').run(amount, req.userId);
 

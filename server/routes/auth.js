@@ -71,19 +71,21 @@ router.post('/forgot-password', async (req, res) => {
     const user = db.prepare('SELECT id, email FROM users WHERE email = ?').get(email.toLowerCase().trim());
     if (!user) {
       // Don't reveal if email exists
-      return res.json({ success: true, data: { message: 'If that email exists, a reset code has been sent.' } });
+      return res.json({ success: true, data: { message: 'If that email exists, a reset link has been sent.' } });
     }
 
     const crypto = require('crypto');
-    const token = crypto.randomBytes(16).toString('hex');
+    const token = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
 
-    db.prepare('INSERT INTO password_resets (user_id, token, expires_at) VALUES (?, ?, ?)').run(user.id, token, expiresAt);
+    // Delete any existing tokens for this user
+    db.prepare('DELETE FROM password_reset_tokens WHERE user_id = ?').run(user.id);
+    db.prepare('INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES (?, ?, ?)').run(user.id, token, expiresAt);
 
     const { sendPasswordReset } = require('../services/email');
     await sendPasswordReset(user.email, token);
 
-    res.json({ success: true, data: { message: 'If that email exists, a reset code has been sent.' } });
+    res.json({ success: true, data: { message: 'If that email exists, a reset link has been sent.' } });
   } catch (err) {
     sendError(res, err);
   }
@@ -96,17 +98,18 @@ router.post('/reset-password', async (req, res) => {
     if (!token || !password) return res.status(400).json({ success: false, error: 'Token and password are required' });
     if (password.length < 6) return res.status(400).json({ success: false, error: 'Password must be at least 6 characters' });
 
-    const reset = db.prepare('SELECT * FROM password_resets WHERE token = ? AND used = 0').get(token);
-    if (!reset) return res.status(400).json({ success: false, error: 'Invalid or expired reset code' });
+    const reset = db.prepare('SELECT * FROM password_reset_tokens WHERE token = ?').get(token);
+    if (!reset) return res.status(400).json({ success: false, error: 'Invalid or expired reset link' });
 
     const now = new Date();
     if (now > new Date(reset.expires_at)) {
-      return res.status(400).json({ success: false, error: 'Reset code has expired' });
+      db.prepare('DELETE FROM password_reset_tokens WHERE id = ?').run(reset.id);
+      return res.status(400).json({ success: false, error: 'Reset link has expired. Please request a new one.' });
     }
 
     const hash = await bcrypt.hash(password, 10);
     db.prepare('UPDATE users SET password = ? WHERE id = ?').run(hash, reset.user_id);
-    db.prepare('UPDATE password_resets SET used = 1 WHERE id = ?').run(reset.id);
+    db.prepare('DELETE FROM password_reset_tokens WHERE id = ?').run(reset.id);
 
     res.json({ success: true, data: { message: 'Password reset successfully' } });
   } catch (err) {

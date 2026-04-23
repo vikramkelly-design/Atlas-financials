@@ -71,14 +71,28 @@ const COLUMNS = [
 
 function InfoTip({ text }) {
   const [show, setShow] = useState(false)
+  const btnRef = useRef(null)
+  const [pos, setPos] = useState({ top: 0, left: 0 })
+
+  const handleClick = (e) => {
+    e.stopPropagation()
+    if (!show && btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect()
+      setPos({ top: rect.top - 8, left: Math.min(rect.left, window.innerWidth - 280) })
+    }
+    setShow(s => !s)
+  }
+
   return (
     <span style={{ position: 'relative', display: 'inline-block' }}>
       <button
-        onClick={(e) => { e.stopPropagation(); setShow(s => !s) }}
+        ref={btnRef}
+        onClick={handleClick}
         style={{
           background: 'none', border: '1px solid var(--color-border-dark)', borderRadius: '50%',
           width: 14, height: 14, fontSize: 'var(--text-xs)', lineHeight: '12px', textAlign: 'center',
-          cursor: 'pointer', color: 'var(--color-text-secondary)', marginLeft: 3, padding: 0,
+          cursor: 'pointer', color: 'var(--color-text-secondary)',
+          padding: 7, margin: -7, marginLeft: -4,
           fontWeight: 700, verticalAlign: 'middle',
         }}
         title="Click for explanation"
@@ -87,12 +101,12 @@ function InfoTip({ text }) {
         <>
           <div onClick={() => setShow(false)} style={{ position: 'fixed', inset: 0, zIndex: 99 }} />
           <div style={{
-            position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)',
-            marginTop: 6, width: 260, padding: '0.65rem 0.75rem',
+            position: 'fixed', top: pos.top, left: pos.left, transform: 'translateY(-100%)',
+            width: 260, padding: '0.65rem 0.75rem',
             background: 'var(--color-surface)', border: '1px solid var(--color-border)',
             borderRadius: 6, fontSize: 'var(--text-sm)', lineHeight: 1.5,
             color: 'var(--color-text-primary)', zIndex: 100,
-            whiteSpace: 'normal',
+            whiteSpace: 'normal', boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
           }}>
             {text}
           </div>
@@ -178,7 +192,7 @@ function ScreenerTab() {
   const [filterMaxCap, setFilterMaxCap] = useState('')
 
   const saveTickers = useCallback(async (tickerList) => {
-    try { await api.post('/api/screener/tickers', { tickers: tickerList }) } catch {}
+    try { await api.post('/api/screener/tickers', { tickers: tickerList }) } catch (e) { console.warn('Save tickers failed:', e.message) }
   }, [])
 
   // Load cached screener data from DB (no live API calls)
@@ -201,7 +215,7 @@ function ScreenerTab() {
     try {
       const res = await api.get('/api/screener/tracked')
       setTrackedTickers(new Set(res.data.data || []))
-    } catch {}
+    } catch (e) { console.warn('Load tracked failed:', e.message) }
   }, [])
 
   const toggleTracked = useCallback(async (ticker) => {
@@ -228,7 +242,7 @@ function ScreenerTab() {
         const res = await api.get('/api/screener/tickers')
         const saved = res.data.data
         if (saved && saved.length > 0) setTickers(saved)
-      } catch {}
+      } catch (e) { console.warn('Load tickers failed:', e.message) }
       loadCachedData()
       loadTracked()
     })()
@@ -302,11 +316,12 @@ function ScreenerTab() {
     if (minCap != null) arr = arr.filter(s => s.marketCap != null && s.marketCap >= minCap)
     if (maxCap != null) arr = arr.filter(s => s.marketCap != null && s.marketCap <= maxCap)
 
+    const sp100Set = new Set(SP100_TICKERS)
     arr.sort((a, b) => {
-      // Tracked stocks always sort to the top
-      const aTracked = trackedTickers.has(a.ticker) ? 0 : 1
-      const bTracked = trackedTickers.has(b.ticker) ? 0 : 1
-      if (aTracked !== bTracked) return aTracked - bTracked
+      // Group: 0 = starred, 1 = user-added (not in SP100), 2 = default SP100
+      const aGroup = trackedTickers.has(a.ticker) ? 0 : !sp100Set.has(a.ticker) ? 1 : 2
+      const bGroup = trackedTickers.has(b.ticker) ? 0 : !sp100Set.has(b.ticker) ? 1 : 2
+      if (aGroup !== bGroup) return aGroup - bGroup
 
       const aVal = a[sortKey], bVal = b[sortKey]
       if (aVal == null && bVal == null) return 0
@@ -415,7 +430,7 @@ function ScreenerTab() {
                           onClick={() => addFromSearch(ticker)}
                           className="btn btn-primary"
                           style={{ fontSize: 'var(--text-xs)', padding: '0.2rem 0.5rem', whiteSpace: 'nowrap' }}
-                        >View</button>
+                        >Add</button>
                       )}
                     </div>
                   )
@@ -507,7 +522,7 @@ function ScreenerTab() {
                 return (
                 <tr key={stock.ticker} style={{
                   cursor: 'pointer',
-                  borderLeft: isTracked ? '3px solid var(--color-gold)' : '3px solid transparent',
+                  borderLeft: isTracked ? '3px solid var(--color-gold)' : 'none',
                   background: stock.verdict === 'UNDERVALUED' ? 'color-mix(in srgb, var(--color-positive) 4%, transparent)' : stock.verdict === 'OVERVALUED' ? 'color-mix(in srgb, var(--color-negative) 4%, transparent)' : undefined
                 }}>
                   <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center', width: 36, cursor: 'pointer' }}

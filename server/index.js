@@ -8,8 +8,9 @@ const { getCacheStats, clearCache } = require('./utils/cache');
 const { startOrderExecutor } = require('./services/orderExecutor');
 const auth = require('./middleware/auth');
 const { scheduleBackup, runImmediateBackup } = require('./backup');
-const { scheduleNightlyScreener } = require('./services/nightlyScreener');
+const { scheduleNightlyScreener, runNightlyScreener } = require('./services/nightlyScreener');
 const { schedulePortfolioRefresh } = require('./services/portfolioRefresh');
+const db = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -88,6 +89,21 @@ const server = app.listen(PORT, () => {
   runImmediateBackup();
   scheduleNightlyScreener();
   schedulePortfolioRefresh();
+
+  // Run screener on startup if cache is stale (>18 hours old)
+  try {
+    const latest = db.prepare('SELECT MAX(refreshed_at) as latest FROM screener_cache').get();
+    const lastRefresh = latest?.latest ? new Date(latest.latest + 'Z') : null;
+    const hoursOld = lastRefresh ? (Date.now() - lastRefresh.getTime()) / (1000 * 60 * 60) : Infinity;
+    if (hoursOld > 18) {
+      console.log(`[NightlyScreener] Cache is ${hoursOld === Infinity ? 'empty' : Math.round(hoursOld) + 'h old'} — running refresh on startup`);
+      runNightlyScreener().catch(err => console.error('[NightlyScreener] Startup refresh failed:', err.message));
+    } else {
+      console.log(`[NightlyScreener] Cache is ${Math.round(hoursOld)}h old — fresh enough, skipping startup refresh`);
+    }
+  } catch (err) {
+    console.error('[NightlyScreener] Stale check failed:', err.message);
+  }
 });
 
 server.on('error', (err) => {

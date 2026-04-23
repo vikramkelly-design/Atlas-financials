@@ -23,7 +23,7 @@ export default function Badges() {
   useEffect(() => {
     api.get('/api/badges')
       .then(res => setBadges(res.data.data))
-      .catch(() => {})
+      .catch(e => console.warn('Badges load failed', e))
       .finally(() => setLoading(false))
   }, [])
 
@@ -49,7 +49,7 @@ export default function Badges() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)', marginBottom: 'var(--space-xl)' }}>
             {earned.map(b => (
               <div key={b.key} className="card" style={{
-                borderLeft: '3px solid var(--color-gold)',
+                background: 'var(--color-gold-15)',
                 display: 'flex', alignItems: 'center', gap: 'var(--space-md)', padding: '1rem 1.25rem',
               }}>
                 <div style={{

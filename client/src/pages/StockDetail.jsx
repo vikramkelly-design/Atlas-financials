@@ -54,7 +54,7 @@ export default function StockDetail() {
         try {
           const explainRes = await api.get(`/api/markets/explain/${ticker}`)
           setVerdict(explainRes.data.data?.explanation || null)
-        } catch {}
+        } catch (e) { console.warn('Verdict fetch failed:', e.message) }
 
         // Track DCF view for track record
         if (ivRes.status === 'fulfilled') {
@@ -72,7 +72,7 @@ export default function StockDetail() {
     setAddingWatchlist(true)
     try {
       await api.post('/api/watchlist', { ticker: ticker.toUpperCase() })
-    } catch {}
+    } catch (e) { console.warn('Watchlist add failed:', e.message) }
     setAddingWatchlist(false)
   }
 
@@ -87,7 +87,7 @@ export default function StockDetail() {
       })
       setShowPortfolioForm(false)
       setPortfolioForm({ shares: '', avgCost: '' })
-    } catch {}
+    } catch (e) { console.warn('Portfolio add failed:', e.message) }
     setAddingPortfolio(false)
   }
 
@@ -130,7 +130,7 @@ export default function StockDetail() {
 
       {/* AI Verdict */}
       {verdict && (
-        <div className="card" style={{ marginBottom: 'var(--space-lg)', borderLeft: '3px solid var(--color-gold)' }}>
+        <div className="card" style={{ marginBottom: 'var(--space-lg)', background: 'var(--color-gold-15)' }}>
           <span className="label-caps" style={{ marginBottom: 'var(--space-xs)', display: 'block' }}>AI Verdict</span>
           <p style={{ fontSize: 'var(--text-base)', lineHeight: 1.6, color: 'var(--color-text-primary)' }}>{verdict}</p>
         </div>

@@ -170,4 +170,129 @@ router.post('/analyze', async (req, res) => {
   }
 });
 
+// GET /api/budget/overview?month=YYYY-MM — consolidated month view
+router.get('/overview', (req, res) => {
+  try {
+    const month = req.query.month;
+    if (!month) return res.status(400).json({ success: false, error: 'month query param required' });
+
+    // Income status
+    const incomeLog = db.prepare('SELECT income FROM monthly_income_log WHERE user_id = ? AND month = ? LIMIT 1').get(req.userId, month);
+    const user = db.prepare('SELECT monthly_income FROM users WHERE id = ?').get(req.userId);
+
+    // Previous month income for pre-fill
+    const parts = month.split('-');
+    let prevMonth;
+    if (parseInt(parts[1]) === 1) {
+      prevMonth = `${parseInt(parts[0]) - 1}-12`;
+    } else {
+      prevMonth = `${parts[0]}-${String(parseInt(parts[1]) - 1).padStart(2, '0')}`;
+    }
+    const prevLog = db.prepare('SELECT income FROM monthly_income_log WHERE user_id = ? AND month = ? LIMIT 1').get(req.userId, prevMonth);
+
+    const income = incomeLog?.income || prevLog?.income || user?.monthly_income || 0;
+    const incomeConfirmed = !!incomeLog;
+
+    // Transactions
+    const transactions = db.prepare('SELECT * FROM transactions WHERE user_id = ? AND month = ? ORDER BY date DESC').all(req.userId, month);
+
+    // Goals
+    const goalsRows = db.prepare('SELECT category, monthly_limit FROM budget_goals WHERE user_id = ?').all(req.userId);
+    const goals = {};
+    goalsRows.forEach(g => { goals[g.category] = g.monthly_limit; });
+
+    // Spending by category
+    const spendingRows = db.prepare(
+      'SELECT category, SUM(amount) as total FROM transactions WHERE user_id = ? AND month = ? AND amount < 0 GROUP BY category'
+    ).all(req.userId, month);
+    const spendingByCategory = {};
+    spendingRows.forEach(r => { spendingByCategory[r.category] = r.total; });
+
+    const totalSpent = spendingRows.reduce((s, r) => s + r.total, 0);
+    const remaining = income + totalSpent; // totalSpent is negative
+
+    // Allocation for this month
+    const allocation = db.prepare('SELECT spend_pct, savings_pct, invest_pct FROM monthly_allocation WHERE user_id = ? AND month = ?').get(req.userId, month);
+
+    res.json({
+      success: true,
+      data: {
+        income,
+        income_confirmed: incomeConfirmed,
+        previous_income: prevLog?.income || user?.monthly_income || 0,
+        transactions,
+        goals,
+        spending_by_category: spendingByCategory,
+        total_spent: totalSpent,
+        remaining,
+        transaction_count: transactions.length,
+        allocation: allocation || null,
+        allocation_locked: !!allocation,
+      }
+    });
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
+// POST /api/budget/confirm-income — confirm income for a month
+router.post('/confirm-income', (req, res) => {
+  try {
+    const { month, income } = req.body;
+    if (!month) return res.status(400).json({ success: false, error: 'Month required' });
+    const amt = parseFloat(income);
+    if (!amt || amt <= 0) return res.status(400).json({ success: false, error: 'Income must be positive' });
+
+    const existing = db.prepare('SELECT id FROM monthly_income_log WHERE user_id = ? AND month = ?').get(req.userId, month);
+    if (existing) {
+      db.prepare('UPDATE monthly_income_log SET income = ? WHERE id = ?').run(amt, existing.id);
+    } else {
+      db.prepare('INSERT INTO monthly_income_log (user_id, month, income) VALUES (?, ?, ?)').run(req.userId, month, amt);
+    }
+    db.prepare('UPDATE users SET monthly_income = ? WHERE id = ?').run(amt, req.userId);
+
+    res.json({ success: true, data: { month, income: amt } });
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
+// POST /api/budget/set-allocation — lock spend/save/invest split for a month
+router.post('/set-allocation', (req, res) => {
+  try {
+    const { month, spend_pct, savings_pct, invest_pct } = req.body;
+    if (!month) return res.status(400).json({ success: false, error: 'Month required' });
+
+    const s = parseInt(spend_pct);
+    const sv = parseInt(savings_pct);
+    const iv = parseInt(invest_pct);
+    if (isNaN(s) || isNaN(sv) || isNaN(iv)) {
+      return res.status(400).json({ success: false, error: 'All percentages required' });
+    }
+    if (s + sv + iv !== 100) {
+      return res.status(400).json({ success: false, error: 'Percentages must sum to 100' });
+    }
+    if (s < 0 || sv < 0 || iv < 0) {
+      return res.status(400).json({ success: false, error: 'Percentages cannot be negative' });
+    }
+
+    // Check if already locked for this month
+    const existing = db.prepare('SELECT id FROM monthly_allocation WHERE user_id = ? AND month = ?').get(req.userId, month);
+    if (existing) {
+      return res.status(409).json({ success: false, error: 'Allocation already set for this month' });
+    }
+
+    db.prepare('INSERT INTO monthly_allocation (user_id, month, spend_pct, savings_pct, invest_pct) VALUES (?, ?, ?, ?, ?)')
+      .run(req.userId, month, s, sv, iv);
+
+    // Also update the user's global allocation so other pages (Savings) see the latest
+    db.prepare('UPDATE users SET spend_pct = ?, savings_pct = ?, invest_pct = ? WHERE id = ?')
+      .run(s, sv, iv, req.userId);
+
+    res.json({ success: true, data: { month, spend_pct: s, savings_pct: sv, invest_pct: iv } });
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
 module.exports = router;

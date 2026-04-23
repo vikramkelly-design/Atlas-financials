@@ -3,6 +3,8 @@ import { api } from '../hooks/useApi'
 
 const WELCOME = {
   budget: "I'm your budget assistant. Ask me about your spending habits, how to save more, or get advice on budgeting strategies.",
+  atlas: "I'm Atlas, your personal finance coach. Ask me about your budget, savings, debt, portfolio, market analysis, or any financial question.",
+  money: "I can help with your budget, savings, and debt. Ask me anything about your finances.",
   portfolio: "I'm your portfolio assistant. Ask me about your holdings, diversification, risk management, or any investment concepts.",
   analytics: "I'm your analytics assistant. Ask me about your charts, performance metrics, or how to interpret your portfolio data.",
 }

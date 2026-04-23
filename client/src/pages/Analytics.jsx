@@ -48,7 +48,7 @@ export default function Analytics() {
           const pRes = await api.get(`/api/markets/prices?tickers=${tickers.join(',')}`)
           setPrices(pRes.data.data)
         }
-      } catch {}
+      } catch (e) { console.warn('Analytics data load failed:', e.message) }
     })()
     // Auto-refresh prices every 60s
     const interval = setInterval(async () => {
@@ -56,7 +56,7 @@ export default function Analytics() {
         try {
           const pRes = await api.get(`/api/markets/prices?tickers=${tickers.join(',')}`)
           setPrices(pRes.data.data)
-        } catch {}
+        } catch (e) { console.warn('Price refresh failed:', e.message) }
       }
     }, 60000)
     return () => clearInterval(interval)

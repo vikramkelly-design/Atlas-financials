@@ -133,7 +133,7 @@ export default function Plan() {
           setMonthlyInvestment(String(p.monthly_investment))
           setProjection(calculateProjection(p.goal_amount, p.current_age, p.target_age, p.monthly_investment))
         }
-      } catch {}
+      } catch (e) { console.warn('Plan fetch failed', e) }
       setLoading(false)
     }
     fetchPlan()
@@ -156,7 +156,7 @@ export default function Plan() {
       setProjection(calculateProjection(ga, ca, ta, mi))
       setEditing(false)
       setAiRecs(null) // reset recommendations on plan change
-    } catch {}
+    } catch (e) { console.warn('Save plan failed:', e.message) }
     setSaving(false)
   }
 
@@ -246,7 +246,7 @@ End with one brief sentence of overall strategy advice.`,
       </div>
 
       {/* Verdict */}
-      <div className="card" style={{ marginBottom: 'var(--space-lg)', borderLeft: `3px solid ${onTrack ? 'var(--color-positive)' : 'var(--color-gold)'}` }}>
+      <div className="card" style={{ marginBottom: 'var(--space-lg)', background: onTrack ? 'rgba(46,125,94,0.08)' : 'var(--color-gold-15)' }}>
         <p style={{ fontFamily: 'var(--font-serif)', fontSize: 20, color: 'var(--color-text-primary)', lineHeight: 1.5 }}>
           {onTrack
             ? `At $${parseInt(monthlyInvestment).toLocaleString()}/month, you reach $${parseInt(goalAmount).toLocaleString()} at age ${targetAge} — you're on track.`
@@ -308,7 +308,7 @@ End with one brief sentence of overall strategy advice.`,
       </div>
 
       {/* Monthly Action */}
-      <div className="card" style={{ borderLeft: '3px solid var(--color-gold)' }}>
+      <div className="card" style={{ background: 'var(--color-gold-15)' }}>
         <span className="label-caps" style={{ display: 'block', marginBottom: 'var(--space-xs)' }}>This Month's Action</span>
         <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-primary)' }}>
           Invest <span className="mono" style={{ fontWeight: 600 }}>${parseInt(monthlyInvestment).toLocaleString()}</span> before {endOfMonth}.

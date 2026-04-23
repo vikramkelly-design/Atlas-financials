@@ -2,6 +2,7 @@ const cron = require('node-cron');
 const db = require('../db');
 const { getYF } = require('../utils/yahoo');
 const { calculateIntrinsicSummary } = require('../utils/calculations');
+const { fetchStockDataFMP } = require('../utils/fmp');
 
 const SP100 = [
   'AAPL','MSFT','NVDA','AMZN','META','GOOGL','TSLA','BRK-B','JPM','LLY',
@@ -116,15 +117,35 @@ async function processBatch(batch, batchNum, totalBatches) {
   const results = await Promise.allSettled(batch.map(t => fetchStockData(t)));
 
   let success = 0, failed = 0;
+  const fmpRetries = [];
+
   results.forEach((result, i) => {
     if (result.status === 'fulfilled') {
       saveToCache(batch[i], result.value);
       success++;
     } else {
-      console.error(`[NightlyScreener] Failed: ${batch[i]} — ${result.reason?.message}`);
+      console.error(`[NightlyScreener] Yahoo failed: ${batch[i]} — ${result.reason?.message}`);
+      fmpRetries.push(batch[i]);
       failed++;
     }
   });
+
+  // Retry failed tickers with FMP fallback
+  if (fmpRetries.length > 0 && process.env.FMP_API_KEY) {
+    console.log(`[NightlyScreener] Retrying ${fmpRetries.length} with FMP: ${fmpRetries.join(', ')}`);
+    const fmpResults = await Promise.allSettled(fmpRetries.map(t => fetchStockDataFMP(t)));
+    fmpResults.forEach((result, i) => {
+      if (result.status === 'fulfilled') {
+        saveToCache(fmpRetries[i], result.value);
+        success++;
+        failed--;
+        console.log(`[NightlyScreener] FMP recovered: ${fmpRetries[i]}`);
+      } else {
+        console.error(`[NightlyScreener] FMP also failed: ${fmpRetries[i]} — ${result.reason?.message}`);
+      }
+    });
+  }
+
   console.log(`[NightlyScreener] Batch ${batchNum} done: ${success} ok, ${failed} failed`);
 }
 

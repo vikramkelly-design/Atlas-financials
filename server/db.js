@@ -385,6 +385,19 @@ try {
   `);
 } catch {}
 
+// Password reset tokens
+try {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      token TEXT NOT NULL UNIQUE,
+      expires_at TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now'))
+    )
+  `);
+} catch {}
+
 // Tracked (starred) stocks per user
 try {
   db.exec(`
@@ -430,6 +443,38 @@ const indexes = [
   'CREATE INDEX IF NOT EXISTS idx_user_settings_user_id ON user_settings(user_id)',
 ];
 for (const sql of indexes) {
+  try { db.exec(sql); } catch {}
+}
+
+// Add asset_type column to portfolio_positions (stock vs etf)
+const migrate7 = [
+  "ALTER TABLE portfolio_positions ADD COLUMN asset_type TEXT DEFAULT 'stock'",
+];
+for (const sql of migrate7) {
+  try { db.exec(sql); } catch {}
+}
+
+// Monthly allocation — locked per-month spend/save/invest split
+try {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS monthly_allocation (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      month TEXT NOT NULL,
+      spend_pct INTEGER NOT NULL,
+      savings_pct INTEGER NOT NULL,
+      invest_pct INTEGER NOT NULL,
+      created_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(user_id, month)
+    )
+  `);
+} catch {}
+
+// Add source column to portfolio_transactions for tracking invest-from-savings buys
+const migrate8 = [
+  "ALTER TABLE portfolio_transactions ADD COLUMN source TEXT DEFAULT 'cash'",
+];
+for (const sql of migrate8) {
   try { db.exec(sql); } catch {}
 }
 

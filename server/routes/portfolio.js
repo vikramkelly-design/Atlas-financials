@@ -22,8 +22,10 @@ router.get('/', (req, res) => {
 // Create portfolio
 router.post('/', (req, res) => {
   try {
-    const { name, initialDeposit = 0, recurringAmount = 0, recurringFrequency = null } = req.body;
-    if (!name) return res.status(400).json({ success: false, error: 'Portfolio name is required' });
+    const existing = db.prepare('SELECT id FROM portfolios WHERE user_id = ?').get(req.userId);
+    if (existing) return res.status(400).json({ success: false, error: 'You can only have one portfolio' });
+
+    const { name = 'My Portfolio', initialDeposit = 0, recurringAmount = 0, recurringFrequency = null } = req.body;
 
     const result = db.prepare(`
       INSERT INTO portfolios (user_id, name, cash_balance, initial_deposit, recurring_amount, recurring_frequency, last_recurring_deposit)
@@ -126,12 +128,13 @@ router.post('/:id/positions', async (req, res) => {
     const portfolio = db.prepare('SELECT * FROM portfolios WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
     if (!portfolio) return res.status(404).json({ success: false, error: 'Portfolio not found' });
 
-    let { ticker, shares, avgCost, source } = req.body;
+    let { ticker, shares, avgCost, source, assetType } = req.body;
     if (!ticker || !shares) return res.status(400).json({ success: false, error: 'ticker and shares are required' });
     ticker = ticker.toUpperCase().trim();
     shares = parseFloat(shares);
     if (shares <= 0) return res.status(400).json({ success: false, error: 'shares must be positive' });
     const posSource = ['savings', 'stipend', 'gift', 'import'].includes(source) ? source : 'import';
+    const posAssetType = assetType === 'etf' ? 'etf' : 'stock';
 
     // If no avgCost provided, fetch current price
     if (!avgCost) {
@@ -142,13 +145,62 @@ router.post('/:id/positions', async (req, res) => {
       } catch { avgCost = 0; }
     }
 
+    const totalCost = Math.round(avgCost * shares * 100) / 100;
+
+    // Validate dry powder if buying from savings (invest allocation)
+    if (posSource === 'savings') {
+      const user = db.prepare('SELECT monthly_income, spend_pct, invest_pct FROM users WHERE id = ?').get(req.userId);
+      if (user) {
+        const income = user.monthly_income || 0;
+        const spendAmt = Math.round(income * (user.spend_pct / 100) * 100) / 100;
+        const investAmt = Math.round(income * (user.invest_pct / 100) * 100) / 100;
+
+        const now = new Date();
+        const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const monthStart = `${monthKey}-01`;
+        const nextMonth = now.getMonth() === 11
+          ? `${now.getFullYear() + 1}-01-01`
+          : `${now.getFullYear()}-${String(now.getMonth() + 2).padStart(2, '0')}-01`;
+
+        // Unspent budget this month
+        const txns = db.prepare(
+          'SELECT COALESCE(SUM(CASE WHEN amount < 0 THEN ABS(amount) ELSE 0 END), 0) as spent FROM transactions WHERE user_id = ? AND month = ?'
+        ).get(req.userId, monthKey);
+        const unspent = Math.max(0, spendAmt - (txns?.spent || 0));
+
+        // Already invested from savings this month
+        const investSpent = db.prepare(`
+          SELECT COALESCE(SUM(pt.total), 0) as total
+          FROM portfolio_transactions pt
+          JOIN portfolios p ON p.id = pt.portfolio_id
+          WHERE p.user_id = ? AND pt.source = 'savings' AND pt.type = 'buy'
+            AND pt.created_at >= ? AND pt.created_at < ?
+        `).get(req.userId, monthStart, nextMonth);
+
+        const dryPowder = Math.max(0, Math.round((investAmt + unspent - (investSpent?.total || 0)) * 100) / 100);
+        if (totalCost > dryPowder) {
+          return res.status(400).json({
+            success: false,
+            error: `Not enough investing cash. You have $${dryPowder.toFixed(2)} available but this order costs $${totalCost.toFixed(2)}`
+          });
+        }
+      }
+    }
+
     const existing = db.prepare('SELECT * FROM portfolio_positions WHERE portfolio_id = ? AND ticker = ?').get(portfolio.id, ticker);
     if (existing) {
       const newShares = existing.shares + shares;
       const newAvgCost = ((existing.avg_cost * existing.shares) + (avgCost * shares)) / newShares;
       db.prepare('UPDATE portfolio_positions SET shares = ?, avg_cost = ? WHERE id = ?').run(newShares, newAvgCost, existing.id);
     } else {
-      db.prepare('INSERT INTO portfolio_positions (portfolio_id, ticker, shares, avg_cost, source) VALUES (?, ?, ?, ?, ?)').run(portfolio.id, ticker, shares, avgCost, posSource);
+      db.prepare('INSERT INTO portfolio_positions (portfolio_id, ticker, shares, avg_cost, source, asset_type) VALUES (?, ?, ?, ?, ?, ?)').run(portfolio.id, ticker, shares, avgCost, posSource, posAssetType);
+    }
+
+    // Log transaction for savings-sourced buys so dry powder is tracked
+    if (posSource === 'savings') {
+      db.prepare('INSERT INTO portfolio_transactions (portfolio_id, type, ticker, shares, price, total, source) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
+        portfolio.id, 'buy', ticker, shares, avgCost, totalCost, 'savings'
+      );
     }
 
     const positions = db.prepare('SELECT * FROM portfolio_positions WHERE portfolio_id = ? ORDER BY created_at').all(portfolio.id);

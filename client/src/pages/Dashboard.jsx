@@ -41,6 +41,7 @@ export default function Dashboard() {
   const [learnExpanded, setLearnExpanded] = useState(false)
   const [digest, setDigest] = useState(null)
   const [plan, setPlan] = useState(null)
+  const [investProgress, setInvestProgress] = useState(null)
 
   const tickers = positions.map(p => p.ticker)
   const { prices } = usePrices(tickers)
@@ -54,9 +55,9 @@ export default function Dashboard() {
       try {
         const tickerRes = await get('/api/screener/tickers')
         if (tickerRes.data?.length > 0) screenerTickers = tickerRes.data
-      } catch {}
+      } catch (e) { console.warn('Screener load failed', e) }
 
-      const [txRes, posRes, wlRes, goalsRes, spyRes, scrRes, planRes, digestRes] = await Promise.allSettled([
+      const [txRes, posRes, wlRes, goalsRes, spyRes, scrRes, planRes, digestRes, savingsRes] = await Promise.allSettled([
         get('/api/budget/transactions'),
         get('/api/portfolio/positions'),
         get('/api/watchlist'),
@@ -65,6 +66,7 @@ export default function Dashboard() {
         api.post('/api/screener', { tickers: screenerTickers || ['AAPL','MSFT','GOOGL','AMZN','TSLA','NVDA','META','BRK-B','JPM','V','WMT','JNJ','PG','KO','DIS'] }),
         get('/api/plan'),
         new Date().getDay() === 1 ? get('/api/digest') : Promise.resolve(null),
+        get('/api/savings'),
       ])
 
       if (posRes.status === 'fulfilled') setPositions(posRes.value.data || [])
@@ -87,6 +89,12 @@ export default function Dashboard() {
       if (scrRes.status === 'fulfilled') setScreenerData(scrRes.value.data?.stocks || scrRes.value.data?.data?.stocks || [])
       if (planRes.status === 'fulfilled') setPlan(planRes.value.data || null)
       if (digestRes.status === 'fulfilled' && digestRes.value) setDigest(digestRes.value.data || null)
+      if (savingsRes.status === 'fulfilled' && savingsRes.value.data) {
+        const s = savingsRes.value.data
+        if (s.invest_amt > 0) {
+          setInvestProgress({ investAmt: s.invest_amt, investSpent: s.invest_spent || 0 })
+        }
+      }
     } catch (err) {
       setError(err.message)
     } finally {
@@ -133,7 +141,7 @@ export default function Dashboard() {
           <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>{formatDate(new Date())}</p>
         </div>
 
-        <div className="card" style={{ marginBottom: 'var(--space-lg)', borderLeft: '3px solid var(--color-gold)' }}>
+        <div className="card" style={{ marginBottom: 'var(--space-lg)', background: 'var(--color-gold-15)' }}>
           <p style={{ fontSize: 'var(--text-lg)', color: 'var(--color-text-primary)', marginBottom: 'var(--space-md)' }}>
             Welcome to Atlas. Let's build your financial picture.
           </p>
@@ -185,7 +193,7 @@ export default function Dashboard() {
 
       {/* This Week digest card — Mondays only */}
       {digest && (
-        <div className="card" style={{ marginBottom: 'var(--space-lg)', borderLeft: '3px solid var(--color-gold)' }}>
+        <div className="card" style={{ marginBottom: 'var(--space-lg)', background: 'var(--color-gold-15)' }}>
           <span className="label-caps" style={{ display: 'block', marginBottom: 'var(--space-sm)' }}>This Week</span>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-lg)' }}>
             {digest.portfolioHoldingsCount > 0 && (
@@ -260,6 +268,27 @@ export default function Dashboard() {
           ) : (
             <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-base)' }}>No holdings yet.</p>
           )}
+          {investProgress && investProgress.investAmt > 0 && (
+            <div style={{ marginTop: 'var(--space-sm)', paddingTop: 'var(--space-sm)', borderTop: '1px solid var(--color-border)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
+                <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Invested this month
+                </span>
+                <span className="mono" style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-primary)' }}>
+                  {formatCurrency(investProgress.investSpent)} <span style={{ color: 'var(--color-text-muted)' }}>/ {formatCurrency(investProgress.investAmt)}</span>
+                </span>
+              </div>
+              <div style={{ height: 4, background: 'var(--color-border)', borderRadius: 2, overflow: 'hidden' }}>
+                <div style={{
+                  height: '100%',
+                  width: `${Math.min(100, (investProgress.investSpent / investProgress.investAmt) * 100)}%`,
+                  background: investProgress.investSpent >= investProgress.investAmt ? 'var(--color-positive)' : '#5B8DEF',
+                  borderRadius: 2,
+                  transition: 'width 0.3s ease',
+                }} />
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -284,7 +313,7 @@ export default function Dashboard() {
         </div>
 
         {/* Card 5 — Budget Remaining */}
-        <div className="card card-clickable" onClick={() => navigate('/budget')}>
+        <div className="card card-clickable" onClick={() => navigate('/money')}>
           <span className="label-caps" style={{ marginBottom: 'var(--space-sm)', display: 'block' }}>Budget</span>
           {budgetRemaining !== null ? (
             <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-primary)' }}>
@@ -340,7 +369,7 @@ export default function Dashboard() {
 
       {/* Plan Summary */}
       {plan && (
-        <div className="card card-clickable" onClick={() => navigate('/plan')} style={{ marginBottom: 'var(--space-lg)', borderLeft: '3px solid var(--color-navy)' }}>
+        <div className="card card-clickable" onClick={() => navigate('/plan')} style={{ marginBottom: 'var(--space-lg)', background: 'color-mix(in srgb, var(--color-navy) 8%, var(--color-surface))' }}>
           <span className="label-caps" style={{ display: 'block', marginBottom: 'var(--space-sm)' }}>My Plan</span>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-lg)', alignItems: 'baseline' }}>
             <div>
