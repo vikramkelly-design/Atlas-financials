@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import useApi, { api } from '../hooks/useApi'
 import { useToast } from '../components/Toast'
 import { formatCurrency } from '../components/NumberDisplay'
 import LoadingSpinner from '../components/LoadingSpinner'
 import ConfirmDialog from '../components/ConfirmDialog'
 import AllocationBar from '../components/AllocationBar'
-import CollapsibleSection from '../components/CollapsibleSection'
 
 import MonthHeader from './budget/MonthHeader'
 import SpendingOverview from './budget/SpendingOverview'
@@ -33,8 +33,9 @@ function formatDebtDate(iso) {
 export default function Money() {
   const { get, post, patch, del } = useApi()
   const { toast } = useToast()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tab = searchParams.get('tab') || 'budget'
 
-  // Scroll to top on mount
   useEffect(() => { window.scrollTo(0, 0) }, [])
 
   // --- Shared state ---
@@ -296,9 +297,7 @@ export default function Money() {
 
   // --- Savings derived values ---
   const savMonthlyIncome = savingsData?.monthly_income || 0
-  const savSpendPct = savingsData?.spend_pct || 0
   const savSavingsPct = savingsData?.savings_pct || 0
-  const savInvestPct = savingsData?.invest_pct || 0
   const savSavingsAmt = savingsData?.savings_amt || 0
   const efBalance = savingsData?.ef_balance || 0
   const efTarget = savingsData?.ef_target || 0
@@ -306,12 +305,7 @@ export default function Money() {
   const emergencyFundComplete = savingsData?.emergency_fund_complete || false
   const efMonths = savSavingsAmt > 0 && efTarget > efBalance ? Math.ceil((efTarget - efBalance) / savSavingsAmt) : 0
 
-  // --- Chat context ---
-  const spendingByCategory = {}
-  transactions.filter(t => t.amount < 0).forEach(t => {
-    const cat = t.category || 'Other'
-    spendingByCategory[cat] = (spendingByCategory[cat] || 0) + Math.abs(t.amount)
-  })
+  const setTab = (t) => setSearchParams(t === 'budget' ? {} : { tab: t })
 
   return (
     <div>
@@ -341,322 +335,372 @@ export default function Money() {
         totalDebt={totalDebt}
       />
 
-      {/* ── BUDGET SECTION ── */}
-      <CollapsibleSection title="Budget" sectionKey="budget" defaultOpen={true}>
-        <SpendingOverview income={income} totalSpent={totalSpent} remaining={remaining} />
-        <CategoryGrid
-          categories={CATEGORIES}
-          spending={spending}
-          goals={goals}
-          onUpdateGoal={updateGoal}
-          onSelectCategory={setCategoryFilter}
-          selectedCategory={categoryFilter}
-        />
-        <TransactionList
-          transactions={transactions}
-          categoryFilter={categoryFilter}
-          onAdd={addTransaction}
-          onUpdateCategory={updateCategory}
-          onDelete={deleteTransaction}
-        />
-        <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-          <button className="btn btn-primary" onClick={() => setShowImport(true)} style={{ padding: '0.5rem 1.5rem' }}>
-            Import Bank CSV
+      {/* ── TAB NAVIGATION ── */}
+      <div style={{
+        display: 'flex',
+        gap: 0,
+        marginBottom: 'var(--space-lg)',
+        borderBottom: '1px solid var(--color-border)',
+      }}>
+        {[
+          { key: 'budget', label: 'Budget' },
+          { key: 'savings', label: 'Savings' },
+          { key: 'debt', label: 'Debt' },
+        ].map(t => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            style={{
+              padding: '0.6rem 1.25rem',
+              fontSize: 'var(--text-sm)',
+              fontWeight: tab === t.key ? 600 : 400,
+              color: tab === t.key ? 'var(--color-gold)' : 'var(--color-text-muted)',
+              background: 'none',
+              border: 'none',
+              borderBottom: tab === t.key ? '2px solid var(--color-gold)' : '2px solid transparent',
+              cursor: 'pointer',
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em',
+              transition: 'color 0.15s, border-color 0.15s',
+            }}
+          >
+            {t.label}
+            {t.key === 'debt' && totalDebt > 0 && (
+              <span style={{
+                marginLeft: 6,
+                fontSize: 'var(--text-xs)',
+                color: 'var(--color-negative)',
+                fontWeight: 600,
+              }}>
+                {formatCurrency(totalDebt)}
+              </span>
+            )}
           </button>
-        </div>
-      </CollapsibleSection>
+        ))}
+      </div>
 
-      {/* ── SAVINGS SECTION ── */}
-      <CollapsibleSection title="Savings" sectionKey="savings" defaultOpen={false}>
-        {!savingsData || !savMonthlyIncome ? (
-          <div className="card" style={{ textAlign: 'center', padding: 'var(--space-xl) var(--space-lg)' }}>
-            <p className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>
-              Set your income and allocation above to start tracking savings.
-            </p>
+      {/* ── BUDGET TAB ── */}
+      {tab === 'budget' && (
+        <>
+          <SpendingOverview income={income} totalSpent={totalSpent} remaining={remaining} />
+          <CategoryGrid
+            categories={CATEGORIES}
+            spending={spending}
+            goals={goals}
+            onUpdateGoal={updateGoal}
+            onSelectCategory={setCategoryFilter}
+            selectedCategory={categoryFilter}
+          />
+          <TransactionList
+            transactions={transactions}
+            categoryFilter={categoryFilter}
+            onAdd={addTransaction}
+            onUpdateCategory={updateCategory}
+            onDelete={deleteTransaction}
+          />
+          <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+            <button className="btn btn-primary" onClick={() => setShowImport(true)} style={{ padding: '0.5rem 1.5rem' }}>
+              Import Bank CSV
+            </button>
           </div>
-        ) : (
-          <>
-            {/* Emergency Fund */}
-            <div className="card" style={{ marginBottom: 'var(--space-lg)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                <h3 style={{ fontSize: 'var(--text-lg)' }}>Emergency Fund</h3>
-                <span className="mono" style={{ fontSize: 'var(--text-lg)', fontWeight: 600, color: emergencyFundComplete ? 'var(--color-positive)' : 'var(--color-gold)' }}>
-                  {formatCurrency(efBalance)} <span className="text-faint" style={{ fontSize: 'var(--text-sm)', fontWeight: 400 }}>/ {formatCurrency(efTarget)}</span>
-                </span>
-              </div>
-              <div className="progress-bar" style={{ height: 8, marginBottom: '0.5rem' }}>
-                <div className="progress-bar-fill" style={{ width: `${Math.min(100, efPct)}%`, background: emergencyFundComplete ? 'var(--color-positive)' : 'var(--color-gold)' }} />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>
-                  {emergencyFundComplete ? 'Emergency fund complete' : `${efPct.toFixed(0)}% funded — ${efMonths > 0 ? `~${efMonths} month${efMonths !== 1 ? 's' : ''} to go` : 'keep going'}`}
-                </span>
-                {!depositedThisMonth && savSavingsAmt > 0 && (
-                  <button className="btn btn-primary" onClick={logDeposit} disabled={depositing} style={{ fontSize: 'var(--text-sm)', padding: '0.3rem 0.75rem' }}>
-                    {depositing ? 'Depositing...' : `Log ${formatCurrency(savSavingsAmt)} Savings`}
+        </>
+      )}
+
+      {/* ── SAVINGS TAB ── */}
+      {tab === 'savings' && (
+        <>
+          {!savingsData || !savMonthlyIncome ? (
+            <div className="card" style={{ textAlign: 'center', padding: 'var(--space-xl) var(--space-lg)' }}>
+              <p className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>
+                Set your income and allocation above to start tracking savings.
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Emergency Fund */}
+              <div className="card" style={{ marginBottom: 'var(--space-lg)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                  <h3 style={{ fontSize: 'var(--text-lg)' }}>Emergency Fund</h3>
+                  <span className="mono" style={{ fontSize: 'var(--text-lg)', fontWeight: 600, color: emergencyFundComplete ? 'var(--color-positive)' : 'var(--color-gold)' }}>
+                    {formatCurrency(efBalance)} <span className="text-faint" style={{ fontSize: 'var(--text-sm)', fontWeight: 400 }}>/ {formatCurrency(efTarget)}</span>
+                  </span>
+                </div>
+                <div className="progress-bar" style={{ height: 8, marginBottom: '0.5rem' }}>
+                  <div className="progress-bar-fill" style={{ width: `${Math.min(100, efPct)}%`, background: emergencyFundComplete ? 'var(--color-positive)' : 'var(--color-gold)' }} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>
+                    {emergencyFundComplete ? 'Emergency fund complete' : `${efPct.toFixed(0)}% funded — ${efMonths > 0 ? `~${efMonths} month${efMonths !== 1 ? 's' : ''} to go` : 'keep going'}`}
+                  </span>
+                  {!depositedThisMonth && savSavingsAmt > 0 && (
+                    <button className="btn btn-primary" onClick={logDeposit} disabled={depositing} style={{ fontSize: 'var(--text-sm)', padding: '0.3rem 0.75rem' }}>
+                      {depositing ? 'Depositing...' : `Log ${formatCurrency(savSavingsAmt)} Savings`}
+                    </button>
+                  )}
+                  {depositedThisMonth && <span className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>Savings logged this month</span>}
+                </div>
+                {emergencyFundComplete && savSavingsPct > 0 && (
+                  <button className="btn btn-ghost" onClick={graduate} disabled={graduating} style={{ marginTop: '0.75rem', width: '100%', fontSize: 'var(--text-sm)' }}>
+                    {graduating ? 'Moving...' : 'Move savings allocation to investing'}
                   </button>
                 )}
-                {depositedThisMonth && <span className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>Savings logged this month</span>}
               </div>
-              {emergencyFundComplete && savSavingsPct > 0 && (
-                <button className="btn btn-ghost" onClick={graduate} disabled={graduating} style={{ marginTop: '0.75rem', width: '100%', fontSize: 'var(--text-sm)' }}>
-                  {graduating ? 'Moving...' : 'Move savings allocation to investing'}
-                </button>
-              )}
-            </div>
 
-            {/* Pay Debt from Savings */}
-            {debts.length > 0 && efBalance > 0 && (
+              {/* Pay Debt from Savings */}
+              {debts.length > 0 && efBalance > 0 && (
+                <div className="card" style={{ marginBottom: 'var(--space-lg)' }}>
+                  <h3 style={{ fontSize: 'var(--text-lg)', marginBottom: '0.75rem' }}>Pay Down Debt</h3>
+                  <p className="text-faint" style={{ fontSize: 'var(--text-sm)', marginBottom: '0.75rem' }}>
+                    Use your savings balance ({formatCurrency(efBalance)}) to make extra payments.
+                  </p>
+                  {debts.filter(d => d.balance > 0).map(d => (
+                    <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderBottom: '1px solid var(--color-border)' }}>
+                      <div>
+                        <span style={{ fontWeight: 500 }}>{d.name}</span>
+                        <span className="text-faint mono" style={{ fontSize: 'var(--text-sm)', marginLeft: '0.5rem' }}>{formatCurrency(d.balance)}</span>
+                      </div>
+                      <button className="btn btn-ghost" onClick={() => payDebt(d.id, Math.min(d.balance, efBalance))} style={{ fontSize: 'var(--text-sm)', padding: '0.25rem 0.6rem' }}>
+                        Pay {formatCurrency(Math.min(d.balance, efBalance))}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Savings Buckets */}
               <div className="card" style={{ marginBottom: 'var(--space-lg)' }}>
-                <h3 style={{ fontSize: 'var(--text-lg)', marginBottom: '0.75rem' }}>Pay Down Debt</h3>
-                <p className="text-faint" style={{ fontSize: 'var(--text-sm)', marginBottom: '0.75rem' }}>
-                  Use your savings balance ({formatCurrency(efBalance)}) to make extra payments.
-                </p>
-                {debts.filter(d => d.balance > 0).map(d => (
-                  <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderBottom: '1px solid var(--color-border)' }}>
-                    <div>
-                      <span style={{ fontWeight: 500 }}>{d.name}</span>
-                      <span className="text-faint mono" style={{ fontSize: 'var(--text-sm)', marginLeft: '0.5rem' }}>{formatCurrency(d.balance)}</span>
-                    </div>
-                    <button className="btn btn-ghost" onClick={() => payDebt(d.id, Math.min(d.balance, efBalance))} style={{ fontSize: 'var(--text-sm)', padding: '0.25rem 0.6rem' }}>
-                      Pay {formatCurrency(Math.min(d.balance, efBalance))}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Savings Buckets */}
-            <div className="card" style={{ marginBottom: 'var(--space-lg)' }}>
-              <h3 style={{ fontSize: 'var(--text-lg)', marginBottom: '0.75rem' }}>Savings Buckets</h3>
-              {buckets.length > 0 ? (
-                <div style={{ marginBottom: '0.75rem' }}>
-                  {buckets.map(b => {
-                    const pct = b.target_amount > 0 ? Math.min(100, (b.current_amount / b.target_amount) * 100) : 0
-                    return (
-                      <div key={b.id} style={{ padding: '0.6rem 0', borderBottom: '1px solid var(--color-border)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-                          <span style={{ fontWeight: 500 }}>{b.name}</span>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <span className="mono" style={{ fontSize: 'var(--text-sm)' }}>
-                              {formatCurrency(b.current_amount)}{b.target_amount > 0 ? ` / ${formatCurrency(b.target_amount)}` : ''}
-                            </span>
-                            {bucketDepositId === b.id ? (
-                              <div style={{ display: 'flex', gap: '0.25rem' }}>
-                                <input className="input mono" type="number" value={bucketDepositAmt} onChange={e => setBucketDepositAmt(e.target.value)}
-                                  placeholder="$0" style={{ width: 70, fontSize: 'var(--text-xs)', padding: '0.15rem 0.3rem' }} autoFocus />
-                                <button className="btn btn-primary" onClick={() => depositToBucket(b.id)} style={{ fontSize: 'var(--text-xs)', padding: '0.15rem 0.4rem' }}>Add</button>
-                                <button className="btn btn-ghost" onClick={() => setBucketDepositId(null)} style={{ fontSize: 'var(--text-xs)', padding: '0.15rem 0.3rem' }}>x</button>
-                              </div>
-                            ) : (
-                              <>
-                                <button className="btn btn-ghost" onClick={() => { setBucketDepositId(b.id); setBucketDepositAmt('') }} style={{ fontSize: 'var(--text-xs)', padding: '0.2rem 0.4rem' }}>+ Add</button>
-                                <button className="btn btn-ghost" onClick={() => deleteBucket(b.id)} style={{ fontSize: 'var(--text-xs)', padding: '0.2rem 0.3rem', color: 'var(--color-text-muted)' }}>x</button>
-                              </>
-                            )}
+                <h3 style={{ fontSize: 'var(--text-lg)', marginBottom: '0.75rem' }}>Savings Buckets</h3>
+                {buckets.length > 0 ? (
+                  <div style={{ marginBottom: '0.75rem' }}>
+                    {buckets.map(b => {
+                      const pct = b.target_amount > 0 ? Math.min(100, (b.current_amount / b.target_amount) * 100) : 0
+                      return (
+                        <div key={b.id} style={{ padding: '0.6rem 0', borderBottom: '1px solid var(--color-border)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                            <span style={{ fontWeight: 500 }}>{b.name}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <span className="mono" style={{ fontSize: 'var(--text-sm)' }}>
+                                {formatCurrency(b.current_amount)}{b.target_amount > 0 ? ` / ${formatCurrency(b.target_amount)}` : ''}
+                              </span>
+                              {bucketDepositId === b.id ? (
+                                <div style={{ display: 'flex', gap: '0.25rem' }}>
+                                  <input className="input mono" type="number" value={bucketDepositAmt} onChange={e => setBucketDepositAmt(e.target.value)}
+                                    placeholder="$0" style={{ width: 70, fontSize: 'var(--text-xs)', padding: '0.15rem 0.3rem' }} autoFocus />
+                                  <button className="btn btn-primary" onClick={() => depositToBucket(b.id)} style={{ fontSize: 'var(--text-xs)', padding: '0.15rem 0.4rem' }}>Add</button>
+                                  <button className="btn btn-ghost" onClick={() => setBucketDepositId(null)} style={{ fontSize: 'var(--text-xs)', padding: '0.15rem 0.3rem' }}>x</button>
+                                </div>
+                              ) : (
+                                <>
+                                  <button className="btn btn-ghost" onClick={() => { setBucketDepositId(b.id); setBucketDepositAmt('') }} style={{ fontSize: 'var(--text-xs)', padding: '0.2rem 0.4rem' }}>+ Add</button>
+                                  <button className="btn btn-ghost" onClick={() => deleteBucket(b.id)} style={{ fontSize: 'var(--text-xs)', padding: '0.2rem 0.3rem', color: 'var(--color-text-muted)' }}>x</button>
+                                </>
+                              )}
+                            </div>
                           </div>
+                          {b.target_amount > 0 && (
+                            <div className="progress-bar" style={{ height: 4 }}>
+                              <div className="progress-bar-fill" style={{ width: `${pct}%`, background: pct >= 100 ? 'var(--color-positive)' : 'var(--color-gold)' }} />
+                            </div>
+                          )}
                         </div>
-                        {b.target_amount > 0 && (
-                          <div className="progress-bar" style={{ height: 4 }}>
-                            <div className="progress-bar-fill" style={{ width: `${pct}%`, background: pct >= 100 ? 'var(--color-positive)' : 'var(--color-gold)' }} />
-                          </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-faint" style={{ fontSize: 'var(--text-sm)', marginBottom: '0.75rem' }}>
+                    {totalDebt > 0 ? 'Pay off all debts to unlock savings buckets.' : 'Create buckets for your savings goals.'}
+                  </p>
+                )}
+                {totalDebt <= 0 && (
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
+                    <div style={{ flex: 1 }}>
+                      <input className="input" value={newBucketName} onChange={e => setNewBucketName(e.target.value)} placeholder="Bucket name" />
+                    </div>
+                    <div style={{ width: 100 }}>
+                      <input className="input mono" type="number" value={newBucketTarget} onChange={e => setNewBucketTarget(e.target.value)} placeholder="Target $" />
+                    </div>
+                    <button className="btn btn-primary" onClick={createBucket} style={{ height: 36 }}>Create</button>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </>
+      )}
+
+      {/* ── DEBT TAB ── */}
+      {tab === 'debt' && (
+        <>
+          {/* Add Debt Form */}
+          <div className="card" style={{ marginBottom: 'var(--space-lg)' }}>
+            <h3 style={{ fontSize: 'var(--text-lg)', marginBottom: '0.75rem' }}>Add a Debt</h3>
+            <form onSubmit={addDebt} style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+              <div style={{ flex: '1 1 140px' }}>
+                <label className="label-caps" style={{ display: 'block', marginBottom: 3 }}>Name</label>
+                <input className="input" placeholder="e.g. Visa Card" value={debtForm.name} onChange={e => setDebtForm(f => ({ ...f, name: e.target.value }))} />
+              </div>
+              <div style={{ flex: '0 1 110px' }}>
+                <label className="label-caps" style={{ display: 'block', marginBottom: 3 }}>Balance</label>
+                <input className="input" type="number" step="0.01" placeholder="$0" value={debtForm.balance} onChange={e => setDebtForm(f => ({ ...f, balance: e.target.value }))} />
+              </div>
+              <div style={{ flex: '0 1 90px' }}>
+                <label className="label-caps" style={{ display: 'block', marginBottom: 3 }}>APR %</label>
+                <input className="input" type="number" step="0.1" placeholder="0%" value={debtForm.interest_rate} onChange={e => setDebtForm(f => ({ ...f, interest_rate: e.target.value }))} />
+              </div>
+              <div style={{ flex: '0 1 110px' }}>
+                <label className="label-caps" style={{ display: 'block', marginBottom: 3 }}>Min Payment</label>
+                <input className="input" type="number" step="0.01" placeholder="$0" value={debtForm.min_payment} onChange={e => setDebtForm(f => ({ ...f, min_payment: e.target.value }))} />
+              </div>
+              <button className="btn btn-primary" type="submit" style={{ height: 36 }}>Add</button>
+            </form>
+          </div>
+
+          {/* Strategy & Extra Payment */}
+          {debts.length > 0 && (
+            <div className="card" style={{ marginBottom: 'var(--space-lg)' }}>
+              <div className="grid-2">
+                <div>
+                  <label className="label-caps" style={{ display: 'block', marginBottom: '0.5rem' }}>Payoff Strategy</label>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button onClick={() => setDebtStrategy('avalanche')} className={debtStrategy === 'avalanche' ? 'btn btn-primary' : 'btn btn-ghost'} style={{ flex: 1 }}>Avalanche</button>
+                    <button onClick={() => setDebtStrategy('snowball')} className={debtStrategy === 'snowball' ? 'btn btn-primary' : 'btn btn-ghost'} style={{ flex: 1 }}>Snowball</button>
+                  </div>
+                  <p className="text-faint" style={{ fontSize: 'var(--text-sm)', marginTop: '0.35rem' }}>
+                    {debtStrategy === 'avalanche' ? 'Highest interest first — saves the most money' : 'Smallest balance first — quick wins to stay motivated'}
+                  </p>
+                </div>
+                <div>
+                  <label className="label-caps" style={{ display: 'block', marginBottom: '0.5rem' }}>Extra Monthly Payment</label>
+                  <div style={{ position: 'relative' }}>
+                    <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }}>$</span>
+                    <input className="input" type="number" step="10" placeholder="0" value={extraPayment} onChange={e => setExtraPayment(e.target.value)} style={{ paddingLeft: '1.5rem' }} />
+                  </div>
+                  <p className="text-faint" style={{ fontSize: 'var(--text-sm)', marginTop: '0.35rem' }}>Extra money on top of minimums each month</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Plan Summary */}
+          {debtPlanLoading && <LoadingSpinner height={100} />}
+          {debtPlan && !debtPlanLoading && (
+            <div className="grid-3" style={{ marginBottom: 'var(--space-lg)' }}>
+              <div className="card" style={{ textAlign: 'center' }}>
+                <p className="label-caps" style={{ marginBottom: '0.35rem' }}>Total Interest</p>
+                <span className="mono" style={{ fontSize: 'var(--text-2xl)', color: 'var(--color-negative)' }}>{formatCurrency(debtPlan.totalInterest)}</span>
+              </div>
+              <div className="card" style={{ textAlign: 'center' }}>
+                <p className="label-caps" style={{ marginBottom: '0.35rem' }}>Debt-Free By</p>
+                <span className="mono" style={{ fontSize: 'var(--text-2xl)', color: 'var(--color-navy)' }}>{formatDebtDate(debtPlan.debtFreeDate)}</span>
+                <p className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>{formatMonths(debtPlan.monthsToFreedom)}</p>
+              </div>
+              <div className="card" style={{ textAlign: 'center' }}>
+                <p className="label-caps" style={{ marginBottom: '0.35rem' }}>{debtPlan.interestSaved > 0 ? 'You Save' : 'Extra Payment'}</p>
+                {debtPlan.interestSaved > 0 ? (
+                  <>
+                    <span className="mono" style={{ fontSize: 'var(--text-2xl)', color: 'var(--color-positive)' }}>{formatCurrency(debtPlan.interestSaved)}</span>
+                    <p className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>{debtPlan.monthsSaved} months sooner</p>
+                  </>
+                ) : (
+                  <span className="text-faint" style={{ fontSize: 'var(--text-base)' }}>Add extra $ to see savings</span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Debts List */}
+          {debts.length > 0 && (
+            <div className="card" style={{ marginBottom: 'var(--space-lg)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                <h3 style={{ fontSize: 'var(--text-lg)' }}>Your Debts</h3>
+                <span className="mono" style={{ fontSize: 'var(--text-xl)', color: 'var(--color-negative)', fontWeight: 600 }}>Total: {formatCurrency(totalDebt)}</span>
+              </div>
+              {debts.map(d => {
+                const isExpanded = expandedDebt === d.id
+                const planData = debtPlan?.debts?.find(pd => pd.id === d.id)
+                const origAmt = d.original_amount || d.balance
+                const paidOff = origAmt > 0 ? Math.max(0, origAmt - d.balance) : 0
+                const debtPct = origAmt > 0 ? Math.min(100, (paidOff / origAmt) * 100) : 0
+                const isFullyPaid = d.balance <= 0
+                return (
+                  <div key={d.id} style={{
+                    borderBottom: '1px solid var(--color-border)',
+                    background: isExpanded ? 'var(--color-surface-2)' : 'transparent',
+                    margin: '0 -1.5rem', padding: '0 1.5rem',
+                    transition: 'background 0.15s',
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.6rem 0' }}>
+                      <div onClick={() => setExpandedDebt(isExpanded ? null : d.id)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
+                        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)', transform: isExpanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s', display: 'inline-block' }}>&#9654;</span>
+                        <span style={{ fontSize: 'var(--text-base)', fontWeight: 500, color: 'var(--color-gold)' }}>{d.name}</span>
+                        <span className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>{d.interest_rate}% APR</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        {isFullyPaid ? (
+                          <span className="mono" style={{ color: 'var(--color-positive)', fontWeight: 600 }}>Paid off</span>
+                        ) : (
+                          <>
+                            <span className="mono" style={{ color: 'var(--color-negative)' }}>{formatCurrency(d.balance)}</span>
+                            <span className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>{formatCurrency(d.min_payment)}/mo</span>
+                          </>
                         )}
-                      </div>
-                    )
-                  })}
-                </div>
-              ) : (
-                <p className="text-faint" style={{ fontSize: 'var(--text-sm)', marginBottom: '0.75rem' }}>
-                  {totalDebt > 0 ? 'Pay off all debts to unlock savings buckets.' : 'Create buckets for your savings goals.'}
-                </p>
-              )}
-              {totalDebt <= 0 && (
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
-                  <div style={{ flex: 1 }}>
-                    <input className="input" value={newBucketName} onChange={e => setNewBucketName(e.target.value)} placeholder="Bucket name" />
-                  </div>
-                  <div style={{ width: 100 }}>
-                    <input className="input mono" type="number" value={newBucketTarget} onChange={e => setNewBucketTarget(e.target.value)} placeholder="Target $" />
-                  </div>
-                  <button className="btn btn-primary" onClick={createBucket} style={{ height: 36 }}>Create</button>
-                </div>
-              )}
-            </div>
-          </>
-        )}
-      </CollapsibleSection>
-
-      {/* ── DEBT SECTION ── */}
-      <CollapsibleSection title="Debt" sectionKey="debt" defaultOpen={false}>
-        {/* Add Debt Form */}
-        <div className="card" style={{ marginBottom: 'var(--space-lg)' }}>
-          <h3 style={{ fontSize: 'var(--text-lg)', marginBottom: '0.75rem' }}>Add a Debt</h3>
-          <form onSubmit={addDebt} style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-            <div style={{ flex: '1 1 140px' }}>
-              <label className="label-caps" style={{ display: 'block', marginBottom: 3 }}>Name</label>
-              <input className="input" placeholder="e.g. Visa Card" value={debtForm.name} onChange={e => setDebtForm(f => ({ ...f, name: e.target.value }))} />
-            </div>
-            <div style={{ flex: '0 1 110px' }}>
-              <label className="label-caps" style={{ display: 'block', marginBottom: 3 }}>Balance</label>
-              <input className="input" type="number" step="0.01" placeholder="$0" value={debtForm.balance} onChange={e => setDebtForm(f => ({ ...f, balance: e.target.value }))} />
-            </div>
-            <div style={{ flex: '0 1 90px' }}>
-              <label className="label-caps" style={{ display: 'block', marginBottom: 3 }}>APR %</label>
-              <input className="input" type="number" step="0.1" placeholder="0%" value={debtForm.interest_rate} onChange={e => setDebtForm(f => ({ ...f, interest_rate: e.target.value }))} />
-            </div>
-            <div style={{ flex: '0 1 110px' }}>
-              <label className="label-caps" style={{ display: 'block', marginBottom: 3 }}>Min Payment</label>
-              <input className="input" type="number" step="0.01" placeholder="$0" value={debtForm.min_payment} onChange={e => setDebtForm(f => ({ ...f, min_payment: e.target.value }))} />
-            </div>
-            <button className="btn btn-primary" type="submit" style={{ height: 36 }}>Add</button>
-          </form>
-        </div>
-
-        {/* Strategy & Extra Payment */}
-        {debts.length > 0 && (
-          <div className="card" style={{ marginBottom: 'var(--space-lg)' }}>
-            <div className="grid-2">
-              <div>
-                <label className="label-caps" style={{ display: 'block', marginBottom: '0.5rem' }}>Payoff Strategy</label>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button onClick={() => setDebtStrategy('avalanche')} className={debtStrategy === 'avalanche' ? 'btn btn-primary' : 'btn btn-ghost'} style={{ flex: 1 }}>Avalanche</button>
-                  <button onClick={() => setDebtStrategy('snowball')} className={debtStrategy === 'snowball' ? 'btn btn-primary' : 'btn btn-ghost'} style={{ flex: 1 }}>Snowball</button>
-                </div>
-                <p className="text-faint" style={{ fontSize: 'var(--text-sm)', marginTop: '0.35rem' }}>
-                  {debtStrategy === 'avalanche' ? 'Highest interest first — saves the most money' : 'Smallest balance first — quick wins to stay motivated'}
-                </p>
-              </div>
-              <div>
-                <label className="label-caps" style={{ display: 'block', marginBottom: '0.5rem' }}>Extra Monthly Payment</label>
-                <div style={{ position: 'relative' }}>
-                  <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }}>$</span>
-                  <input className="input" type="number" step="10" placeholder="0" value={extraPayment} onChange={e => setExtraPayment(e.target.value)} style={{ paddingLeft: '1.5rem' }} />
-                </div>
-                <p className="text-faint" style={{ fontSize: 'var(--text-sm)', marginTop: '0.35rem' }}>Extra money on top of minimums each month</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Plan Summary */}
-        {debtPlanLoading && <LoadingSpinner height={100} />}
-        {debtPlan && !debtPlanLoading && (
-          <div className="grid-3" style={{ marginBottom: 'var(--space-lg)' }}>
-            <div className="card" style={{ textAlign: 'center' }}>
-              <p className="label-caps" style={{ marginBottom: '0.35rem' }}>Total Interest</p>
-              <span className="mono" style={{ fontSize: 'var(--text-2xl)', color: 'var(--color-negative)' }}>{formatCurrency(debtPlan.totalInterest)}</span>
-            </div>
-            <div className="card" style={{ textAlign: 'center' }}>
-              <p className="label-caps" style={{ marginBottom: '0.35rem' }}>Debt-Free By</p>
-              <span className="mono" style={{ fontSize: 'var(--text-2xl)', color: 'var(--color-navy)' }}>{formatDebtDate(debtPlan.debtFreeDate)}</span>
-              <p className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>{formatMonths(debtPlan.monthsToFreedom)}</p>
-            </div>
-            <div className="card" style={{ textAlign: 'center' }}>
-              <p className="label-caps" style={{ marginBottom: '0.35rem' }}>{debtPlan.interestSaved > 0 ? 'You Save' : 'Extra Payment'}</p>
-              {debtPlan.interestSaved > 0 ? (
-                <>
-                  <span className="mono" style={{ fontSize: 'var(--text-2xl)', color: 'var(--color-positive)' }}>{formatCurrency(debtPlan.interestSaved)}</span>
-                  <p className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>{debtPlan.monthsSaved} months sooner</p>
-                </>
-              ) : (
-                <span className="text-faint" style={{ fontSize: 'var(--text-base)' }}>Add extra $ to see savings</span>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Debts List */}
-        {debts.length > 0 && (
-          <div className="card" style={{ marginBottom: 'var(--space-lg)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-              <h3 style={{ fontSize: 'var(--text-lg)' }}>Your Debts</h3>
-              <span className="mono" style={{ fontSize: 'var(--text-xl)', color: 'var(--color-negative)', fontWeight: 600 }}>Total: {formatCurrency(totalDebt)}</span>
-            </div>
-            {debts.map(d => {
-              const isExpanded = expandedDebt === d.id
-              const planData = debtPlan?.debts?.find(pd => pd.id === d.id)
-              const origAmt = d.original_amount || d.balance
-              const paidOff = origAmt > 0 ? Math.max(0, origAmt - d.balance) : 0
-              const debtPct = origAmt > 0 ? Math.min(100, (paidOff / origAmt) * 100) : 0
-              const isFullyPaid = d.balance <= 0
-              return (
-                <div key={d.id} style={{
-                  borderBottom: '1px solid var(--color-border)',
-                  background: isExpanded ? 'var(--color-surface-2)' : 'transparent',
-                  margin: '0 -1.5rem', padding: '0 1.5rem',
-                  transition: 'background 0.15s',
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.6rem 0' }}>
-                    <div onClick={() => setExpandedDebt(isExpanded ? null : d.id)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
-                      <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)', transform: isExpanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s', display: 'inline-block' }}>&#9654;</span>
-                      <span style={{ fontSize: 'var(--text-base)', fontWeight: 500, color: 'var(--color-gold)' }}>{d.name}</span>
-                      <span className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>{d.interest_rate}% APR</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      {isFullyPaid ? (
-                        <span className="mono" style={{ color: 'var(--color-positive)', fontWeight: 600 }}>Paid off</span>
-                      ) : (
-                        <>
-                          <span className="mono" style={{ color: 'var(--color-negative)' }}>{formatCurrency(d.balance)}</span>
-                          <span className="text-faint" style={{ fontSize: 'var(--text-sm)' }}>{formatCurrency(d.min_payment)}/mo</span>
-                        </>
-                      )}
-                      <button className="btn btn-ghost" onClick={() => deleteDebt(d.id)} style={{ fontSize: 'var(--text-xs)', padding: '0.2rem 0.5rem' }}>Paid Off</button>
-                    </div>
-                  </div>
-                  <div style={{ padding: '0 0 0.6rem 0' }}>
-                    <div className="progress-bar" style={{ height: 6 }}>
-                      <div className="progress-bar-fill" style={{ width: `${debtPct}%`, background: isFullyPaid ? 'var(--color-positive)' : 'var(--color-navy)' }} />
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.2rem' }}>
-                      <span className="text-faint" style={{ fontSize: 'var(--text-xs)' }}>{isFullyPaid ? 'Paid off' : `${debtPct.toFixed(0)}% paid`}</span>
-                      <span className="text-faint mono" style={{ fontSize: 'var(--text-xs)' }}>{formatCurrency(paidOff)} of {formatCurrency(origAmt)}</span>
-                    </div>
-                  </div>
-                  {isExpanded && planData && (
-                    <div style={{ padding: '0 0 1rem 1.5rem' }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem', marginBottom: '0.75rem' }}>
-                        {[
-                          { label: 'Monthly Payment', value: formatCurrency(planData.monthlyPayment) },
-                          { label: 'Payoff Timeline', value: formatMonths(planData.monthsToPayoff) },
-                          { label: 'Total Interest', value: formatCurrency(planData.totalInterest), color: 'var(--color-negative)' },
-                        ].map(({ label, value, color }) => (
-                          <div key={label} style={{ padding: '0.75rem', background: 'var(--color-surface)', borderRadius: 2, border: '1px solid var(--color-border)' }}>
-                            <p className="label-caps" style={{ marginBottom: '0.25rem' }}>{label}</p>
-                            <span className="mono" style={{ fontSize: 'var(--text-xl)', fontWeight: 600, color }}>{value}</span>
-                          </div>
-                        ))}
-                      </div>
-                      <div style={{ display: 'flex', gap: '1rem', fontSize: 'var(--text-sm)' }}>
-                        <span className="text-muted">Payoff order: <strong>#{planData.order}</strong></span>
-                        <span className="text-muted">Original: <strong className="mono">{formatCurrency(planData.originalBalance)}</strong></span>
+                        <button className="btn btn-ghost" onClick={() => deleteDebt(d.id)} style={{ fontSize: 'var(--text-xs)', padding: '0.2rem 0.5rem' }}>Paid Off</button>
                       </div>
                     </div>
-                  )}
-                  {isExpanded && !planData && debtPlanLoading && (
-                    <div style={{ padding: '0.5rem 0 1rem 1.5rem' }}><LoadingSpinner height={40} /></div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        )}
+                    <div style={{ padding: '0 0 0.6rem 0' }}>
+                      <div className="progress-bar" style={{ height: 6 }}>
+                        <div className="progress-bar-fill" style={{ width: `${debtPct}%`, background: isFullyPaid ? 'var(--color-positive)' : 'var(--color-navy)' }} />
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.2rem' }}>
+                        <span className="text-faint" style={{ fontSize: 'var(--text-xs)' }}>{isFullyPaid ? 'Paid off' : `${debtPct.toFixed(0)}% paid`}</span>
+                        <span className="text-faint mono" style={{ fontSize: 'var(--text-xs)' }}>{formatCurrency(paidOff)} of {formatCurrency(origAmt)}</span>
+                      </div>
+                    </div>
+                    {isExpanded && planData && (
+                      <div style={{ padding: '0 0 1rem 1.5rem' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                          {[
+                            { label: 'Monthly Payment', value: formatCurrency(planData.monthlyPayment) },
+                            { label: 'Payoff Timeline', value: formatMonths(planData.monthsToPayoff) },
+                            { label: 'Total Interest', value: formatCurrency(planData.totalInterest), color: 'var(--color-negative)' },
+                          ].map(({ label, value, color }) => (
+                            <div key={label} style={{ padding: '0.75rem', background: 'var(--color-surface)', borderRadius: 2, border: '1px solid var(--color-border)' }}>
+                              <p className="label-caps" style={{ marginBottom: '0.25rem' }}>{label}</p>
+                              <span className="mono" style={{ fontSize: 'var(--text-xl)', fontWeight: 600, color }}>{value}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div style={{ display: 'flex', gap: '1rem', fontSize: 'var(--text-sm)' }}>
+                          <span className="text-muted">Payoff order: <strong>#{planData.order}</strong></span>
+                          <span className="text-muted">Original: <strong className="mono">{formatCurrency(planData.originalBalance)}</strong></span>
+                        </div>
+                      </div>
+                    )}
+                    {isExpanded && !planData && debtPlanLoading && (
+                      <div style={{ padding: '0.5rem 0 1rem 1.5rem' }}><LoadingSpinner height={40} /></div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
 
-        {/* AI Summary */}
-        {debtPlan && !debtPlanLoading && debtPlan.aiSummary && (
-          <div className="card" style={{ marginBottom: 'var(--space-lg)' }}>
-            <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>{debtPlan.aiSummary}</p>
-          </div>
-        )}
+          {/* AI Summary */}
+          {debtPlan && !debtPlanLoading && debtPlan.aiSummary && (
+            <div className="card" style={{ marginBottom: 'var(--space-lg)' }}>
+              <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>{debtPlan.aiSummary}</p>
+            </div>
+          )}
 
-        {/* Empty state */}
-        {debts.length === 0 && (
-          <div className="card" style={{ textAlign: 'center', padding: '2rem', marginBottom: 'var(--space-lg)' }}>
-            <p className="text-muted" style={{ fontSize: 'var(--text-base)' }}>Add your debts above to see your payoff plan.</p>
-            <p className="text-faint" style={{ fontSize: 'var(--text-sm)', marginTop: '0.5rem' }}>Credit cards, student loans, car loans — anything you owe.</p>
-          </div>
-        )}
-      </CollapsibleSection>
+          {/* Empty state */}
+          {debts.length === 0 && (
+            <div className="card" style={{ textAlign: 'center', padding: '2rem', marginBottom: 'var(--space-lg)' }}>
+              <p className="text-muted" style={{ fontSize: 'var(--text-base)' }}>Add your debts above to see your payoff plan.</p>
+              <p className="text-faint" style={{ fontSize: 'var(--text-sm)', marginTop: '0.5rem' }}>Credit cards, student loans, car loans — anything you owe.</p>
+            </div>
+          )}
+        </>
+      )}
 
       {/* Modals */}
       <ImportModal isOpen={showImport} onClose={() => setShowImport(false)} onImportComplete={fetchAll} />

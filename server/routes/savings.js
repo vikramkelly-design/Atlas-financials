@@ -330,7 +330,7 @@ router.post('/buckets/:id/deposit', (req, res) => {
     // Check savings balance
     const user = db.prepare('SELECT savings_balance FROM users WHERE id = ?').get(req.userId);
     if (user.savings_balance < amt) {
-      return res.status(400).json({ success: false, error: 'Insufficient savings balance' });
+      return res.status(400).json({ success: false, error: `Insufficient savings balance (${user.savings_balance.toFixed(2)} available). Log your monthly savings first.` });
     }
 
     db.prepare('UPDATE savings_buckets SET current_amount = current_amount + ? WHERE id = ?').run(amt, bucket.id);
