@@ -4,7 +4,8 @@
   "workspaces": ["client", "server"],
   "scripts": {
     "dev": "concurrently \"npm run dev --workspace=server\" \"npm run dev --workspace=client\"",
-    "build": "npm run build --workspace=client"
+    "build": "npm run build --workspace=client",
+    "start": "npm run start --workspace=finwise-client"
   },
   "devDependencies": {
     "concurrently": "^8.0.0"
