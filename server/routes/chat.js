@@ -59,7 +59,7 @@ router.post('/', async (req, res) => {
     // Build personalized context from user's real financial data
     let userFinancialContext = '';
     try {
-      userFinancialContext = buildUserContext(req.userId);
+      userFinancialContext = await buildUserContext(req.userId);
     } catch {}
 
     let systemPrompt = context && CONTEXT_PROMPTS[context]

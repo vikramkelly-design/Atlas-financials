@@ -135,7 +135,7 @@ export default function Portfolio() {
       const res = await api.get(`/api/markets/search?q=${encodeURIComponent(query)}`)
       setSearchResults(res.data.data || [])
       setShowSearchDropdown(true)
-    } catch { setSearchResults([]) }
+    } catch (err) { console.error('Stock search failed:', err.response?.data || err.message); setSearchResults([]) }
     setSearchLoading(false)
   }
 

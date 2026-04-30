@@ -1,5 +1,8 @@
 {
   "name": "finwise-server",
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
     "dev": "nodemon index.js",
     "start": "node index.js"

@@ -62,8 +62,23 @@ app.use('/api/savings', auth, require('./routes/savings'));
 app.use('/api/digest', auth, require('./routes/digest'));
 
 // Health check
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', cache: getCacheStats(), timestamp: new Date().toISOString() });
+app.get('/api/health', async (req, res) => {
+  try {
+    const dbCheck = await db.get('SELECT COUNT(*) as count FROM screener_cache');
+    res.json({ status: 'ok', cache: getCacheStats(), screenerCacheCount: parseInt(dbCheck?.count) || 0, timestamp: new Date().toISOString() });
+  } catch (err) {
+    res.json({ status: 'ok', cache: getCacheStats(), dbError: err.message, timestamp: new Date().toISOString() });
+  }
+});
+
+// Manual screener refresh (requires auth)
+app.post('/api/screener/refresh', auth, async (req, res) => {
+  try {
+    runNightlyScreener().catch(err => console.error('[NightlyScreener] Manual refresh failed:', err.message));
+    res.json({ success: true, message: 'Screener refresh started in background' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 // Cache control (requires auth)
@@ -74,9 +89,8 @@ app.delete('/api/cache', auth, (req, res) => {
 
 // Error handler
 app.use((err, req, res, next) => {
-  console.error('Unhandled error:', err);
-  const message = process.env.NODE_ENV === 'production' ? 'Internal server error' : (err.message || 'Internal server error');
-  res.status(500).json({ success: false, error: message });
+  console.error(`[Error] ${req.method} ${req.path}:`, err.message);
+  res.status(500).json({ success: false, error: err.message || 'Internal server error' });
 });
 
 // Initialize database then start server
@@ -88,16 +102,18 @@ initializeDatabase()
       scheduleNightlyScreener();
       schedulePortfolioRefresh();
 
-      // Run screener on startup if cache is stale (>18 hours old)
+      // Run screener on startup if cache is stale (>18 hours old) or incomplete (<50 stocks)
       try {
+        const cacheCount = await db.get('SELECT COUNT(*) as count FROM screener_cache');
+        const count = parseInt(cacheCount?.count) || 0;
         const latest = await db.get('SELECT MAX(refreshed_at) as latest FROM screener_cache');
         const lastRefresh = latest?.latest ? new Date(latest.latest) : null;
         const hoursOld = lastRefresh ? (Date.now() - lastRefresh.getTime()) / (1000 * 60 * 60) : Infinity;
-        if (hoursOld > 18) {
-          console.log(`[NightlyScreener] Cache is ${hoursOld === Infinity ? 'empty' : Math.round(hoursOld) + 'h old'} — running refresh on startup`);
+        if (count < 50 || hoursOld > 18) {
+          console.log(`[NightlyScreener] Cache has ${count} stocks, ${hoursOld === Infinity ? 'never refreshed' : Math.round(hoursOld) + 'h old'} — running refresh on startup`);
           runNightlyScreener().catch(err => console.error('[NightlyScreener] Startup refresh failed:', err.message));
         } else {
-          console.log(`[NightlyScreener] Cache is ${Math.round(hoursOld)}h old — fresh enough, skipping startup refresh`);
+          console.log(`[NightlyScreener] Cache has ${count} stocks, ${Math.round(hoursOld)}h old — fresh enough, skipping startup refresh`);
         }
       } catch (err) {
         console.error('[NightlyScreener] Stale check failed:', err.message);

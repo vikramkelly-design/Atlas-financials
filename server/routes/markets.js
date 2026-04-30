@@ -22,7 +22,8 @@ router.get('/search', async (req, res, next) => {
       }));
     res.json({ success: true, data: results });
   } catch (err) {
-    next(err);
+    console.error('[Markets] Search error:', err.message);
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
