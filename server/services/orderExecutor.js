@@ -6,7 +6,7 @@ const POLL_INTERVAL = 2 * 60 * 1000; // 2 minutes
 
 async function checkAndExecuteOrders() {
   try {
-    const pendingOrders = db.prepare("SELECT * FROM orders WHERE status = 'pending'").all();
+    const pendingOrders = await db.all("SELECT * FROM orders WHERE status = 'pending'");
     if (pendingOrders.length === 0) return;
 
     const byTicker = {};
@@ -27,12 +27,12 @@ async function checkAndExecuteOrders() {
           try {
             if (order.order_type === 'limit' && order.side === 'buy') {
               if (currentPrice <= order.target_price) {
-                executeLimitBuy(order, currentPrice);
+                await executeLimitBuy(order, currentPrice);
                 console.log(`[OrderExecutor] Executed limit buy: ${order.shares} ${ticker} @ $${currentPrice}`);
               }
             } else if (order.order_type === 'stop_loss' && order.side === 'sell') {
               if (currentPrice <= order.target_price) {
-                executeStopLoss(order, currentPrice);
+                await executeStopLoss(order, currentPrice);
                 console.log(`[OrderExecutor] Executed stop loss: ${order.shares} ${ticker} @ $${currentPrice}`);
               }
             }
@@ -49,60 +49,56 @@ async function checkAndExecuteOrders() {
   }
 }
 
-function executeLimitBuy(order, executionPrice) {
+async function executeLimitBuy(order, executionPrice) {
   const total = executionPrice * order.shares;
-  const portfolio = db.prepare('SELECT * FROM portfolios WHERE id = ?').get(order.portfolio_id);
+  const portfolio = await db.get('SELECT * FROM portfolios WHERE id = $1', [order.portfolio_id]);
 
   if (!portfolio || portfolio.cash_balance < total) {
-    db.prepare("UPDATE orders SET status = 'cancelled' WHERE id = ?").run(order.id);
+    await db.run("UPDATE orders SET status = 'cancelled' WHERE id = $1", [order.id]);
     return;
   }
 
-  const existing = db.prepare('SELECT * FROM portfolio_positions WHERE portfolio_id = ? AND ticker = ?').get(order.portfolio_id, order.ticker);
+  const existing = await db.get('SELECT * FROM portfolio_positions WHERE portfolio_id = $1 AND ticker = $2', [order.portfolio_id, order.ticker]);
 
-  const txn = db.transaction(() => {
-    db.prepare("UPDATE orders SET status = 'executed', executed_price = ?, executed_at = datetime('now') WHERE id = ?").run(executionPrice, order.id);
+  await db.transaction(async (client) => {
+    await client.query("UPDATE orders SET status = 'executed', executed_price = $1, executed_at = NOW() WHERE id = $2", [executionPrice, order.id]);
 
     if (existing) {
       const newShares = existing.shares + order.shares;
       const newAvgCost = ((existing.avg_cost * existing.shares) + total) / newShares;
-      db.prepare('UPDATE portfolio_positions SET shares = ?, avg_cost = ? WHERE id = ?').run(newShares, newAvgCost, existing.id);
+      await client.query('UPDATE portfolio_positions SET shares = $1, avg_cost = $2 WHERE id = $3', [newShares, newAvgCost, existing.id]);
     } else {
-      db.prepare('INSERT INTO portfolio_positions (portfolio_id, ticker, shares, avg_cost) VALUES (?, ?, ?, ?)').run(order.portfolio_id, order.ticker, order.shares, executionPrice);
+      await client.query('INSERT INTO portfolio_positions (portfolio_id, ticker, shares, avg_cost) VALUES ($1, $2, $3, $4)', [order.portfolio_id, order.ticker, order.shares, executionPrice]);
     }
 
-    db.prepare('UPDATE portfolios SET cash_balance = cash_balance - ? WHERE id = ?').run(total, order.portfolio_id);
-    db.prepare("INSERT INTO portfolio_transactions (portfolio_id, order_id, type, ticker, shares, price, total) VALUES (?, ?, 'buy', ?, ?, ?, ?)").run(order.portfolio_id, order.id, order.ticker, order.shares, executionPrice, total);
+    await client.query('UPDATE portfolios SET cash_balance = cash_balance - $1 WHERE id = $2', [total, order.portfolio_id]);
+    await client.query("INSERT INTO portfolio_transactions (portfolio_id, order_id, type, ticker, shares, price, total) VALUES ($1, $2, 'buy', $3, $4, $5, $6)", [order.portfolio_id, order.id, order.ticker, order.shares, executionPrice, total]);
   });
-
-  txn();
 }
 
-function executeStopLoss(order, executionPrice) {
-  const existing = db.prepare('SELECT * FROM portfolio_positions WHERE portfolio_id = ? AND ticker = ?').get(order.portfolio_id, order.ticker);
+async function executeStopLoss(order, executionPrice) {
+  const existing = await db.get('SELECT * FROM portfolio_positions WHERE portfolio_id = $1 AND ticker = $2', [order.portfolio_id, order.ticker]);
 
   if (!existing || existing.shares < order.shares) {
-    db.prepare("UPDATE orders SET status = 'cancelled' WHERE id = ?").run(order.id);
+    await db.run("UPDATE orders SET status = 'cancelled' WHERE id = $1", [order.id]);
     return;
   }
 
   const total = executionPrice * order.shares;
 
-  const txn = db.transaction(() => {
-    db.prepare("UPDATE orders SET status = 'executed', executed_price = ?, executed_at = datetime('now') WHERE id = ?").run(executionPrice, order.id);
+  await db.transaction(async (client) => {
+    await client.query("UPDATE orders SET status = 'executed', executed_price = $1, executed_at = NOW() WHERE id = $2", [executionPrice, order.id]);
 
     const remainingShares = existing.shares - order.shares;
     if (remainingShares <= 0.0001) {
-      db.prepare('DELETE FROM portfolio_positions WHERE id = ?').run(existing.id);
+      await client.query('DELETE FROM portfolio_positions WHERE id = $1', [existing.id]);
     } else {
-      db.prepare('UPDATE portfolio_positions SET shares = ? WHERE id = ?').run(remainingShares, existing.id);
+      await client.query('UPDATE portfolio_positions SET shares = $1 WHERE id = $2', [remainingShares, existing.id]);
     }
 
-    db.prepare('UPDATE portfolios SET cash_balance = cash_balance + ? WHERE id = ?').run(total, order.portfolio_id);
-    db.prepare("INSERT INTO portfolio_transactions (portfolio_id, order_id, type, ticker, shares, price, total) VALUES (?, ?, 'sell', ?, ?, ?, ?)").run(order.portfolio_id, order.id, order.ticker, order.shares, executionPrice, total);
+    await client.query('UPDATE portfolios SET cash_balance = cash_balance + $1 WHERE id = $2', [total, order.portfolio_id]);
+    await client.query("INSERT INTO portfolio_transactions (portfolio_id, order_id, type, ticker, shares, price, total) VALUES ($1, $2, 'sell', $3, $4, $5, $6)", [order.portfolio_id, order.id, order.ticker, order.shares, executionPrice, total]);
   });
-
-  txn();
 }
 
 let intervalId = null;

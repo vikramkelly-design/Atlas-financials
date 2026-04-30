@@ -29,11 +29,11 @@ async function refreshPortfolioPrices() {
 
   try {
     // Get all unique tickers held by any user
-    const rows = db.prepare(`
+    const rows = await db.all(`
       SELECT DISTINCT pp.ticker
       FROM portfolio_positions pp
       JOIN portfolios p ON pp.portfolio_id = p.id
-    `).all();
+    `);
 
     const tickers = rows.map(r => r.ticker);
     if (tickers.length === 0) {
@@ -64,25 +64,24 @@ async function refreshPortfolioPrices() {
     console.log(`[PortfolioRefresh] Got prices for ${fetchedCount}/${tickers.length} tickers`);
 
     // Update each position's gain/loss and each portfolio's total value
-    const allPortfolios = db.prepare('SELECT id, user_id FROM portfolios').all();
+    const allPortfolios = await db.all('SELECT id, user_id FROM portfolios');
 
-    const updatePosition = db.prepare('UPDATE portfolio_positions SET avg_cost = avg_cost WHERE id = ?'); // no-op placeholder
     let positionsUpdated = 0;
 
     for (const portfolio of allPortfolios) {
-      const positions = db.prepare('SELECT * FROM portfolio_positions WHERE portfolio_id = ?').all(portfolio.id);
+      const positions = await db.all('SELECT * FROM portfolio_positions WHERE portfolio_id = $1', [portfolio.id]);
       let totalValue = 0;
 
       for (const pos of positions) {
         const currentPrice = priceMap[pos.ticker];
         if (currentPrice == null) {
           // Use avg_cost as fallback for total calc
-          totalValue += pos.avg_cost * pos.shares;
+          totalValue += parseFloat(pos.avg_cost) * pos.shares;
           continue;
         }
 
         const positionValue = currentPrice * pos.shares;
-        const gainLoss = (currentPrice - pos.avg_cost) * pos.shares;
+        const gainLoss = (currentPrice - parseFloat(pos.avg_cost)) * pos.shares;
         totalValue += positionValue;
         positionsUpdated++;
       }

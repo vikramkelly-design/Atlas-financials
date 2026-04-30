@@ -3,32 +3,26 @@ const router = express.Router();
 const db = require('../db');
 const { sendError } = require('../utils/errors');
 
-// GET /api/plan — fetch user's current plan
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const plan = db.prepare('SELECT * FROM plans WHERE user_id = ? ORDER BY created_at DESC LIMIT 1').get(req.userId);
+    const plan = await db.get('SELECT * FROM plans WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1', [req.userId]);
     res.json({ success: true, data: plan || null });
-  } catch (err) {
-    sendError(res, err);
-  }
+  } catch (err) { sendError(res, err); }
 });
 
-// POST /api/plan — save or update plan
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const { goal_amount, target_age, current_age, monthly_investment, risk_tolerance } = req.body;
-    const existing = db.prepare('SELECT id FROM plans WHERE user_id = ?').get(req.userId);
+    const existing = await db.get('SELECT id FROM plans WHERE user_id = $1', [req.userId]);
     if (existing) {
-      db.prepare('UPDATE plans SET goal_amount=?, target_age=?, current_age=?, monthly_investment=?, risk_tolerance=?, updated_at=CURRENT_TIMESTAMP WHERE user_id=?')
-        .run(goal_amount, target_age, current_age, monthly_investment, risk_tolerance || 'moderate', req.userId);
+      await db.run('UPDATE plans SET goal_amount=$1, target_age=$2, current_age=$3, monthly_investment=$4, risk_tolerance=$5, updated_at=NOW() WHERE user_id=$6',
+        [goal_amount, target_age, current_age, monthly_investment, risk_tolerance || 'moderate', req.userId]);
     } else {
-      db.prepare('INSERT INTO plans (user_id, goal_amount, target_age, current_age, monthly_investment, risk_tolerance) VALUES (?,?,?,?,?,?)')
-        .run(req.userId, goal_amount, target_age, current_age, monthly_investment, risk_tolerance || 'moderate');
+      await db.run('INSERT INTO plans (user_id, goal_amount, target_age, current_age, monthly_investment, risk_tolerance) VALUES ($1,$2,$3,$4,$5,$6)',
+        [req.userId, goal_amount, target_age, current_age, monthly_investment, risk_tolerance || 'moderate']);
     }
     res.json({ success: true });
-  } catch (err) {
-    sendError(res, err);
-  }
+  } catch (err) { sendError(res, err); }
 });
 
 module.exports = router;

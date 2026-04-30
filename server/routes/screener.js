@@ -4,134 +4,82 @@ const { fetchStockData, saveToCache, SP100 } = require('../services/nightlyScree
 
 const router = express.Router();
 
-// GET /api/screener/defaults — return S&P 100 list
-router.get('/defaults', (req, res) => {
-  res.json({ tickers: SP100 });
-});
+router.get('/defaults', (req, res) => { res.json({ tickers: SP100 }); });
 
-// GET /api/screener — return cached screener data (no live API calls)
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const rows = db.prepare('SELECT ticker, data, refreshed_at FROM screener_cache ORDER BY ticker').all();
-    const stocks = rows.map(r => {
-      try { return JSON.parse(r.data); } catch { return { ticker: r.ticker, error: 'Parse error' }; }
-    });
-    const lastRefreshed = rows.length > 0
-      ? rows.reduce((latest, r) => r.refreshed_at > latest ? r.refreshed_at : latest, rows[0].refreshed_at)
-      : null;
+    const rows = await db.all('SELECT ticker, data, refreshed_at FROM screener_cache ORDER BY ticker');
+    const stocks = rows.map(r => { try { return JSON.parse(r.data); } catch { return { ticker: r.ticker, error: 'Parse error' }; } });
+    const lastRefreshed = rows.length > 0 ? rows.reduce((latest, r) => r.refreshed_at > latest ? r.refreshed_at : latest, rows[0].refreshed_at) : null;
     res.json({ success: true, stocks, lastRefreshed });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
+  } catch (err) { res.status(500).json({ success: false, error: err.message }); }
 });
 
-// POST /api/screener — kept for backwards compat (dashboard uses it)
-// Returns cached data only, no live fetches
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const { tickers } = req.body;
     const tickerList = Array.isArray(tickers) ? tickers.map(t => t.toUpperCase()) : SP100;
-
-    const placeholders = tickerList.map(() => '?').join(',');
-    const rows = db.prepare(`SELECT ticker, data, refreshed_at FROM screener_cache WHERE ticker IN (${placeholders})`).all(...tickerList);
-    const stocks = rows.map(r => {
-      try { return JSON.parse(r.data); } catch { return { ticker: r.ticker, error: 'Parse error' }; }
-    });
-    const lastRefreshed = rows.length > 0
-      ? rows.reduce((latest, r) => r.refreshed_at > latest ? r.refreshed_at : latest, rows[0].refreshed_at)
-      : null;
+    const placeholders = tickerList.map((_, i) => `$${i + 1}`).join(',');
+    const rows = await db.all(`SELECT ticker, data, refreshed_at FROM screener_cache WHERE ticker IN (${placeholders})`, tickerList);
+    const stocks = rows.map(r => { try { return JSON.parse(r.data); } catch { return { ticker: r.ticker, error: 'Parse error' }; } });
+    const lastRefreshed = rows.length > 0 ? rows.reduce((latest, r) => r.refreshed_at > latest ? r.refreshed_at : latest, rows[0].refreshed_at) : null;
     res.json({ success: true, stocks, lastRefreshed });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
+  } catch (err) { res.status(500).json({ success: false, error: err.message }); }
 });
 
-// POST /api/screener/fetch-single — on-demand fetch for a new user-added ticker
 router.post('/fetch-single', async (req, res) => {
   try {
     const ticker = (req.body.ticker || '').toUpperCase().trim();
     if (!ticker) return res.status(400).json({ success: false, error: 'Ticker required' });
-
-    // Check cache first
-    const cached = db.prepare('SELECT data FROM screener_cache WHERE ticker = ?').get(ticker);
-    if (cached) {
-      return res.json({ success: true, data: JSON.parse(cached.data), source: 'cache' });
-    }
-
-    // Not in cache — fetch live
+    const cached = await db.get('SELECT data FROM screener_cache WHERE ticker = $1', [ticker]);
+    if (cached) return res.json({ success: true, data: JSON.parse(cached.data), source: 'cache' });
     const data = await fetchStockData(ticker);
-    saveToCache(ticker, data);
+    await saveToCache(ticker, data);
     res.json({ success: true, data, source: 'live' });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
+  } catch (err) { res.status(500).json({ success: false, error: err.message }); }
 });
 
-// GET /api/screener/last-refreshed — get the timestamp of the most recent nightly refresh
-router.get('/last-refreshed', (req, res) => {
+router.get('/last-refreshed', async (req, res) => {
   try {
-    const row = db.prepare('SELECT MAX(refreshed_at) as last FROM screener_cache').get();
+    const row = await db.get('SELECT MAX(refreshed_at) as last FROM screener_cache');
     res.json({ success: true, lastRefreshed: row?.last || null });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
+  } catch (err) { res.status(500).json({ success: false, error: err.message }); }
 });
 
-// GET /api/screener/tickers — get user's saved screener tickers
-router.get('/tickers', (req, res) => {
+router.get('/tickers', async (req, res) => {
   try {
-    const rows = db.prepare('SELECT ticker FROM screener_tickers WHERE user_id = ? ORDER BY added_at').all(req.userId);
+    const rows = await db.all('SELECT ticker FROM screener_tickers WHERE user_id = $1 ORDER BY added_at', [req.userId]);
     const tickers = rows.map(r => r.ticker);
     res.json({ success: true, data: tickers.length > 0 ? tickers : null });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
+  } catch (err) { res.status(500).json({ success: false, error: err.message }); }
 });
 
-// POST /api/screener/tickers — save user's screener tickers (replace all)
-router.post('/tickers', (req, res) => {
+router.post('/tickers', async (req, res) => {
   try {
     const { tickers } = req.body;
     if (!Array.isArray(tickers)) return res.status(400).json({ success: false, error: 'tickers must be an array' });
     const unique = [...new Set(tickers.map(t => t.toUpperCase()))];
-    db.prepare('DELETE FROM screener_tickers WHERE user_id = ?').run(req.userId);
-    const insert = db.prepare('INSERT INTO screener_tickers (user_id, ticker) VALUES (?, ?)');
-    for (const t of unique) {
-      insert.run(req.userId, t);
-    }
+    await db.run('DELETE FROM screener_tickers WHERE user_id = $1', [req.userId]);
+    for (const t of unique) { await db.run('INSERT INTO screener_tickers (user_id, ticker) VALUES ($1, $2)', [req.userId, t]); }
     res.json({ success: true, data: unique });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
+  } catch (err) { res.status(500).json({ success: false, error: err.message }); }
 });
 
-// GET /api/screener/tracked — get user's tracked (starred) stocks
-router.get('/tracked', (req, res) => {
+router.get('/tracked', async (req, res) => {
   try {
-    const rows = db.prepare('SELECT ticker FROM tracked_stocks WHERE user_id = ? ORDER BY created_at').all(req.userId);
+    const rows = await db.all('SELECT ticker FROM tracked_stocks WHERE user_id = $1 ORDER BY created_at', [req.userId]);
     res.json({ success: true, data: rows.map(r => r.ticker) });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
+  } catch (err) { res.status(500).json({ success: false, error: err.message }); }
 });
 
-// POST /api/screener/tracked — toggle a tracked stock (star/unstar)
-router.post('/tracked', (req, res) => {
+router.post('/tracked', async (req, res) => {
   try {
     const ticker = (req.body.ticker || '').toUpperCase().trim();
     if (!ticker) return res.status(400).json({ success: false, error: 'Ticker required' });
-
-    const existing = db.prepare('SELECT id FROM tracked_stocks WHERE user_id = ? AND ticker = ?').get(req.userId, ticker);
-    if (existing) {
-      db.prepare('DELETE FROM tracked_stocks WHERE id = ?').run(existing.id);
-      res.json({ success: true, tracked: false });
-    } else {
-      db.prepare('INSERT INTO tracked_stocks (user_id, ticker) VALUES (?, ?)').run(req.userId, ticker);
-      res.json({ success: true, tracked: true });
-    }
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
+    const existing = await db.get('SELECT id FROM tracked_stocks WHERE user_id = $1 AND ticker = $2', [req.userId, ticker]);
+    if (existing) { await db.run('DELETE FROM tracked_stocks WHERE id = $1', [existing.id]); res.json({ success: true, tracked: false }); }
+    else { await db.run('INSERT INTO tracked_stocks (user_id, ticker) VALUES ($1, $2)', [req.userId, ticker]); res.json({ success: true, tracked: true }); }
+  } catch (err) { res.status(500).json({ success: false, error: err.message }); }
 });
 
 module.exports = router;

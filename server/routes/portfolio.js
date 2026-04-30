@@ -9,33 +9,31 @@ const router = express.Router();
 
 // ── Portfolios ─────────────────────────────────────────────
 
-// List portfolios
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const rows = db.prepare('SELECT * FROM portfolios WHERE user_id = ? ORDER BY created_at').all(req.userId);
+    const rows = await db.all('SELECT * FROM portfolios WHERE user_id = $1 ORDER BY created_at', [req.userId]);
     res.json({ success: true, data: rows });
   } catch (err) {
     sendError(res, err);
   }
 });
 
-// Create portfolio
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   try {
-    const existing = db.prepare('SELECT id FROM portfolios WHERE user_id = ?').get(req.userId);
+    const existing = await db.get('SELECT id FROM portfolios WHERE user_id = $1', [req.userId]);
     if (existing) return res.status(400).json({ success: false, error: 'You can only have one portfolio' });
 
     const { name = 'My Portfolio', initialDeposit = 0, recurringAmount = 0, recurringFrequency = null } = req.body;
 
-    const result = db.prepare(`
+    const result = await db.get(`
       INSERT INTO portfolios (user_id, name, cash_balance, initial_deposit, recurring_amount, recurring_frequency, last_recurring_deposit)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(req.userId, name.trim(), initialDeposit, initialDeposit, recurringAmount, recurringFrequency || null, recurringFrequency ? new Date().toISOString() : null);
+      VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id
+    `, [req.userId, name.trim(), initialDeposit, initialDeposit, recurringAmount, recurringFrequency || null, recurringFrequency ? new Date().toISOString() : null]);
 
-    const portfolio = db.prepare('SELECT * FROM portfolios WHERE id = ?').get(result.lastInsertRowid);
+    const portfolio = await db.get('SELECT * FROM portfolios WHERE id = $1', [result.id]);
 
     if (initialDeposit > 0) {
-      db.prepare(`INSERT INTO portfolio_transactions (portfolio_id, type, total) VALUES (?, 'deposit', ?)`).run(portfolio.id, initialDeposit);
+      await db.run("INSERT INTO portfolio_transactions (portfolio_id, type, total) VALUES ($1, 'deposit', $2)", [portfolio.id, initialDeposit]);
     }
 
     res.status(201).json({ success: true, data: portfolio });
@@ -44,52 +42,49 @@ router.post('/', (req, res) => {
   }
 });
 
-// Update portfolio
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   try {
-    const portfolio = db.prepare('SELECT * FROM portfolios WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
+    const portfolio = await db.get('SELECT * FROM portfolios WHERE id = $1 AND user_id = $2', [req.params.id, req.userId]);
     if (!portfolio) return res.status(404).json({ success: false, error: 'Portfolio not found' });
 
     const { name, recurringAmount, recurringFrequency } = req.body;
-    db.prepare(`
+    await db.run(`
       UPDATE portfolios SET
-        name = COALESCE(?, name),
-        recurring_amount = COALESCE(?, recurring_amount),
-        recurring_frequency = COALESCE(?, recurring_frequency)
-      WHERE id = ?
-    `).run(name?.trim() || null, recurringAmount ?? null, recurringFrequency ?? null, portfolio.id);
+        name = COALESCE($1, name),
+        recurring_amount = COALESCE($2, recurring_amount),
+        recurring_frequency = COALESCE($3, recurring_frequency)
+      WHERE id = $4
+    `, [name?.trim() || null, recurringAmount ?? null, recurringFrequency ?? null, portfolio.id]);
 
-    const updated = db.prepare('SELECT * FROM portfolios WHERE id = ?').get(portfolio.id);
+    const updated = await db.get('SELECT * FROM portfolios WHERE id = $1', [portfolio.id]);
     res.json({ success: true, data: updated });
   } catch (err) {
     sendError(res, err);
   }
 });
 
-// Delete portfolio
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
-    const result = db.prepare('DELETE FROM portfolios WHERE id = ? AND user_id = ?').run(req.params.id, req.userId);
-    if (result.changes === 0) return res.status(404).json({ success: false, error: 'Portfolio not found' });
+    const result = await db.run('DELETE FROM portfolios WHERE id = $1 AND user_id = $2', [req.params.id, req.userId]);
+    if (result.rowCount === 0) return res.status(404).json({ success: false, error: 'Portfolio not found' });
     res.json({ success: true });
   } catch (err) {
     sendError(res, err);
   }
 });
 
-// Add cash deposit
-router.post('/:id/deposit', (req, res) => {
+router.post('/:id/deposit', async (req, res) => {
   try {
-    const portfolio = db.prepare('SELECT * FROM portfolios WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
+    const portfolio = await db.get('SELECT * FROM portfolios WHERE id = $1 AND user_id = $2', [req.params.id, req.userId]);
     if (!portfolio) return res.status(404).json({ success: false, error: 'Portfolio not found' });
 
     const { amount } = req.body;
     if (!amount || amount <= 0) return res.status(400).json({ success: false, error: 'Amount must be positive' });
 
-    db.prepare('UPDATE portfolios SET cash_balance = cash_balance + ? WHERE id = ?').run(amount, portfolio.id);
-    db.prepare("INSERT INTO portfolio_transactions (portfolio_id, type, total) VALUES (?, 'deposit', ?)").run(portfolio.id, amount);
+    await db.run('UPDATE portfolios SET cash_balance = cash_balance + $1 WHERE id = $2', [amount, portfolio.id]);
+    await db.run("INSERT INTO portfolio_transactions (portfolio_id, type, total) VALUES ($1, 'deposit', $2)", [portfolio.id, amount]);
 
-    const updated = db.prepare('SELECT * FROM portfolios WHERE id = ?').get(portfolio.id);
+    const updated = await db.get('SELECT * FROM portfolios WHERE id = $1', [portfolio.id]);
     res.json({ success: true, data: updated });
   } catch (err) {
     sendError(res, err);
@@ -98,34 +93,31 @@ router.post('/:id/deposit', (req, res) => {
 
 // ── Positions ──────────────────────────────────────────────
 
-// Shortcut: get all positions from default (first) portfolio — used by Dashboard
-router.get('/positions', (req, res) => {
+router.get('/positions', async (req, res) => {
   try {
-    const portfolio = db.prepare('SELECT * FROM portfolios WHERE user_id = ? ORDER BY id LIMIT 1').get(req.userId);
+    const portfolio = await db.get('SELECT * FROM portfolios WHERE user_id = $1 ORDER BY id LIMIT 1', [req.userId]);
     if (!portfolio) return res.json({ success: true, data: [] });
-    const positions = db.prepare('SELECT * FROM portfolio_positions WHERE portfolio_id = ? ORDER BY created_at').all(portfolio.id);
+    const positions = await db.all('SELECT * FROM portfolio_positions WHERE portfolio_id = $1 ORDER BY created_at', [portfolio.id]);
     res.json({ success: true, data: positions });
   } catch (err) {
     sendError(res, err);
   }
 });
 
-router.get('/:id/positions', (req, res) => {
+router.get('/:id/positions', async (req, res) => {
   try {
-    const portfolio = db.prepare('SELECT * FROM portfolios WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
+    const portfolio = await db.get('SELECT * FROM portfolios WHERE id = $1 AND user_id = $2', [req.params.id, req.userId]);
     if (!portfolio) return res.status(404).json({ success: false, error: 'Portfolio not found' });
-
-    const positions = db.prepare('SELECT * FROM portfolio_positions WHERE portfolio_id = ? ORDER BY created_at').all(portfolio.id);
+    const positions = await db.all('SELECT * FROM portfolio_positions WHERE portfolio_id = $1 ORDER BY created_at', [portfolio.id]);
     res.json({ success: true, data: positions });
   } catch (err) {
     sendError(res, err);
   }
 });
 
-// Add position directly (no cash/trading required)
 router.post('/:id/positions', async (req, res) => {
   try {
-    const portfolio = db.prepare('SELECT * FROM portfolios WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
+    const portfolio = await db.get('SELECT * FROM portfolios WHERE id = $1 AND user_id = $2', [req.params.id, req.userId]);
     if (!portfolio) return res.status(404).json({ success: false, error: 'Portfolio not found' });
 
     let { ticker, shares, avgCost, source, assetType } = req.body;
@@ -136,7 +128,6 @@ router.post('/:id/positions', async (req, res) => {
     const posSource = ['savings', 'stipend', 'gift', 'import'].includes(source) ? source : 'import';
     const posAssetType = assetType === 'etf' ? 'etf' : 'stock';
 
-    // If no avgCost provided, fetch current price
     if (!avgCost) {
       try {
         const yf = await getYF();
@@ -147,9 +138,8 @@ router.post('/:id/positions', async (req, res) => {
 
     const totalCost = Math.round(avgCost * shares * 100) / 100;
 
-    // Validate dry powder if buying from savings (invest allocation)
     if (posSource === 'savings') {
-      const user = db.prepare('SELECT monthly_income, spend_pct, invest_pct FROM users WHERE id = ?').get(req.userId);
+      const user = await db.get('SELECT monthly_income, spend_pct, invest_pct FROM users WHERE id = $1', [req.userId]);
       if (user) {
         const income = user.monthly_income || 0;
         const spendAmt = Math.round(income * (user.spend_pct / 100) * 100) / 100;
@@ -162,22 +152,21 @@ router.post('/:id/positions', async (req, res) => {
           ? `${now.getFullYear() + 1}-01-01`
           : `${now.getFullYear()}-${String(now.getMonth() + 2).padStart(2, '0')}-01`;
 
-        // Unspent budget this month
-        const txns = db.prepare(
-          'SELECT COALESCE(SUM(CASE WHEN amount < 0 THEN ABS(amount) ELSE 0 END), 0) as spent FROM transactions WHERE user_id = ? AND month = ?'
-        ).get(req.userId, monthKey);
-        const unspent = Math.max(0, spendAmt - (txns?.spent || 0));
+        const txns = await db.get(
+          'SELECT COALESCE(SUM(CASE WHEN amount < 0 THEN ABS(amount) ELSE 0 END), 0) as spent FROM transactions WHERE user_id = $1 AND month = $2',
+          [req.userId, monthKey]
+        );
+        const unspent = Math.max(0, spendAmt - (parseFloat(txns?.spent) || 0));
 
-        // Already invested from savings this month
-        const investSpent = db.prepare(`
+        const investSpent = await db.get(`
           SELECT COALESCE(SUM(pt.total), 0) as total
           FROM portfolio_transactions pt
           JOIN portfolios p ON p.id = pt.portfolio_id
-          WHERE p.user_id = ? AND pt.source = 'savings' AND pt.type = 'buy'
-            AND pt.created_at >= ? AND pt.created_at < ?
-        `).get(req.userId, monthStart, nextMonth);
+          WHERE p.user_id = $1 AND pt.source = 'savings' AND pt.type = 'buy'
+            AND pt.created_at >= $2 AND pt.created_at < $3
+        `, [req.userId, monthStart, nextMonth]);
 
-        const dryPowder = Math.max(0, Math.round((investAmt + unspent - (investSpent?.total || 0)) * 100) / 100);
+        const dryPowder = Math.max(0, Math.round((investAmt + unspent - (parseFloat(investSpent?.total) || 0)) * 100) / 100);
         if (totalCost > dryPowder) {
           return res.status(400).json({
             success: false,
@@ -187,34 +176,31 @@ router.post('/:id/positions', async (req, res) => {
       }
     }
 
-    const existing = db.prepare('SELECT * FROM portfolio_positions WHERE portfolio_id = ? AND ticker = ?').get(portfolio.id, ticker);
+    const existing = await db.get('SELECT * FROM portfolio_positions WHERE portfolio_id = $1 AND ticker = $2', [portfolio.id, ticker]);
     if (existing) {
       const newShares = existing.shares + shares;
       const newAvgCost = ((existing.avg_cost * existing.shares) + (avgCost * shares)) / newShares;
-      db.prepare('UPDATE portfolio_positions SET shares = ?, avg_cost = ? WHERE id = ?').run(newShares, newAvgCost, existing.id);
+      await db.run('UPDATE portfolio_positions SET shares = $1, avg_cost = $2 WHERE id = $3', [newShares, newAvgCost, existing.id]);
     } else {
-      db.prepare('INSERT INTO portfolio_positions (portfolio_id, ticker, shares, avg_cost, source, asset_type) VALUES (?, ?, ?, ?, ?, ?)').run(portfolio.id, ticker, shares, avgCost, posSource, posAssetType);
+      await db.run('INSERT INTO portfolio_positions (portfolio_id, ticker, shares, avg_cost, source, asset_type) VALUES ($1, $2, $3, $4, $5, $6)', [portfolio.id, ticker, shares, avgCost, posSource, posAssetType]);
     }
 
-    // Log transaction for savings-sourced buys so dry powder is tracked
     if (posSource === 'savings') {
-      db.prepare('INSERT INTO portfolio_transactions (portfolio_id, type, ticker, shares, price, total, source) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
-        portfolio.id, 'buy', ticker, shares, avgCost, totalCost, 'savings'
-      );
+      await db.run('INSERT INTO portfolio_transactions (portfolio_id, type, ticker, shares, price, total, source) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+        [portfolio.id, 'buy', ticker, shares, avgCost, totalCost, 'savings']);
     }
 
-    const positions = db.prepare('SELECT * FROM portfolio_positions WHERE portfolio_id = ? ORDER BY created_at').all(portfolio.id);
+    const positions = await db.all('SELECT * FROM portfolio_positions WHERE portfolio_id = $1 ORDER BY created_at', [portfolio.id]);
     res.status(201).json({ success: true, data: positions });
   } catch (err) {
     sendError(res, err);
   }
 });
 
-// Remove position
-router.delete('/:id/positions/:posId', (req, res) => {
+router.delete('/:id/positions/:posId', async (req, res) => {
   try {
-    const result = db.prepare('DELETE FROM portfolio_positions WHERE id = ? AND portfolio_id = ?').run(req.params.posId, req.params.id);
-    if (result.changes === 0) return res.status(404).json({ success: false, error: 'Position not found' });
+    const result = await db.run('DELETE FROM portfolio_positions WHERE id = $1 AND portfolio_id = $2', [req.params.posId, req.params.id]);
+    if (result.rowCount === 0) return res.status(404).json({ success: false, error: 'Position not found' });
     res.json({ success: true });
   } catch (err) {
     sendError(res, err);
@@ -223,117 +209,89 @@ router.delete('/:id/positions/:posId', (req, res) => {
 
 // ── Orders ─────────────────────────────────────────────────
 
-router.get('/:id/orders', (req, res) => {
+router.get('/:id/orders', async (req, res) => {
   try {
-    const portfolio = db.prepare('SELECT * FROM portfolios WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
+    const portfolio = await db.get('SELECT * FROM portfolios WHERE id = $1 AND user_id = $2', [req.params.id, req.userId]);
     if (!portfolio) return res.status(404).json({ success: false, error: 'Portfolio not found' });
 
     const status = req.query.status;
-    const query = status
-      ? 'SELECT * FROM orders WHERE portfolio_id = ? AND status = ? ORDER BY created_at DESC'
-      : 'SELECT * FROM orders WHERE portfolio_id = ? ORDER BY created_at DESC';
-    const orders = status ? db.prepare(query).all(portfolio.id, status) : db.prepare(query).all(portfolio.id);
+    let orders;
+    if (status) {
+      orders = await db.all('SELECT * FROM orders WHERE portfolio_id = $1 AND status = $2 ORDER BY created_at DESC', [portfolio.id, status]);
+    } else {
+      orders = await db.all('SELECT * FROM orders WHERE portfolio_id = $1 ORDER BY created_at DESC', [portfolio.id]);
+    }
     res.json({ success: true, data: orders });
   } catch (err) {
     sendError(res, err);
   }
 });
 
-// Place order
 router.post('/:id/orders', async (req, res) => {
   try {
-    const portfolio = db.prepare('SELECT * FROM portfolios WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
+    const portfolio = await db.get('SELECT * FROM portfolios WHERE id = $1 AND user_id = $2', [req.params.id, req.userId]);
     if (!portfolio) return res.status(404).json({ success: false, error: 'Portfolio not found' });
 
     const { orderType, side, ticker, shares, targetPrice } = req.body;
+    if (!orderType || !side || !ticker || !shares) return res.status(400).json({ success: false, error: 'orderType, side, ticker, and shares are required' });
+    if (!['market', 'limit', 'stop_loss'].includes(orderType)) return res.status(400).json({ success: false, error: 'orderType must be market, limit, or stop_loss' });
+    if (!['buy', 'sell'].includes(side)) return res.status(400).json({ success: false, error: 'side must be buy or sell' });
+    if (shares <= 0) return res.status(400).json({ success: false, error: 'shares must be positive' });
+    if ((orderType === 'limit' || orderType === 'stop_loss') && !targetPrice) return res.status(400).json({ success: false, error: 'targetPrice is required for limit and stop_loss orders' });
 
-    if (!orderType || !side || !ticker || !shares) {
-      return res.status(400).json({ success: false, error: 'orderType, side, ticker, and shares are required' });
-    }
-    if (!['market', 'limit', 'stop_loss'].includes(orderType)) {
-      return res.status(400).json({ success: false, error: 'orderType must be market, limit, or stop_loss' });
-    }
-    if (!['buy', 'sell'].includes(side)) {
-      return res.status(400).json({ success: false, error: 'side must be buy or sell' });
-    }
-    if (shares <= 0) {
-      return res.status(400).json({ success: false, error: 'shares must be positive' });
-    }
-    if ((orderType === 'limit' || orderType === 'stop_loss') && !targetPrice) {
-      return res.status(400).json({ success: false, error: 'targetPrice is required for limit and stop_loss orders' });
-    }
-
-    // Verify shares for sell/stop_loss
     if (orderType === 'stop_loss' || side === 'sell') {
-      const position = db.prepare('SELECT * FROM portfolio_positions WHERE portfolio_id = ? AND ticker = ?').get(portfolio.id, ticker.toUpperCase());
-      if (!position || position.shares < shares) {
-        return res.status(400).json({ success: false, error: `Insufficient shares of ${ticker.toUpperCase()}. Own: ${position?.shares || 0}` });
-      }
+      const position = await db.get('SELECT * FROM portfolio_positions WHERE portfolio_id = $1 AND ticker = $2', [portfolio.id, ticker.toUpperCase()]);
+      if (!position || position.shares < shares) return res.status(400).json({ success: false, error: `Insufficient shares of ${ticker.toUpperCase()}. Own: ${position?.shares || 0}` });
     }
 
-    // Market orders execute immediately
     if (orderType === 'market') {
       let price;
       try {
         const yf = await getYF();
-        const quote = await withCache(
-          `quote-simple:${ticker.toUpperCase()}`,
-          () => yf.quote(ticker.toUpperCase(), {}, { skipValidation: true })
-        );
+        const quote = await withCache(`quote-simple:${ticker.toUpperCase()}`, () => yf.quote(ticker.toUpperCase(), {}, { skipValidation: true }));
         price = quote?.regularMarketPrice;
-      } catch (err) {
-        console.error(`[Order] Quote fetch failed for ${ticker}:`, err.message);
-      }
-      if (!price) {
-        return res.status(400).json({ success: false, error: `Could not fetch price for ${ticker}` });
-      }
+      } catch (err) { console.error(`[Order] Quote fetch failed for ${ticker}:`, err.message); }
+      if (!price) return res.status(400).json({ success: false, error: `Could not fetch price for ${ticker}` });
       const total = price * shares;
 
       if (side === 'buy') {
-        try {
-          executeMarketBuy(portfolio.id, ticker.toUpperCase(), shares, price, total);
-        } catch (buyErr) {
-          return res.status(400).json({ success: false, error: buyErr.message });
-        }
+        try { await executeMarketBuy(portfolio.id, ticker.toUpperCase(), shares, price, total); }
+        catch (buyErr) { return res.status(400).json({ success: false, error: buyErr.message }); }
       } else {
-        executeMarketSell(portfolio.id, ticker.toUpperCase(), shares, price, total);
+        await executeMarketSell(portfolio.id, ticker.toUpperCase(), shares, price, total);
       }
 
-      const order = db.prepare('SELECT * FROM orders WHERE portfolio_id = ? ORDER BY id DESC LIMIT 1').get(portfolio.id);
+      const order = await db.get('SELECT * FROM orders WHERE portfolio_id = $1 ORDER BY id DESC LIMIT 1', [portfolio.id]);
       return res.status(201).json({ success: true, data: order });
     }
 
-    // Limit/stop_loss go to pending
     if (orderType === 'limit' && side === 'buy') {
       const estimatedTotal = targetPrice * shares;
-      if (portfolio.cash_balance < estimatedTotal) {
-        return res.status(400).json({ success: false, error: `Insufficient cash. Need ~$${estimatedTotal.toFixed(2)}, have $${portfolio.cash_balance.toFixed(2)}` });
-      }
+      if (portfolio.cash_balance < estimatedTotal) return res.status(400).json({ success: false, error: `Insufficient cash. Need ~$${estimatedTotal.toFixed(2)}, have $${portfolio.cash_balance.toFixed(2)}` });
     }
 
-    const result = db.prepare(`
+    const result = await db.get(`
       INSERT INTO orders (portfolio_id, ticker, order_type, side, shares, target_price, status)
-      VALUES (?, ?, ?, ?, ?, ?, 'pending')
-    `).run(portfolio.id, ticker.toUpperCase(), orderType, side, shares, targetPrice);
+      VALUES ($1, $2, $3, $4, $5, $6, 'pending') RETURNING id
+    `, [portfolio.id, ticker.toUpperCase(), orderType, side, shares, targetPrice]);
 
-    const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(result.lastInsertRowid);
+    const order = await db.get('SELECT * FROM orders WHERE id = $1', [result.id]);
     res.status(201).json({ success: true, data: order });
   } catch (err) {
     sendError(res, err);
   }
 });
 
-// Cancel order
-router.delete('/:id/orders/:orderId', (req, res) => {
+router.delete('/:id/orders/:orderId', async (req, res) => {
   try {
-    const portfolio = db.prepare('SELECT * FROM portfolios WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
+    const portfolio = await db.get('SELECT * FROM portfolios WHERE id = $1 AND user_id = $2', [req.params.id, req.userId]);
     if (!portfolio) return res.status(404).json({ success: false, error: 'Portfolio not found' });
 
-    const result = db.prepare(
-      "UPDATE orders SET status = 'cancelled' WHERE id = ? AND portfolio_id = ? AND status = 'pending'"
-    ).run(req.params.orderId, portfolio.id);
-
-    if (result.changes === 0) return res.status(404).json({ success: false, error: 'Pending order not found' });
+    const result = await db.run(
+      "UPDATE orders SET status = 'cancelled' WHERE id = $1 AND portfolio_id = $2 AND status = 'pending'",
+      [req.params.orderId, portfolio.id]
+    );
+    if (result.rowCount === 0) return res.status(404).json({ success: false, error: 'Pending order not found' });
     res.json({ success: true });
   } catch (err) {
     sendError(res, err);
@@ -342,12 +300,11 @@ router.delete('/:id/orders/:orderId', (req, res) => {
 
 // ── Transactions ───────────────────────────────────────────
 
-router.get('/:id/transactions', (req, res) => {
+router.get('/:id/transactions', async (req, res) => {
   try {
-    const portfolio = db.prepare('SELECT * FROM portfolios WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
+    const portfolio = await db.get('SELECT * FROM portfolios WHERE id = $1 AND user_id = $2', [req.params.id, req.userId]);
     if (!portfolio) return res.status(404).json({ success: false, error: 'Portfolio not found' });
-
-    const txns = db.prepare('SELECT * FROM portfolio_transactions WHERE portfolio_id = ? ORDER BY created_at DESC LIMIT 100').all(portfolio.id);
+    const txns = await db.all('SELECT * FROM portfolio_transactions WHERE portfolio_id = $1 ORDER BY created_at DESC LIMIT 100', [portfolio.id]);
     res.json({ success: true, data: txns });
   } catch (err) {
     sendError(res, err);
@@ -358,42 +315,32 @@ router.get('/:id/transactions', (req, res) => {
 
 router.get('/:id/history', async (req, res, next) => {
   try {
-    const portfolio = db.prepare('SELECT * FROM portfolios WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
+    const portfolio = await db.get('SELECT * FROM portfolios WHERE id = $1 AND user_id = $2', [req.params.id, req.userId]);
     if (!portfolio) return res.status(404).json({ success: false, error: 'Portfolio not found' });
 
-    const positions = db.prepare('SELECT * FROM portfolio_positions WHERE portfolio_id = ?').all(portfolio.id);
+    const positions = await db.all('SELECT * FROM portfolio_positions WHERE portfolio_id = $1', [portfolio.id]);
     if (positions.length === 0) return res.json({ success: true, data: { portfolio: [], sp500: [] } });
 
-    // Find the earliest position creation date as the portfolio inception
-    const earliestPosition = db.prepare(
-      'SELECT MIN(created_at) as earliest FROM portfolio_positions WHERE portfolio_id = ?'
-    ).get(portfolio.id);
-    const inceptionDate = earliestPosition?.earliest ? new Date(earliestPosition.earliest + 'Z') : new Date(portfolio.created_at + 'Z');
+    const earliestPosition = await db.get('SELECT MIN(created_at) as earliest FROM portfolio_positions WHERE portfolio_id = $1', [portfolio.id]);
+    const inceptionDate = earliestPosition?.earliest ? new Date(earliestPosition.earliest) : new Date(portfolio.created_at);
 
     const period = req.query.period || '1y';
     const periodDays = { '1d': 1, '1w': 7, '1m': 30, '1y': 365 };
     const days = periodDays[period] || 365;
-    // Use intraday interval for 1d, otherwise daily
     const interval = period === '1d' ? '15m' : period === '1w' ? '1h' : '1d';
 
     const yf = await getYF();
     const now = new Date();
     const periodStart = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
-    // Use the later of period start vs inception date — never show data before portfolio existed
     const startDate = inceptionDate > periodStart ? inceptionDate : periodStart;
 
     const tickers = [...new Set(positions.map(p => p.ticker))];
     const allTickers = [...tickers, '^GSPC'];
 
-    // Fetch historical data for all tickers in parallel
     const historyByTicker = {};
     const results = await Promise.allSettled(allTickers.map(async (ticker) => {
       const data = await withCache(`chart:${ticker}:${period}`, async () => {
-        const result = await yf.chart(ticker, {
-          period1: startDate,
-          period2: now,
-          interval,
-        }, { skipValidation: true });
+        const result = await yf.chart(ticker, { period1: startDate, period2: now, interval }, { skipValidation: true });
         const isIntraday = interval !== '1d';
         return (result?.quotes || []).filter(q => q.close != null).map(q => ({
           date: isIntraday ? new Date(q.date).toISOString() : new Date(q.date).toISOString().split('T')[0],
@@ -403,43 +350,29 @@ router.get('/:id/history', async (req, res, next) => {
       return { ticker, data };
     }));
 
-    results.forEach(r => {
-      if (r.status === 'fulfilled') historyByTicker[r.value.ticker] = r.value.data;
-    });
+    results.forEach(r => { if (r.status === 'fulfilled') historyByTicker[r.value.ticker] = r.value.data; });
 
-    // Build daily portfolio value series using all dates from portfolio tickers
     const allDatesSet = new Set();
     tickers.forEach(t => (historyByTicker[t] || []).forEach(d => allDatesSet.add(d.date)));
     const allDates = [...allDatesSet].sort();
 
-    // Build price lookup maps for fast access
     const priceMaps = {};
-    tickers.forEach(t => {
-      priceMaps[t] = {};
-      (historyByTicker[t] || []).forEach(d => { priceMaps[t][d.date] = d.close; });
-    });
+    tickers.forEach(t => { priceMaps[t] = {}; (historyByTicker[t] || []).forEach(d => { priceMaps[t][d.date] = d.close; }); });
 
-    // For each date, calculate total portfolio value using last-known price
     const lastKnown = {};
     const portfolioSeries = allDates.map(date => {
       let totalValue = 0;
       positions.forEach(pos => {
-        if (priceMaps[pos.ticker]?.[date] != null) {
-          lastKnown[pos.ticker] = priceMaps[pos.ticker][date];
-        }
+        if (priceMaps[pos.ticker]?.[date] != null) lastKnown[pos.ticker] = priceMaps[pos.ticker][date];
         totalValue += pos.shares * (lastKnown[pos.ticker] || 0);
       });
       return { date, value: Math.round(totalValue * 100) / 100 };
     });
 
-    // S&P 500 series — trim to only dates within portfolio range
     const portfolioStart = allDates.length > 0 ? allDates[0] : null;
     const sp500Series = (historyByTicker['^GSPC'] || [])
       .filter(d => portfolioStart && d.date >= portfolioStart)
-      .map(d => ({
-        date: d.date,
-        value: Math.round(d.close * 100) / 100,
-      }));
+      .map(d => ({ date: d.date, value: Math.round(d.close * 100) / 100 }));
 
     res.json({ success: true, data: { portfolio: portfolioSeries, sp500: sp500Series } });
   } catch (err) {
@@ -451,13 +384,11 @@ router.get('/:id/history', async (req, res, next) => {
 
 router.get('/:id/analysis', async (req, res) => {
   try {
-    const portfolio = db.prepare('SELECT * FROM portfolios WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
+    const portfolio = await db.get('SELECT * FROM portfolios WHERE id = $1 AND user_id = $2', [req.params.id, req.userId]);
     if (!portfolio) return res.status(404).json({ success: false, error: 'Portfolio not found' });
 
-    const positions = db.prepare('SELECT * FROM portfolio_positions WHERE portfolio_id = ?').all(portfolio.id);
-    if (positions.length === 0) {
-      return res.json({ success: true, data: { analysis: 'Add positions to your portfolio to generate an analysis.' } });
-    }
+    const positions = await db.all('SELECT * FROM portfolio_positions WHERE portfolio_id = $1', [portfolio.id]);
+    if (positions.length === 0) return res.json({ success: true, data: { analysis: 'Add positions to your portfolio to generate an analysis.' } });
 
     const yf = await getYF();
     let totalValue = 0;
@@ -468,30 +399,19 @@ router.get('/:id/analysis', async (req, res) => {
         const price = quote?.regularMarketPrice || 0;
         const value = price * pos.shares;
         totalValue += value;
-
         let sector = 'Unknown';
-        try {
-          const summary = await withCache(`sector:${pos.ticker}`, () => yf.quoteSummary(pos.ticker, { modules: ['summaryProfile'] }));
-          sector = summary.summaryProfile?.sector || 'Unknown';
-        } catch {}
-
+        try { const summary = await withCache(`sector:${pos.ticker}`, () => yf.quoteSummary(pos.ticker, { modules: ['summaryProfile'] })); sector = summary.summaryProfile?.sector || 'Unknown'; } catch {}
         enriched.push({ ticker: pos.ticker, shares: pos.shares, value: Math.round(value * 100) / 100, sector, weight: 0 });
       } catch {
         enriched.push({ ticker: pos.ticker, shares: pos.shares, value: 0, sector: 'Unknown', weight: 0 });
       }
     }
 
-    enriched.forEach(p => {
-      p.weight = totalValue > 0 ? Math.round((p.value / totalValue) * 10000) / 100 : 0;
-    });
+    enriched.forEach(p => { p.weight = totalValue > 0 ? Math.round((p.value / totalValue) * 10000) / 100 : 0; });
 
     let analysis;
-    try {
-      analysis = await generatePortfolioAnalysis(enriched);
-    } catch (err) {
-      console.error('[Analysis] Claude API failed, using built-in summary:', err.message);
-      analysis = generateFallbackAnalysis(enriched, totalValue);
-    }
+    try { analysis = await generatePortfolioAnalysis(enriched); }
+    catch (err) { console.error('[Analysis] Claude API failed:', err.message); analysis = generateFallbackAnalysis(enriched, totalValue); }
     res.json({ success: true, data: { analysis, positions: enriched } });
   } catch (err) {
     sendError(res, err);
@@ -499,7 +419,6 @@ router.get('/:id/analysis', async (req, res) => {
 });
 
 function generateFallbackAnalysis(positions, totalValue) {
-  // Group by sector with tickers
   const sectors = {};
   const sectorTickers = {};
   for (const p of positions) {
@@ -510,100 +429,72 @@ function generateFallbackAnalysis(positions, totalValue) {
   }
   const sorted = Object.entries(sectors).sort((a, b) => b[1] - a[1]);
   const sortedPositions = [...positions].sort((a, b) => b.weight - a.weight);
-
   const lines = [];
-
-  // Sentence 1: Sector breakdown with company names
-  const sectorParts = sorted.map(([s, w]) => {
-    const tickers = sectorTickers[s].join(', ');
-    return `${s} at ${w.toFixed(0)}% (${tickers})`;
-  });
+  const sectorParts = sorted.map(([s, w]) => { const tickers = sectorTickers[s].join(', '); return `${s} at ${w.toFixed(0)}% (${tickers})`; });
   lines.push(`Your portfolio is invested across ${sorted.length} sector${sorted.length > 1 ? 's' : ''}: ${sectorParts.join('; ')}.`);
-
-  // Sentence 2: Company-specific holdings breakdown
   const holdingDesc = sortedPositions.map(p => `${p.ticker} (${p.weight.toFixed(0)}%)`).join(', ');
   lines.push(`Your holdings break down as ${holdingDesc}, with a total portfolio value of $${(totalValue).toLocaleString('en-US', { maximumFractionDigits: 0 })}.`);
-
-  // Sentence 3: Risks — be specific about companies and sectors
-  if (sorted.length === 1) {
-    lines.push(`A key risk is that everything is in ${sorted[0][0]} — if that sector faces a downturn (like regulatory changes or slowing demand), your entire portfolio would be affected, so adding stocks from different sectors like healthcare or consumer staples could help protect you.`);
-  } else if (sorted[0][1] > 50) {
-    const topSector = sorted[0][0];
-    const topTickers = sectorTickers[topSector].join(' and ');
-    lines.push(`One risk to watch: ${topSector} makes up ${sorted[0][1].toFixed(0)}% of your portfolio through ${topTickers}, so a slowdown in that sector could hit you harder than a more diversified portfolio.`);
-  } else {
-    lines.push(`Your sector diversification helps limit risk — no single sector dominates, which means trouble in one area won't wipe out your whole portfolio.`);
-  }
-
-  // Sentence 4: Potential/strengths — specific to actual companies
+  if (sorted.length === 1) lines.push(`A key risk is that everything is in ${sorted[0][0]} — if that sector faces a downturn, your entire portfolio would be affected.`);
+  else if (sorted[0][1] > 50) { const topTickers = sectorTickers[sorted[0][0]].join(' and '); lines.push(`One risk to watch: ${sorted[0][0]} makes up ${sorted[0][1].toFixed(0)}% of your portfolio through ${topTickers}.`); }
+  else lines.push(`Your sector diversification helps limit risk — no single sector dominates.`);
   const topHolding = sortedPositions[0];
-  if (topHolding.weight > 40) {
-    lines.push(`On the upside, ${topHolding.ticker} is your largest position at ${topHolding.weight.toFixed(0)}% — if ${topHolding.ticker} performs well, it will drive strong portfolio returns, but that concentration also means more volatility.`);
-  } else if (positions.length >= 3) {
-    lines.push(`The upside is that you have exposure to multiple companies across different parts of the economy, which gives you a chance to benefit from growth in several areas at once.`);
-  } else {
-    lines.push(`With ${positions.length} holding${positions.length > 1 ? 's' : ''}, consider adding more stocks from different sectors to reduce risk and capture broader market growth.`);
-  }
-
+  if (topHolding.weight > 40) lines.push(`${topHolding.ticker} is your largest position at ${topHolding.weight.toFixed(0)}% — strong returns if it performs well, but more volatility.`);
+  else if (positions.length >= 3) lines.push(`You have exposure to multiple companies, giving you a chance to benefit from growth in several areas.`);
+  else lines.push(`With ${positions.length} holding${positions.length > 1 ? 's' : ''}, consider adding more stocks for diversification.`);
   lines.push('This is for informational purposes only and is not financial advice.');
   return lines.join(' ');
 }
 
 // ── Helpers ────────────────────────────────────────────────
 
-function executeMarketBuy(portfolioId, ticker, shares, price, total) {
-  const txn = db.transaction(() => {
-    // Re-read balance inside transaction to prevent race condition
-    const portfolio = db.prepare('SELECT cash_balance FROM portfolios WHERE id = ?').get(portfolioId);
-    if (portfolio.cash_balance < total) {
-      throw new Error(`Insufficient cash. Need $${total.toFixed(2)}, have $${portfolio.cash_balance.toFixed(2)}`);
-    }
+async function executeMarketBuy(portfolioId, ticker, shares, price, total) {
+  await db.transaction(async (client) => {
+    const { rows } = await client.query('SELECT cash_balance FROM portfolios WHERE id = $1', [portfolioId]);
+    const portfolio = rows[0];
+    if (portfolio.cash_balance < total) throw new Error(`Insufficient cash. Need $${total.toFixed(2)}, have $${portfolio.cash_balance.toFixed(2)}`);
 
-    const orderResult = db.prepare(`
+    const orderResult = await client.query(`
       INSERT INTO orders (portfolio_id, ticker, order_type, side, shares, executed_price, status, executed_at)
-      VALUES (?, ?, 'market', 'buy', ?, ?, 'executed', datetime('now'))
-    `).run(portfolioId, ticker, shares, price);
+      VALUES ($1, $2, 'market', 'buy', $3, $4, 'executed', NOW()) RETURNING id
+    `, [portfolioId, ticker, shares, price]);
+    const orderId = orderResult.rows[0].id;
 
-    const existing = db.prepare('SELECT * FROM portfolio_positions WHERE portfolio_id = ? AND ticker = ?').get(portfolioId, ticker);
+    const { rows: existingRows } = await client.query('SELECT * FROM portfolio_positions WHERE portfolio_id = $1 AND ticker = $2', [portfolioId, ticker]);
+    const existing = existingRows[0];
     if (existing) {
       const newShares = existing.shares + shares;
       const newAvgCost = Math.round(((existing.avg_cost * existing.shares) + total) / newShares * 100) / 100;
-      db.prepare('UPDATE portfolio_positions SET shares = ?, avg_cost = ? WHERE id = ?').run(newShares, newAvgCost, existing.id);
+      await client.query('UPDATE portfolio_positions SET shares = $1, avg_cost = $2 WHERE id = $3', [newShares, newAvgCost, existing.id]);
     } else {
-      db.prepare('INSERT INTO portfolio_positions (portfolio_id, ticker, shares, avg_cost) VALUES (?, ?, ?, ?)').run(portfolioId, ticker, shares, price);
+      await client.query('INSERT INTO portfolio_positions (portfolio_id, ticker, shares, avg_cost) VALUES ($1, $2, $3, $4)', [portfolioId, ticker, shares, price]);
     }
 
-    db.prepare('UPDATE portfolios SET cash_balance = cash_balance - ? WHERE id = ?').run(total, portfolioId);
-    db.prepare("INSERT INTO portfolio_transactions (portfolio_id, order_id, type, ticker, shares, price, total) VALUES (?, ?, 'buy', ?, ?, ?, ?)").run(portfolioId, orderResult.lastInsertRowid, ticker, shares, price, total);
+    await client.query('UPDATE portfolios SET cash_balance = cash_balance - $1 WHERE id = $2', [total, portfolioId]);
+    await client.query("INSERT INTO portfolio_transactions (portfolio_id, order_id, type, ticker, shares, price, total) VALUES ($1, $2, 'buy', $3, $4, $5, $6)", [portfolioId, orderId, ticker, shares, price, total]);
   });
-
-  txn();
 }
 
-function executeMarketSell(portfolioId, ticker, shares, price, total) {
-  const existing = db.prepare('SELECT * FROM portfolio_positions WHERE portfolio_id = ? AND ticker = ?').get(portfolioId, ticker);
+async function executeMarketSell(portfolioId, ticker, shares, price, total) {
+  const existing = await db.get('SELECT * FROM portfolio_positions WHERE portfolio_id = $1 AND ticker = $2', [portfolioId, ticker]);
   if (!existing || existing.shares < shares) throw new Error('Insufficient shares');
 
-  const insertOrder = db.prepare(`
-    INSERT INTO orders (portfolio_id, ticker, order_type, side, shares, executed_price, status, executed_at)
-    VALUES (?, ?, 'market', 'sell', ?, ?, 'executed', datetime('now'))
-  `);
-
-  const txn = db.transaction(() => {
-    const orderResult = insertOrder.run(portfolioId, ticker, shares, price);
+  await db.transaction(async (client) => {
+    const orderResult = await client.query(`
+      INSERT INTO orders (portfolio_id, ticker, order_type, side, shares, executed_price, status, executed_at)
+      VALUES ($1, $2, 'market', 'sell', $3, $4, 'executed', NOW()) RETURNING id
+    `, [portfolioId, ticker, shares, price]);
+    const orderId = orderResult.rows[0].id;
 
     const remainingShares = existing.shares - shares;
     if (remainingShares <= 0.0001) {
-      db.prepare('DELETE FROM portfolio_positions WHERE id = ?').run(existing.id);
+      await client.query('DELETE FROM portfolio_positions WHERE id = $1', [existing.id]);
     } else {
-      db.prepare('UPDATE portfolio_positions SET shares = ? WHERE id = ?').run(remainingShares, existing.id);
+      await client.query('UPDATE portfolio_positions SET shares = $1 WHERE id = $2', [remainingShares, existing.id]);
     }
 
-    db.prepare('UPDATE portfolios SET cash_balance = cash_balance + ? WHERE id = ?').run(total, portfolioId);
-    db.prepare("INSERT INTO portfolio_transactions (portfolio_id, order_id, type, ticker, shares, price, total) VALUES (?, ?, 'sell', ?, ?, ?, ?)").run(portfolioId, orderResult.lastInsertRowid, ticker, shares, price, total);
+    await client.query('UPDATE portfolios SET cash_balance = cash_balance + $1 WHERE id = $2', [total, portfolioId]);
+    await client.query("INSERT INTO portfolio_transactions (portfolio_id, order_id, type, ticker, shares, price, total) VALUES ($1, $2, 'sell', $3, $4, $5, $6)", [portfolioId, orderId, ticker, shares, price, total]);
   });
-
-  txn();
 }
 
 module.exports = router;

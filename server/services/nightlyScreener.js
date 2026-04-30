@@ -104,12 +104,11 @@ async function fetchStockData(ticker) {
   };
 }
 
-function saveToCache(ticker, data) {
-  const upsert = db.prepare(`
-    INSERT INTO screener_cache (ticker, data, refreshed_at) VALUES (?, ?, datetime('now'))
-    ON CONFLICT(ticker) DO UPDATE SET data = excluded.data, refreshed_at = excluded.refreshed_at
-  `);
-  upsert.run(ticker, JSON.stringify(data));
+async function saveToCache(ticker, data) {
+  await db.run(`
+    INSERT INTO screener_cache (ticker, data, refreshed_at) VALUES ($1, $2, NOW())
+    ON CONFLICT(ticker) DO UPDATE SET data = EXCLUDED.data, refreshed_at = EXCLUDED.refreshed_at
+  `, [ticker, JSON.stringify(data)]);
 }
 
 async function processBatch(batch, batchNum, totalBatches) {
@@ -119,31 +118,31 @@ async function processBatch(batch, batchNum, totalBatches) {
   let success = 0, failed = 0;
   const fmpRetries = [];
 
-  results.forEach((result, i) => {
-    if (result.status === 'fulfilled') {
-      saveToCache(batch[i], result.value);
+  for (let i = 0; i < results.length; i++) {
+    if (results[i].status === 'fulfilled') {
+      await saveToCache(batch[i], results[i].value);
       success++;
     } else {
-      console.error(`[NightlyScreener] Yahoo failed: ${batch[i]} — ${result.reason?.message}`);
+      console.error(`[NightlyScreener] Yahoo failed: ${batch[i]} — ${results[i].reason?.message}`);
       fmpRetries.push(batch[i]);
       failed++;
     }
-  });
+  }
 
   // Retry failed tickers with FMP fallback
   if (fmpRetries.length > 0 && process.env.FMP_API_KEY) {
     console.log(`[NightlyScreener] Retrying ${fmpRetries.length} with FMP: ${fmpRetries.join(', ')}`);
     const fmpResults = await Promise.allSettled(fmpRetries.map(t => fetchStockDataFMP(t)));
-    fmpResults.forEach((result, i) => {
-      if (result.status === 'fulfilled') {
-        saveToCache(fmpRetries[i], result.value);
+    for (let i = 0; i < fmpResults.length; i++) {
+      if (fmpResults[i].status === 'fulfilled') {
+        await saveToCache(fmpRetries[i], fmpResults[i].value);
         success++;
         failed--;
         console.log(`[NightlyScreener] FMP recovered: ${fmpRetries[i]}`);
       } else {
-        console.error(`[NightlyScreener] FMP also failed: ${fmpRetries[i]} — ${result.reason?.message}`);
+        console.error(`[NightlyScreener] FMP also failed: ${fmpRetries[i]} — ${fmpResults[i].reason?.message}`);
       }
-    });
+    }
   }
 
   console.log(`[NightlyScreener] Batch ${batchNum} done: ${success} ok, ${failed} failed`);
@@ -155,7 +154,7 @@ async function runNightlyScreener() {
 
   // Build full ticker list: S&P 100 + user-added tickers not in S&P 100
   const sp100Set = new Set(SP100);
-  const userRows = db.prepare('SELECT DISTINCT ticker FROM screener_tickers').all();
+  const userRows = await db.all('SELECT DISTINCT ticker FROM screener_tickers');
   const userExtra = userRows.map(r => r.ticker).filter(t => !sp100Set.has(t));
   const allTickers = [...SP100, ...userExtra];
 

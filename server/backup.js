@@ -1,55 +1,19 @@
-const cron = require('node-cron')
-const fs = require('fs')
-const path = require('path')
-
-const DB_PATH = path.join(__dirname, 'finwise.db')
-const BACKUP_DIR = path.join(__dirname, 'backups')
-const DAYS_TO_KEEP = 30
-
-const runBackup = () => {
-  try {
-    if (!fs.existsSync(DB_PATH)) {
-      console.error('[Backup] Database file not found at:', DB_PATH)
-      return
-    }
-
-    if (!fs.existsSync(BACKUP_DIR)) {
-      fs.mkdirSync(BACKUP_DIR, { recursive: true })
-    }
-
-    const timestamp = new Date().toISOString().slice(0, 10)
-    const backupPath = path.join(BACKUP_DIR, `finwise-backup-${timestamp}.db`)
-
-    fs.copyFileSync(DB_PATH, backupPath)
-    console.log(`[Backup] Success: finwise-backup-${timestamp}.db`)
-
-    const files = fs.readdirSync(BACKUP_DIR)
-    files.forEach(file => {
-      const filePath = path.join(BACKUP_DIR, file)
-      const stats = fs.statSync(filePath)
-      const daysOld = (Date.now() - stats.mtimeMs) / (1000 * 60 * 60 * 24)
-      if (daysOld > DAYS_TO_KEEP) {
-        fs.unlinkSync(filePath)
-        console.log(`[Backup] Deleted old backup: ${file}`)
-      }
-    })
-
-  } catch (err) {
-    console.error('[Backup] Failed:', err.message)
-  }
-}
+// PostgreSQL backups are handled by Railway's built-in database backup system.
+// No manual file-based backup is needed.
+//
+// To export your data from Railway:
+//   1. Go to your Railway project dashboard
+//   2. Click your PostgreSQL plugin
+//   3. Use the "Data" tab to browse tables
+//   4. Use "Connect" tab to get connection string for pg_dump:
+//      pg_dump "your-connection-string" > backup.sql
 
 const scheduleBackup = () => {
-  cron.schedule('0 2 * * *', () => {
-    console.log('[Backup] Running scheduled backup...')
-    runBackup()
-  })
-  console.log('[Backup] Scheduler started. Runs daily at 2am.')
-}
+  console.log('[Backup] Using Railway PostgreSQL — backups handled by Railway automatically.');
+};
 
 const runImmediateBackup = () => {
-  console.log('[Backup] Running startup backup...')
-  runBackup()
-}
+  // No-op for PostgreSQL on Railway
+};
 
-module.exports = { scheduleBackup, runImmediateBackup }
+module.exports = { scheduleBackup, runImmediateBackup };

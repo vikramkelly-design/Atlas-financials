@@ -3,37 +3,28 @@ const router = express.Router();
 const db = require('../db');
 const { sendError } = require('../utils/errors');
 
-// GET /api/watchlist
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const items = db.prepare('SELECT * FROM watchlist WHERE user_id = ? ORDER BY added_at DESC').all(req.userId);
+    const items = await db.all('SELECT * FROM watchlist WHERE user_id = $1 ORDER BY added_at DESC', [req.userId]);
     res.json({ success: true, data: items });
-  } catch (err) {
-    sendError(res, err);
-  }
+  } catch (err) { sendError(res, err); }
 });
 
-// POST /api/watchlist
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const { ticker } = req.body;
     if (!ticker) return res.status(400).json({ success: false, error: 'Ticker required' });
-    db.prepare('INSERT OR IGNORE INTO watchlist (user_id, ticker) VALUES (?, ?)').run(req.userId, ticker.toUpperCase());
-    const item = db.prepare('SELECT * FROM watchlist WHERE user_id = ? AND ticker = ?').get(req.userId, ticker.toUpperCase());
+    await db.run('INSERT INTO watchlist (user_id, ticker) VALUES ($1, $2) ON CONFLICT(user_id, ticker) DO NOTHING', [req.userId, ticker.toUpperCase()]);
+    const item = await db.get('SELECT * FROM watchlist WHERE user_id = $1 AND ticker = $2', [req.userId, ticker.toUpperCase()]);
     res.json({ success: true, data: item });
-  } catch (err) {
-    sendError(res, err);
-  }
+  } catch (err) { sendError(res, err); }
 });
 
-// DELETE /api/watchlist/:ticker
-router.delete('/:ticker', (req, res) => {
+router.delete('/:ticker', async (req, res) => {
   try {
-    db.prepare('DELETE FROM watchlist WHERE user_id = ? AND ticker = ?').run(req.userId, req.params.ticker.toUpperCase());
+    await db.run('DELETE FROM watchlist WHERE user_id = $1 AND ticker = $2', [req.userId, req.params.ticker.toUpperCase()]);
     res.json({ success: true });
-  } catch (err) {
-    sendError(res, err);
-  }
+  } catch (err) { sendError(res, err); }
 });
 
 module.exports = router;

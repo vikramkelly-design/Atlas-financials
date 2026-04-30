@@ -3,15 +3,15 @@ const db = require('../db');
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-function getCachedInsight(type, ticker, month) {
-  const row = db.prepare(`
+async function getCachedInsight(type, ticker, month) {
+  const row = await db.get(`
     SELECT content, created_at FROM ai_insights
-    WHERE type = ? AND (ticker = ? OR ticker IS NULL) AND (month = ? OR month IS NULL)
+    WHERE type = $1 AND (ticker = $2 OR ticker IS NULL) AND (month = $3 OR month IS NULL)
     ORDER BY created_at DESC LIMIT 1
-  `).get(type, ticker || null, month || null);
+  `, [type, ticker || null, month || null]);
 
   if (row) {
-    const createdAt = new Date(row.created_at + 'Z');
+    const createdAt = new Date(row.created_at);
     const now = new Date();
     const hoursDiff = (now - createdAt) / (1000 * 60 * 60);
     if (hoursDiff < 24) return row.content;
@@ -19,10 +19,10 @@ function getCachedInsight(type, ticker, month) {
   return null;
 }
 
-function saveInsight(type, content, ticker, month) {
-  db.prepare(`
-    INSERT INTO ai_insights (type, ticker, month, content) VALUES (?, ?, ?, ?)
-  `).run(type, ticker || null, month || null, content);
+async function saveInsight(type, content, ticker, month) {
+  await db.run(`
+    INSERT INTO ai_insights (type, ticker, month, content) VALUES ($1, $2, $3, $4)
+  `, [type, ticker || null, month || null, content]);
 }
 
 async function callAI(systemPrompt, userPrompt) {
@@ -65,50 +65,50 @@ async function categorizeTransactions(transactions) {
 }
 
 async function generateBudgetSummary(month, spendingData) {
-  const cached = getCachedInsight('budget', null, month);
+  const cached = await getCachedInsight('budget', null, month);
   if (cached) return cached;
 
   const systemPrompt = 'Summarize spending in 2 sentences max. Use plain English, real dollar amounts. No disclaimers.';
   const userPrompt = `Here is the spending data for ${month}: ${JSON.stringify(spendingData)}. Write a plain-English summary of this month's finances.`;
 
   const content = await callAI(systemPrompt, userPrompt);
-  saveInsight('budget', content, null, month);
+  await saveInsight('budget', content, null, month);
   return content;
 }
 
 async function generatePortfolioAnalysis(positions) {
-  const cached = getCachedInsight('portfolio', null, null);
+  const cached = await getCachedInsight('portfolio', null, null);
   if (cached) return cached;
 
   const systemPrompt = 'Give a 2-3 sentence plain English overview of this portfolio. State what sectors they are in with percentages, and one key risk. No disclaimers, no jargon.';
   const userPrompt = `Here is a portfolio with the following holdings. Each entry has a ticker, number of shares, current dollar value, the sector it belongs to, and its weight (percentage of the total portfolio):\n\n${JSON.stringify(positions, null, 2)}\n\nGive a simple, plain-English overview of this portfolio.`;
 
   const content = await callAI(systemPrompt, userPrompt);
-  saveInsight('portfolio', content, null, null);
+  await saveInsight('portfolio', content, null, null);
   return content;
 }
 
 async function generateMarketDigest(ticker, companyName, price, changePercent) {
-  const cached = getCachedInsight('market_digest', ticker, null);
+  const cached = await getCachedInsight('market_digest', ticker, null);
   if (cached) return cached;
 
   const systemPrompt = 'Write one short sentence about this stock. Just the facts, no fluff.';
   const userPrompt = `Write one sentence about ${ticker} (${companyName}). Current price: $${price}, day change: ${changePercent}%.`;
 
   const content = await callAI(systemPrompt, userPrompt);
-  saveInsight('market_digest', content, ticker, null);
+  await saveInsight('market_digest', content, ticker, null);
   return content;
 }
 
 async function generateCompanyExplainer(ticker, companyName, sector, description) {
-  const cached = getCachedInsight('market_explain', ticker, null);
+  const cached = await getCachedInsight('market_explain', ticker, null);
   if (cached) return cached;
 
   const systemPrompt = 'Explain what this company does and how it makes money in 1-2 sentences. Plain English, no disclaimers.';
   const userPrompt = `Explain what ${ticker} (${companyName}) does and how it generates revenue. Sector: ${sector}. Description: ${description}.`;
 
   const content = await callAI(systemPrompt, userPrompt);
-  saveInsight('market_explain', content, ticker, null);
+  await saveInsight('market_explain', content, ticker, null);
   return content;
 }
 
@@ -233,14 +233,14 @@ This analysis is for informational purposes only and is not financial advice.`;
 }
 
 async function generateHealthSummary(scoreData) {
-  const cached = getCachedInsight('health_score', null, null);
+  const cached = await getCachedInsight('health_score', null, null);
   if (cached) return cached;
 
   const systemPrompt = 'Give a 1-sentence plain English summary of this financial health score. Be honest and specific. No disclaimers.';
   const userPrompt = `Score: ${scoreData.score}/100. Spending: ${scoreData.spendingGrade}, Savings: ${scoreData.savingsGrade}, Portfolio: ${scoreData.portfolioGrade}, Debt: ${scoreData.debtGrade}, Goals: ${scoreData.goalsGrade}.`;
 
   const content = await callAI(systemPrompt, userPrompt);
-  saveInsight('health_score', content, null, null);
+  await saveInsight('health_score', content, null, null);
   return content;
 }
 
