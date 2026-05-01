@@ -13,15 +13,19 @@ router.get('/', async (req, res) => {
     `, [req.userId]);
     if (!user) return res.status(404).json({ success: false, error: 'User not found' });
 
-    const income = user.monthly_income || 0;
-    const spendAmt = Math.round(income * (user.spend_pct / 100) * 100) / 100;
-    const savingsAmt = Math.round(income * (user.savings_pct / 100) * 100) / 100;
-    const investAmt = Math.round(income * (user.invest_pct / 100) * 100) / 100;
+    const income = parseFloat(user.monthly_income) || 0;
+    const spendPct = parseInt(user.spend_pct) || 0;
+    const savingsPct = parseInt(user.savings_pct) || 0;
+    const investPct = parseInt(user.invest_pct) || 0;
+    const spendAmt = Math.round(income * (spendPct / 100) * 100) / 100;
+    const savingsAmt = Math.round(income * (savingsPct / 100) * 100) / 100;
+    const investAmt = Math.round(income * (investPct / 100) * 100) / 100;
 
+    const savingsBalance = parseFloat(user.savings_balance) || 0;
     const efTarget = user.savings_goal_name === 'Emergency Fund'
       ? Math.round(spendAmt * 3 * 100) / 100
-      : (user.savings_goal_target || 0);
-    const efPct = efTarget > 0 ? Math.min(100, Math.round((user.savings_balance / efTarget) * 10000) / 100) : 0;
+      : (parseFloat(user.savings_goal_target) || 0);
+    const efPct = efTarget > 0 ? Math.min(100, Math.round((savingsBalance / efTarget) * 10000) / 100) : 0;
 
     const now = new Date();
     const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -51,11 +55,11 @@ router.get('/', async (req, res) => {
       data: {
         monthly_income: income, savings_balance: user.savings_balance,
         savings_goal_name: user.savings_goal_name, savings_goal_target: efTarget,
-        spend_pct: user.spend_pct, savings_pct: user.savings_pct, invest_pct: user.invest_pct,
+        spend_pct: spendPct, savings_pct: savingsPct, invest_pct: investPct,
         spend_amt: spendAmt, savings_amt: savingsAmt, invest_amt: investAmt,
         dry_powder: dryPowder, free_cash: dryPowder,
         invest_spent: Math.round((parseFloat(investSpent?.total) || 0) * 100) / 100,
-        ef_balance: user.savings_balance, ef_target: efTarget, ef_pct: efPct,
+        ef_balance: savingsBalance, ef_target: efTarget, ef_pct: efPct,
         emergency_fund_complete: !!user.emergency_fund_complete,
       }
     });

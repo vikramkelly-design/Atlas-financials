@@ -180,7 +180,7 @@ router.get('/overview', async (req, res) => {
     }
     const prevLog = await db.get('SELECT income FROM monthly_income_log WHERE user_id = $1 AND month = $2 LIMIT 1', [req.userId, prevMonth]);
 
-    const income = incomeLog?.income || prevLog?.income || user?.monthly_income || 0;
+    const income = parseFloat(incomeLog?.income) || parseFloat(prevLog?.income) || parseFloat(user?.monthly_income) || 0;
     const incomeConfirmed = !!incomeLog;
 
     const transactions = await db.all('SELECT * FROM transactions WHERE user_id = $1 AND month = $2 ORDER BY date DESC', [req.userId, month]);
