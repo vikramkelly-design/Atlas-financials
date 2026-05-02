@@ -109,7 +109,7 @@ initializeDatabase()
         const latest = await db.get('SELECT MAX(refreshed_at) as latest FROM screener_cache');
         const lastRefresh = latest?.latest ? new Date(latest.latest) : null;
         const hoursOld = lastRefresh ? (Date.now() - lastRefresh.getTime()) / (1000 * 60 * 60) : Infinity;
-        if (count < 50 || hoursOld > 18) {
+        if (count < 90 || hoursOld > 18) {
           console.log(`[NightlyScreener] Cache has ${count} stocks, ${hoursOld === Infinity ? 'never refreshed' : Math.round(hoursOld) + 'h old'} — running refresh on startup`);
           runNightlyScreener().catch(err => console.error('[NightlyScreener] Startup refresh failed:', err.message));
         } else {
