@@ -102,14 +102,14 @@ initializeDatabase()
       scheduleNightlyScreener();
       schedulePortfolioRefresh();
 
-      // Run screener on startup if cache is stale (>18 hours old) or incomplete (<50 stocks)
+      // Always refresh screener on startup — Railway containers sleep and cron never fires
       try {
         const cacheCount = await db.get('SELECT COUNT(*) as count FROM screener_cache');
         const count = parseInt(cacheCount?.count) || 0;
         const latest = await db.get('SELECT MAX(refreshed_at) as latest FROM screener_cache');
         const lastRefresh = latest?.latest ? new Date(latest.latest) : null;
         const hoursOld = lastRefresh ? (Date.now() - lastRefresh.getTime()) / (1000 * 60 * 60) : Infinity;
-        if (count < 90 || hoursOld > 18) {
+        if (count < 90 || hoursOld > 6) {
           console.log(`[NightlyScreener] Cache has ${count} stocks, ${hoursOld === Infinity ? 'never refreshed' : Math.round(hoursOld) + 'h old'} — running refresh on startup`);
           runNightlyScreener().catch(err => console.error('[NightlyScreener] Startup refresh failed:', err.message));
         } else {

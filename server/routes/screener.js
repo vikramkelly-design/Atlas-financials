@@ -1,8 +1,11 @@
 const express = require('express');
 const db = require('../db');
-const { fetchStockData, saveToCache, SP100 } = require('../services/nightlyScreener');
+const { fetchStockData, saveToCache, SP100, runNightlyScreener } = require('../services/nightlyScreener');
 
 const router = express.Router();
+
+// Track if a background refresh is already running
+let refreshInProgress = false;
 
 router.get('/defaults', (req, res) => { res.json({ tickers: SP100 }); });
 
@@ -11,6 +14,19 @@ router.get('/', async (req, res) => {
     const rows = await db.all('SELECT ticker, data, refreshed_at FROM screener_cache ORDER BY ticker');
     const stocks = rows.map(r => { try { return JSON.parse(r.data); } catch { return { ticker: r.ticker, error: 'Parse error' }; } });
     const lastRefreshed = rows.length > 0 ? rows.reduce((latest, r) => r.refreshed_at > latest ? r.refreshed_at : latest, rows[0].refreshed_at) : null;
+
+    // Auto-trigger refresh if cache is stale (>20 hours) and no refresh is running
+    if (!refreshInProgress) {
+      const hoursOld = lastRefreshed ? (Date.now() - new Date(lastRefreshed).getTime()) / (1000 * 60 * 60) : Infinity;
+      if (hoursOld > 20 || rows.length < 90) {
+        refreshInProgress = true;
+        console.log(`[NightlyScreener] Cache stale (${hoursOld === Infinity ? 'empty' : Math.round(hoursOld) + 'h old'}, ${rows.length} stocks) — triggering background refresh`);
+        runNightlyScreener()
+          .catch(err => console.error('[NightlyScreener] Background refresh failed:', err.message))
+          .finally(() => { refreshInProgress = false; });
+      }
+    }
+
     res.json({ success: true, stocks, lastRefreshed });
   } catch (err) { res.status(500).json({ success: false, error: err.message }); }
 });
